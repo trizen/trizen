@@ -398,7 +398,11 @@ if ($a eq '-S') {
                     unless ($info_connect->content =~ /"results":"No result found"/) {
                         next;
                     }
-                    $pacmansi = `pacman -Si $makedepend`;
+                    if (not $pacmanq =~ /\n$makedepend\n/){
+						$pacmansi = `pacman -Si $makedepend`;
+					}else{
+						next;
+					}
                     if ($pacmansi =~ /Depends On[\s]*:[\s]*([^:]*)Optional Deps/) {
                         $pacman_dep = $1;
                         $pacman_dep =~ s/[\s]+/#/g;
@@ -425,16 +429,16 @@ if ($a eq '-S') {
             if ($info_connect->content =~ /"ID":"([^"]+)"/) {
                 push @deps_ids, $1;
             }
-            if ($info_connect->content =~ /"OutOfDate":"0"/ and not $checked_once) {
-                $out_of_date = 1;
-            }
-            $checked_once = 1;
         }
         if (@deps_ids) {
             foreach $id (@deps_ids) {
                 &Check_aur_deps;
             }
         }
+        $connect = $lwp->get("$info$pkgname");
+        if ($connect->content =~ /"OutOfDate":"1"/) {
+			$out_of_date = 1;
+		}
         print "\n${bred}[!]$reset ${cred}From AUR:$reset ";
         foreach $aur_dep (@final_aur_deps) {
             next if $pacmanq =~ /\n$aur_dep\n/;
