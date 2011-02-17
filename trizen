@@ -3,7 +3,7 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Last edit on: 17 February 2011
+# Last edit on: 18 February 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 $a = $ARGV[0];
@@ -72,6 +72,13 @@ foreach $_ (@ARGV) {
         $usermake .= ' --noconfirm';
         $rootmake .= ' --noconfirm';
     }
+    if ($_ eq '--skipinteg') {
+		$usermake .= ' --skipinteg';
+		$rootmake .= ' --skipinteg';
+	}
+	if ($_ eq '--noedit') {
+		$noedit = 1;
+	}
 }
 if (not $nocolors) {
     $bred = "\e[1;31m";
@@ -119,8 +126,8 @@ $bred*$reset Base options
     -S          : installs package
     -Ss         : searches for package
     -Si         : outputs info for package
-    -Sp         : outputs PKGBUILD of package
-    -Syu        : updates all AUR packages
+    -Sp         : outputs only PKGBUILD
+    -Su         : updates all AUR packages
     -Sc         : clears trizen pakage-kit cache
     -R.*        : removes packages with pacman
     -Qm         : outputs AUR installed packages
@@ -131,11 +138,13 @@ $bred*$reset Other options
     -q          : quiet mode
     -nc         : no color for text
     -nd         : no description for search results
-    --devel     : update devel packages (git, svn)
-    --noconfirm : no questions at all, just installs
+    --noedit    : do not prompt to edit files
+    --devel     : update devel packages during -Su
+    --noconfirm : do not prompt for any confirmation
+    --skipinteg : when using makepkg, do not check md5s
     --help      : outputs this message
 
-$bred*$reset Example: trizen -S bleachbit youtube-viewer -nc -q --noconfirm
+$bred*$reset Example: trizen -S bleachbit youtube-viewer -q --noconfirm
 
 ";
 }
@@ -263,7 +272,7 @@ sub Install {
         print "\n$bred=>>$reset PKGBUILD of $pkg\n\n";
         print @file;
         print "\n";
-        unless ($noconfirm) {
+        unless ($noconfirm or $noedit) {
             print "$bred=>>$reset Edit PKGBUILD of $cgreen$pkg$reset with '${editor}'? (y/N)\n> ";
             chomp($yn = <STDIN>);
             if ($yn =~ /^y/i) {
