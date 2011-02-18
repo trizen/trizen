@@ -144,7 +144,7 @@ $bred*$reset Other options
     --skipinteg : when using makepkg, do not check md5s
     --help      : outputs this message
 
-$bred*$reset Example: trizen -S bleachbit youtube-viewer -q --noconfirm
+$bred*$reset Example: trizen -S bleachbit youtube-viewer -q --noedit
 
 ";
 }
@@ -219,19 +219,23 @@ sub Check_aur_deps {
         }
         if ($line =~ /do_Orphans=&SeB='>(.+)/) {
             $dep = $1;
-            $dep =~ s/[<>]?=(.+)//;
-            unless ($check_deps =~ /[#]?$dep\#/) {
+            $dep =~ s/[<>]+.+//;
+            $dep =~ s/=.+//;
+            unless ($check_deps =~ /\#$dep$|^$dep\#|\#$dep\#|^$dep$/) {
                 push @final_aur_deps, $dep;
             }
         }
         if ($line =~ m[packages/search/\?q=([^']+)]) {
+			$pac_dep = $1;
+			$pac_dep =~ s/[<>]+.+//;
+			$pac_dep =~ s/=.+//;
             push @pacman_deps, $1;
         }
         $lastline = $line;
     }
     if ($connect->content =~ m[([^/]+)/PKGBUILD]) {
         $dep_name = $1;
-        if ($dep_name ne $pkgname and not $check_deps =~ /[#]?$dep_name\#/) {
+        if ($dep_name ne $pkgname and not $check_deps =~ /\#$dep_name$|^$dep_name\#|\#$dep_name\#|^$dep_name$/) {
             push @final_aur_deps, $1;
         }
     }
@@ -385,7 +389,7 @@ if ($a eq '-S') {
                 $makedepends = $2;
                 $makedepends =~ s/[<>]+[^' "]+//g;
                 $makedepends =~ s/=[^' "]+//g;
-                $makedepends =~ s/([^\w\-]+)/\n/g;
+                $makedepends =~ s/([^\w\-\+]+)/\n/g;
                 until (not $makedepends =~ /\n\n/) {
                     $makedepends =~ s/\n\n/\n/g;
                 }
