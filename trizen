@@ -7,14 +7,14 @@
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 $a = $ARGV[0];
-unless ($a){
-	$a = '';
+unless ($a) {
+    $a = '';
 }
 if ($a and not $ARGV[1]) {
     unless ($a =~ /[-]+(S[y]?u|(R|r)ss|(n|N)|Q.*|h|help)$/) {
-        unless ($a =~ /^-Sc[c]?$/){
-			&die;
-		}
+        unless ($a =~ /^-Sc[c]?$/) {
+            &die;
+        }
     }
 }
 $makeconf_file = "$ENV{'HOME'}/.config/trizen-makepkg.conf";
@@ -36,8 +36,8 @@ else {
     $location = "$cache_dir-root";
     mkdir $location;
 }
+use File::Path;
 if ($a =~ /^-Sc[c]?/) {
-	use File::Path;
     print "\n[!] Removing $location\n";
     rmtree($location);
     print "[*] Done.\n\n";
@@ -73,12 +73,12 @@ foreach $_ (@ARGV) {
         $rootmake .= ' --noconfirm';
     }
     if ($_ eq '--skipinteg') {
-		$usermake .= ' --skipinteg';
-		$rootmake .= ' --skipinteg';
-	}
-	if ($_ eq '--noedit') {
-		$noedit = 1;
-	}
+        $usermake .= ' --skipinteg';
+        $rootmake .= ' --skipinteg';
+    }
+    if ($_ eq '--noedit') {
+        $noedit = 1;
+    }
 }
 if (not $nocolors) {
     $bred = "\e[1;31m";
@@ -118,7 +118,7 @@ unless ($quiet) {
 }
 sub help {
     die "
-\t   ............${bgreen}TRIZEN AUR PACKAGE MANAGER${reset}............
+\t   ............${bgreen}TRIZEN AUR PACKAGE MANAGER$reset............
 
   ${bgreen}usage:$reset trizen [option] [pkgname] [pkgname] [...]
 
@@ -226,9 +226,9 @@ sub Check_aur_deps {
             }
         }
         if ($line =~ m[packages/search/\?q=([^']+)]) {
-			$pac_dep = $1;
-			$pac_dep =~ s/[<>]+.+//;
-			$pac_dep =~ s/=.+//;
+            $pac_dep = $1;
+            $pac_dep =~ s/[<>]+.+//;
+            $pac_dep =~ s/=.+//;
             push @pacman_deps, $1;
         }
         $lastline = $line;
@@ -293,7 +293,6 @@ sub Install {
     }
 }
 sub Update {
-    require threads;
     @aur_pkgs = `pacman -Qm`;
     foreach $_ (@aur_pkgs) {
         chomp($line = $_);
@@ -402,11 +401,12 @@ if ($a eq '-S') {
                     unless ($info_connect->content =~ /"results":"No result found"/) {
                         next;
                     }
-                    if (not $pacmanq =~ /\n$makedepend\n/){
-						$pacmansi = `pacman -Si $makedepend`;
-					}else{
-						next;
-					}
+                    if (not $pacmanq =~ /\n$makedepend\n/) {
+                        $pacmansi = `pacman -Si $makedepend`;
+                    }
+                    else {
+                        next;
+                    }
                     if ($pacmansi =~ /Depends On[\s]*:[\s]*([^:]*)Optional Deps/) {
                         $pacman_dep = $1;
                         $pacman_dep =~ s/[\s]+/#/g;
@@ -441,8 +441,8 @@ if ($a eq '-S') {
         }
         $connect = $lwp->get("$info$pkgname");
         if ($connect->content =~ /"OutOfDate":"1"/) {
-			$out_of_date = 1;
-		}
+            $out_of_date = 1;
+        }
         print "\n${bred}[!]$reset ${cred}From AUR:$reset ";
         foreach $aur_dep (@final_aur_deps) {
             next if $pacmanq =~ /\n$aur_dep\n/;
@@ -543,7 +543,7 @@ sub Print_results {
             print "$bred(out-of-date) ";
         }
         if ($pacmanq =~ /\n$name\n/) {
-            print "[${cgreen}installed${reset}]";
+            print "[${cgreen}installed$reset]";
         }
     }
     print "$reset\n";
