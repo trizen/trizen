@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
@@ -127,7 +127,7 @@ $bred*$reset Base options
     -Ss         : searches for package
     -Si         : outputs info for package
     -Sp         : outputs only PKGBUILD
-    -Su         : updates all AUR packages
+    -Su         : upgrades all AUR packages
     -Sc         : clears trizen pakage-kit cache
     -R.*        : removes packages with pacman
     -Qm         : outputs AUR installed packages
@@ -305,12 +305,11 @@ sub Update {
         if ($line =~ /(.+) (.+)/) {
             $pkgname = $1;
             $vers = $2;
-            $connect = $lwp->get("$info$pkgname");
         }
-        if ($connect->content =~ /"Name":"([^"]+)","Version":"([^"]+)"(.+)OutOfDate":"([\d]+)"/) {
+        if ($lwp->get("$info$pkgname")->content =~ /"Name":"([^"]+)".*Version":"([^"]+)".*OutOfDate":"([\d]+)"/) {
             $name = $1;
             $vvv = $2;
-            $ood = $4;
+            $ood = $3;
             if ($vers ne $vvv) {
                 push @packages_for_install, $name;
                 push @for_upgrade, "$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
@@ -407,24 +406,9 @@ if ($a eq '-S') {
                         if ($makedepend eq 'pkgconfig') {
                             $makedepend = 'pkg-config';
                         }
-                        $pacmansi = `pacman -Si $makedepend`;
                     }
                     else {
                         next;
-                    }
-                    if ($pacmansi =~ /Depends On[\s]*:[\s]*([^:]*)Optional Deps/) {
-                        $pacman_dep = $1;
-                        $pacman_dep =~ s/[\s]+/#/g;
-                        until (not $pacman_dep =~ /##/) {
-                            $pacman_dep =~ s/##/#/g;
-                        }
-                        $pacman_dep =~ s/#/ /g;
-                        $pacman_dep =~ s/[\s]+$//;
-                        $pacman_dep =~ s/[<>]+[^\s]+//g;
-                        $pacman_dep =~ s/=[^\s]+//g;
-                        if ($pacman_dep ne 'None') {
-                            push @pacman_deps, "$pacman_dep ";
-                        }
                     }
                     unless ($pacmanq =~ /\n$makedepend\n/) {
                         push @pacman_deps, $makedepend;
@@ -489,7 +473,13 @@ if ($a eq '-S') {
             print "\n\n$bred!$reset warning: '${pkgname}' has been flagged out of date";
         }
         if ($pacmanq =~ /\n$pkgname\n/) {
-            print "\n\n$bred!$reset warning: '${pkgname}' is already installed --reinstalling";
+            if ($out_of_date) {
+                print "\n";
+            }
+            else {
+                print "\n\n";
+            }
+            print "$bred!$reset warning: '${pkgname}' is already installed --reinstalling";
         }
         unless ($noconfirm) {
             print "\n\n$bred=>>$reset Proceed with build (Y/n)\n> ";
@@ -609,6 +599,28 @@ if ($a eq '-Si') {
         if ($connect->content =~ /"ID":"([^"]+)/) {
             $aur_id = $1;
         }
+        if ($connect->content =~ /"NumVotes":"([^"]+)/) {
+            $votes = $1;
+        }
+        if ($connect->content =~ /"OutOfDate":"([\d]+)/) {
+            $out_of_date = $1;
+        }
+        if ($connect->content =~ /"Name":"([^"]+)/) {
+            $pkg = $1;
+        }
+        if ($connect->content =~ /"Version":"([^"]+)/) {
+            $pkgver = $1;
+        }
+        if ($connect->content =~ /"Description":"([^"]*)/) {
+            $description = $1;
+            $description =~ s[\\/][/]g;
+            $description =~ s/&quot;/"/g;
+            $description =~ s/&amp;/&/g;
+        }
+        if ($connect->content =~ /"URL":"([^"]*)/) {
+            $url = $1;
+            $url =~ s[\\/][/]g;
+        }
         if ($connect->content =~ /"CategoryID":"([^"]+)/) {
             $cat = $1;
             &Parse_category;
@@ -626,6 +638,9 @@ if ($a eq '-Si') {
             $makedepends =~ s/\n[\s]*/\n\t\t  /g;
             $makedepends =~ s/\\//g;
         }
+        else {
+            $makedepends = 'None';
+        }
         if ($connect->content =~ /\noptdepends[\s]*=[\s]*\(([^\)]*)/) {
             $optdepends = $1;
             $optdepends =~ s/"|'//g;
@@ -634,28 +649,6 @@ if ($a eq '-Si') {
         }
         else {
             $optdepends = '';
-        }
-        if ($connect->content =~ /\npkgrel[\s]*=[\s]*([\d]+)/) {
-            $pkgrel = $1;
-        }
-        if ($connect->content =~ /\npkgver[\s]*=[\s]*([^\s#]+)/) {
-            $pkgver = $1;
-        }
-        if ($connect->content =~ /\npkgdesc[\s]*=[\s]*(.+)/) {
-            $pkgdesc = $1;
-            $pkgdesc =~ s/^[\s]*["']+|["']+[\s]*$//g;
-            $pkgdesc =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
-            $pkgdesc =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
-        }
-        if ($connect->content =~ /\nurl[\s]*=[\s]*(.+)/) {
-            $url = $1;
-            $url =~ s/['"]+|#(.+)//g;
-            $url =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
-            $url =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
-            $url =~ s/\$[\{]?pkgrel[\}]?/$pkgrel/g;
-        }
-        else {
-            $url = '';
         }
         if ($connect->content =~ /\nlicense[\s]*=[\s]*(.+)/) {
             $license = $1;
@@ -703,9 +696,6 @@ if ($a eq '-Si') {
             $arch = $1;
             $arch =~ s/['"\(\)]+//g;
         }
-        unless ($pkgdesc =~ /[\w]+/) {
-            $pkgdesc = 'None';
-        }
         unless ($url =~ /[\w]+/) {
             $url = 'None';
         }
@@ -733,7 +723,14 @@ if ($a eq '-Si') {
         print "\n$bred*$reset Repository\t: ${bgreen}aur\n";
         print "$bred*$reset Name\t\t: $pkg\n";
         print "$bred*$reset Category\t: $cat\n";
-        print "$bred*$reset Version\t: $pkgver-$pkgrel\n";
+        print "$bred*$reset Version\t: $pkgver\n";
+        print "$bred*$reset Out Of Date\t: ";
+        if ($out_of_date eq 1) {
+            print "${bred}Yes$reset\n";
+        }
+        else {
+            print "No\n";
+        }
         print "$bred*$reset Installed\t: ";
         if ($yn eq 'Yes') {
             print "${bgreen}Yes$reset\n";
@@ -747,6 +744,7 @@ if ($a eq '-Si') {
         print "$bred*$reset Groups\t: $groups\n";
         print "$bred*$reset Provides\t: $provides\n";
         print "$bred*$reset Depends On\t: $depends\n";
+        print "$bred*$reset Make Depends\t: $makedepends\n";
         print "$bred*$reset Optional Deps\t: $optdepends\n";
         print "$bred*$reset Conflicts\t: ";
         if ($conflicts ne 'None') {
@@ -755,7 +753,7 @@ if ($a eq '-Si') {
         print "$conflicts\n";
         print "$bred*$reset Replaces\t: $replaces\n";
         print "$bred*$reset Architecture\t: $arch\n";
-        print "$bred*$reset Description\t: $pkgdesc\n\n";
+        print "$bred*$reset Description\t: $description\n\n";
     }
     exit;
 }
