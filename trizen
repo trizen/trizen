@@ -244,6 +244,8 @@ sub Install {
     foreach $pkg (@packages_for_install) {
         $installed = "\n" . `pacman -Q` . "\n";
         next if $installed =~ /\n$pkg\n/;
+        $connect = $lwp->get("$info$pkg");
+        next if $connect->content =~ /"results":"No result found"/;
         $tarball = "http://aur.archlinux.org/packages/$pkg/$pkg.tar.gz";
         unless ($quiet) {
             print "\n$bred*$reset Downloading '${pkg}' tarball\n";
@@ -402,6 +404,9 @@ if ($a eq '-S') {
                         next;
                     }
                     if (not $pacmanq =~ /\n$makedepend\n/) {
+                        if ($makedepend eq 'pkgconfig') {
+                            $makedepend = 'pkg-config';
+                        }
                         $pacmansi = `pacman -Si $makedepend`;
                     }
                     else {
@@ -422,7 +427,7 @@ if ($a eq '-S') {
                         }
                     }
                     unless ($pacmanq =~ /\n$makedepend\n/) {
-                        push @final_aur_deps, $makedepend;
+                        push @pacman_deps, $makedepend;
                     }
                 }
             }
