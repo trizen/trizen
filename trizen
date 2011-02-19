@@ -3,8 +3,10 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Last edit on: 18 February 2011
+# Last edit on: 19 February 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
+
+use File::Path;
 
 $a = $ARGV[0];
 unless ($a) {
@@ -13,7 +15,9 @@ unless ($a) {
 if ($a and not $ARGV[1]) {
     unless ($a =~ /[-]+(S[y]?u|(R|r)ss|(n|N)|Q.*|h|help)$/) {
         unless ($a =~ /^-Sc[c]?$/) {
-            &die;
+            if ($a =~ /^-/) {
+                &die;
+            }
         }
     }
 }
@@ -27,21 +31,16 @@ $aur_pkgs = 'http://aur.archlinux.org/packages/';
 $aur_website = 'http://aur.archlinux.org/packages.php?ID=';
 $lastline = '';
 $lastdep = '';
+$all_argvs = '';
 $whoami = `whoami`;
 if ($whoami ne "root\n") {
-    $location = $cache_dir;
+	chomp($user = $whoami);
+    $location = "$cache_dir-$user";
     mkdir $location;
 }
 else {
     $location = "$cache_dir-root";
     mkdir $location;
-}
-use File::Path;
-if ($a =~ /^-Sc[c]?/) {
-    print "\n[!] Removing $location\n";
-    rmtree($location);
-    print "[*] Done.\n\n";
-    exit;
 }
 $cache_dir = $location;
 open CONF, '/etc/makepkg.conf';
@@ -58,14 +57,20 @@ foreach $_ (@ARGV) {
     if ($_ =~ /^[-]+(q|quiet)$/) {
         $quiet = 1;
     }
+    if ($_ eq '-Ssq') {
+        $quiet = 1;
+    }
     if ($_ =~ /^[-]+(nc$|nocolor)/) {
         $nocolors = 1;
     }
     if ($_ =~ /^[-]+(nd$|nodesc)/) {
         $nodesc = 1;
     }
-    if ($_ eq '--devel') {
+    if ($_ eq /^[-]+devel/) {
         $devel = 1;
+    }
+    if ($_ =~ /^[-]+(mvpkg|movepkg)/) {
+        $movepkg = 1;
     }
     if ($_ eq '--noconfirm') {
         $noconfirm = 1;
@@ -76,8 +81,11 @@ foreach $_ (@ARGV) {
         $usermake .= ' --skipinteg';
         $rootmake .= ' --skipinteg';
     }
-    if ($_ eq '--noedit') {
+    if ($_ eq /^[-]+noedit/) {
         $noedit = 1;
+    }
+    if ($_ =~ /^[-]+needed/) {
+        $needed = 1;
     }
 }
 if (not $nocolors) {
@@ -85,8 +93,9 @@ if (not $nocolors) {
     $bgreen = "\e[1;32m";
     $red = "\e[0;31m";
     $green = "\e[0;32m";
-    $cred = "\e[41m";
     $cgreen = "\e[42m";
+    $cblack = "\e[40m";
+    $byellow = "\e[1;33m";
     $reset = "\e[0m";
 }
 else {
@@ -94,8 +103,9 @@ else {
     $bgreen = '';
     $red = '';
     $green = '';
-    $cred = '';
     $cgreen = '';
+    $cblack = '';
+    $byellow = '';
     $reset = '';
 }
 if (not @ARGV or $a =~ /^[-]+(h|help)$/) {
@@ -103,6 +113,7 @@ if (not @ARGV or $a =~ /^[-]+(h|help)$/) {
 }
 for ($nr = 0; $nr <= $#ARGV; ++$nr) {
     push @args1, "$ARGV[$nr] ";
+    push @all_argvs, " $ARGV[$nr] ";
 }
 foreach $arg1 (@args1) {
     unless ($arg1 =~ /^-/) {
@@ -115,6 +126,13 @@ foreach $keyword (@args) {
 }
 unless ($quiet) {
     $quiet = '';
+}
+$all_argvs = join('', @all_argvs);
+if ($all_argvs =~ / -Sc[c]? /) {
+    print "\n[!] Removing $location\n";
+    rmtree($location);
+    print "[*] Done.\n\n";
+    exit;
 }
 sub help {
     die "
@@ -132,19 +150,22 @@ $bred*$reset Base options
     -R.*        : removes packages with pacman
     -Qm         : outputs AUR installed packages
     -Qs         : searches for installed packages
+    -Ssq        : searches for package in quiet mode
     -N,-Rss     : outputs the AUR Newest Packages (RSS)
 
 $bred*$reset Other options
     -q          : quiet mode
     -nc         : no color for text
     -nd         : no description for search results
+    --movepkg   : after build, move pkg to the home directory
+    --needed    : don't reinstall up to date packages
     --noedit    : do not prompt to edit files
     --devel     : update devel packages during -Su
     --noconfirm : do not prompt for any confirmation
     --skipinteg : when using makepkg, do not check md5s
     --help      : outputs this message
 
-$bred*$reset Example: trizen -S bleachbit youtube-viewer -q --noedit
+$bred*$reset Example: trizen -S bleachbit youtube-viewer -q --movepkg
 
 ";
 }
@@ -155,25 +176,24 @@ require LWP::UserAgent;
 $lwp = 'LWP::UserAgent'->new;
 $lwp->agent('Mozilla/5.0 (CLI; Trizen AUR Package Manager; U; en) Trizen/0.9');
 $pacmanq = "\n" . `pacman -Qq` . "\n";
-if ($a =~ /^-(Q|R)/ and not $a =~ /^[-]+rss$/i) {
-    $argvs = join(' ', @args);
-    if ($a =~ /^-Q/) {
-        exec "pacman $a $argvs";
+if ($all_argvs =~ / -(Q|R)/ and not $all_argvs =~ / [-]+rss /i) {
+    if ($all_argvs =~ / -Q/) {
+        exec "pacman $all_argvs";
     }
-    elsif ($a =~ /^-R/) {
+    elsif ($all_argvs =~ / -R/) {
         if ($whoami eq "root\n") {
-            exec "pacman $a $argvs";
+            exec "pacman $all_argvs";
         }
         else {
             print 'Root ';
-            exec qq[su -c "pacman $a $argvs"];
+            exec qq[su -c "pacman $all_argvs"];
         }
     }
 }
-if ($a =~ /^-S[y]?u$/) {
+if ($all_argvs =~ / -S[y]?u /) {
     &Update;
 }
-if ($a eq '-Sp') {
+if ($all_argvs =~ / -Sp /) {
     foreach $pkgname (@args) {
         print "\n$bred=>>$reset PKGBUILD for $pkgname\n";
         $pkgbuild = $lwp->get("$aur_pkgs$pkgname/$pkgname/PKGBUILD");
@@ -182,9 +202,14 @@ if ($a eq '-Sp') {
     }
     exit;
 }
-if ($a eq '-Ss') {
+if ($all_argvs =~ / -Ss[q]? /) {
     $keywords = join(' ', @args);
-    system "pacman -Ss $keywords";
+    if ($all_argvs =~ / -Ss /) {
+        system "pacman -Ss $keywords";
+    }
+    else {
+        system "pacman -Ssq $keywords";
+    }
     $rpc .= 'search';
     foreach $keyword (@args) {
         $rpc .= "&arg=$keyword";
@@ -192,22 +217,33 @@ if ($a eq '-Ss') {
     $connect = $lwp->get($rpc);
     @results = split(/"ID":/, $connect->content, 0);
 }
-if ($a eq '-Ss') {
+if ($all_argvs =~ / -Ss[q]? /) {
     foreach $result (@results) {
         &Check_result;
     }
     &Parse_results;
 }
 sub Check_aur_deps {
+    ++$n;
     $aur_url = "http://aur.archlinux.org/packages.php?ID=$id";
-    unless ($newline) {
+    unless ($newline or $quiet) {
         print "\n";
         $newline = 1;
+    }
+    unless ($checked or $quiet) {
+        print "$bred=>> $cblack${byellow}Checking for AUR deps$reset\n";
+        $checked = 1;
     }
     unless ($quiet) {
         print "$bred*$reset AUR - $aur_url\n";
     }
     $connect = $lwp->get($aur_url);
+    if ($connect->content =~ m[([^/]+)/PKGBUILD]) {
+        $dep_name = $1;
+        if ($dep_name ne $pkgname and not $check_deps =~ /\#$dep_name$|^$dep_name\#|\#$dep_name\#|^$dep_name$/) {
+            push @final_aur_deps, $1;
+        }
+    }
     $aur_deps = $connect->content;
     $aur_deps =~ s[</a>][\n]g;
     @aur_deps = split(/\n/, $aur_deps, 0);
@@ -221,8 +257,15 @@ sub Check_aur_deps {
             $dep = $1;
             $dep =~ s/[<>]+.+//;
             $dep =~ s/=.+//;
-            unless ($check_deps =~ /\#$dep$|^$dep\#|\#$dep\#|^$dep$/) {
+            if ($check_deps =~ /\#$lastdep$|^$lastdep\#|\#$lastdep\#|^$lastdep$/ and $id ne $firstid and not $check_deps =~ /\#$dep$|^$dep\#|\#$dep\#|^$dep$/) {
+                unshift @final_aur_deps, $dep;
+            }
+            elsif (not $check_deps =~ /\#$dep$|^$dep\#|\#$dep\#|^$dep$/) {
                 push @final_aur_deps, $dep;
+            }
+            $lastdep = $dep;
+            unless ($quiet) {
+                print "    $bred>$reset Found: $lastdep\n";
             }
         }
         if ($line =~ m[packages/search/\?q=([^']+)]) {
@@ -232,12 +275,6 @@ sub Check_aur_deps {
             push @pacman_deps, $1;
         }
         $lastline = $line;
-    }
-    if ($connect->content =~ m[([^/]+)/PKGBUILD]) {
-        $dep_name = $1;
-        if ($dep_name ne $pkgname and not $check_deps =~ /\#$dep_name$|^$dep_name\#|\#$dep_name\#|^$dep_name$/) {
-            push @final_aur_deps, $1;
-        }
     }
 }
 sub Install {
@@ -279,7 +316,7 @@ sub Install {
         print @file;
         print "\n";
         unless ($noconfirm or $noedit) {
-            print "$bred=>>$reset Edit PKGBUILD of $cgreen$pkg$reset with '${editor}'? (y/N)\n> ";
+            print "$bred=>>$reset Edit PKGBUILD of $cblack$byellow$pkg$reset with '${editor}'? (y/N)\n> ";
             chomp($yn = <STDIN>);
             if ($yn =~ /^y/i) {
                 system "$editor $cache_dir/$pkg/PKGBUILD";
@@ -291,6 +328,11 @@ sub Install {
         }
         else {
             system $usermake;
+        }
+        if ($movepkg) {
+            if (`ls $cache_dir/$pkg` =~ /(.+)\.pkg\.tar(.*)/) {
+                `mv $cache_dir/$pkg/$& $ENV{'HOME'}`;
+            }
         }
     }
 }
@@ -338,7 +380,7 @@ sub Update {
         }
     }
     if (@packages_for_install) {
-        print "\n\n";
+        print "\n";
         print @for_upgrade;
         print "\n";
         print "$bred=>>$reset Proceed with upgrade? (Y/n)\n> ";
@@ -355,10 +397,12 @@ sub Update {
         exit;
     }
 }
-if ($a eq '-S') {
+if ($all_argvs =~ / -S /) {
     foreach $pkgname (@ARGV) {
         next if $pkgname =~ /^-/;
-        $connect = $lwp->get("$info$pkgname");
+        $checked = '';
+        $pkg = $pkgname;
+        &Info;
         splice @packages_for_install;
         splice @pacman_deps;
         splice @final_aur_deps;
@@ -369,11 +413,21 @@ if ($a eq '-S') {
             if ($check_pacman =~ m[://]) {
                 print "\n$bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman\n";
                 if ($whoami eq "root\n") {
-                    system "pacman -S $pkgname";
+                    if ($needed) {
+                        system "pacman -S $pkgname --needed";
+                    }
+                    else {
+                        system "pacman -S $pkgname";
+                    }
                 }
                 else {
                     print "\nRoot ";
-                    system qq[su -c "pacman -S $pkgname"];
+                    if ($needed) {
+                        system qq[su -c "pacman -S $pkgname --needed"];
+                    }
+                    else {
+                        system qq[su -c "pacman -S $pkgname"];
+                    }
                 }
                 next;
             }
@@ -383,9 +437,12 @@ if ($a eq '-S') {
         }
         if ($connect->content =~ /"ID":"([^"]+)"/) {
             $id = $1;
+            unless ($firstid) {
+                $firstid = $id;
+            }
             &Check_aur_deps;
             $connect = $lwp->get("http://aur.archlinux.org/packages/$pkgname/$pkgname/PKGBUILD");
-            if ($connect->content =~ /makedepends[\s]*=[\s]*([^\w]*)([^\)]*)/) {
+            if ($connect->content =~ /makedepends[\s]*=[\s]*([^\w]*)([^\)]*)/ and not $connect->content =~ /makedepends[\s]*=[\s]*\([\s'"]*\)/) {
                 $makedepends = $2;
                 $makedepends =~ s/[<>]+[^' "]+//g;
                 $makedepends =~ s/=[^' "]+//g;
@@ -424,6 +481,9 @@ if ($a eq '-S') {
             }
         }
         if (@deps_ids) {
+            unless ($n) {
+                $n = 0;
+            }
             foreach $id (@deps_ids) {
                 &Check_aur_deps;
             }
@@ -432,7 +492,7 @@ if ($a eq '-S') {
         if ($connect->content =~ /"OutOfDate":"1"/) {
             $out_of_date = 1;
         }
-        print "\n${bred}[!]$reset ${cred}From AUR:$reset ";
+        print "\n${bred}[!]$reset $cblack${byellow}From AUR:$reset ";
         foreach $aur_dep (@final_aur_deps) {
             next if $pacmanq =~ /\n$aur_dep\n/;
             if ($aur_dep) {
@@ -462,7 +522,7 @@ if ($a eq '-S') {
             next if $dep eq $lastdep;
             unless ($pacmanq =~ /\n$dep\n/) {
                 unless ($pac_printed) {
-                    print "\n${bgreen}[*]$reset ${cgreen}From Pacman:$reset ";
+                    print "\n${bgreen}[*] $cblack${byellow}From Pacman:$reset ";
                     $pac_printed = 1;
                 }
                 print "$dep ";
@@ -478,6 +538,10 @@ if ($a eq '-S') {
             }
             else {
                 print "\n\n";
+            }
+            if ($needed) {
+                print "$bred!$reset warning: '${pkgname}' is already installed --skipping\n\n";
+                next;
             }
             print "$bred!$reset warning: '${pkgname}' is already installed --reinstalling";
         }
@@ -496,7 +560,7 @@ sub Check_result {
     if ($result =~ /"Name":"[^"]*$keyword"/i) {
         push @final_results, $result;
     }
-    elsif ($a eq '-Ss' and $result =~ /"Description":"[^"]*$keyword"/i) {
+    elsif ($all_argvs =~ / -Ss[q]? / and $result =~ /"Description":"[^"]*$keyword"/i) {
         push @final_results, $result;
     }
 }
@@ -518,7 +582,7 @@ sub Parse_results {
         }
         $url =~ s[\\/][/]g;
         $desc =~ s[\\/][/]g;
-        if ($a eq '-Ss') {
+        if ($all_argvs =~ / -Ss[q]? /) {
             &Print_results;
         }
     }
@@ -528,17 +592,18 @@ sub Print_results {
     unless ($quiet) {
         print "$green$n. $bgreen";
     }
-    print "$name$reset ";
+    print "$cblack$byellow$name$reset ";
     unless ($quiet) {
-        print "$ver [$votes+] [$cat] ";
-        unless ($nodesc) {
-            print "[$desc] ";
+        print "$ver ";
+        if ($pacmanq =~ /\n$name\n/) {
+            print "[$cgreen${byellow}installed$reset] ";
         }
         if ($ood eq 1) {
-            print "$bred(out-of-date) ";
+            print "[${bred}out-of-date$reset] ";
         }
-        if ($pacmanq =~ /\n$name\n/) {
-            print "[${cgreen}installed$reset]";
+        print "($votes+) ($cat) ";
+        unless ($nodesc) {
+            print "$desc ";
         }
     }
     print "$reset\n";
@@ -563,7 +628,7 @@ sub Parse_category {
     $cat =~ s/^17$/x11/;
     $cat =~ s/^18$/xfce/;
 }
-if ($a =~ /^[-]+(n|rss)$/i) {
+if ($all_argvs =~ / [-]+(n|rss) /i) {
     $url = 'http://aur.archlinux.org/rss.php';
     $connect = $lwp->get($url);
     $rss = $connect->content;
@@ -588,172 +653,176 @@ if ($a =~ /^[-]+(n|rss)$/i) {
     print "\n";
     exit;
 }
-if ($a eq '-Si') {
+if ($all_argvs =~ / -Si /) {
     foreach $pkg (@args) {
-        $pkgbuild = "http://aur.archlinux.org/packages/$pkg/$pkg/PKGBUILD";
-        $connect = $lwp->get("$info$pkg");
-        if ($connect->content =~ /"results":"No result found"/) {
-            system "pacman -Si $pkg";
-            next;
-        }
-        if ($connect->content =~ /"ID":"([^"]+)/) {
-            $aur_id = $1;
-        }
-        if ($connect->content =~ /"NumVotes":"([^"]+)/) {
-            $votes = $1;
-        }
-        if ($connect->content =~ /"OutOfDate":"([\d]+)/) {
-            $out_of_date = $1;
-        }
-        if ($connect->content =~ /"Name":"([^"]+)/) {
-            $pkg = $1;
-        }
-        if ($connect->content =~ /"Version":"([^"]+)/) {
-            $pkgver = $1;
-        }
-        if ($connect->content =~ /"Description":"([^"]*)/) {
-            $description = $1;
-            $description =~ s[\\/][/]g;
-            $description =~ s/&quot;/"/g;
-            $description =~ s/&amp;/&/g;
-        }
-        if ($connect->content =~ /"URL":"([^"]*)/) {
-            $url = $1;
-            $url =~ s[\\/][/]g;
-        }
-        if ($connect->content =~ /"CategoryID":"([^"]+)/) {
-            $cat = $1;
-            &Parse_category;
-        }
-        $connect = $lwp->get($pkgbuild);
-        if ($connect->content =~ /\ndepends[\s]*=[\s]*\(([^\)]*)/) {
-            $depends = $1;
-            $depends =~ s/"|'//g;
-            $depends =~ s/\n[\s]*/\n\t\t  /g;
-            $depends =~ s/\\//g;
-        }
-        if ($connect->content =~ /\nmakedepends[\s]*=[\s]*\(([^\)]*)/) {
-            $makedepends = $1;
-            $makedepends =~ s/"|'//g;
-            $makedepends =~ s/\n[\s]*/\n\t\t  /g;
-            $makedepends =~ s/\\//g;
-        }
-        else {
-            $makedepends = 'None';
-        }
-        if ($connect->content =~ /\noptdepends[\s]*=[\s]*\(([^\)]*)/) {
-            $optdepends = $1;
-            $optdepends =~ s/"|'//g;
-            $optdepends =~ s/\n[\s]*/\n\t\t  /g;
-            $optdepends =~ s/\\//g;
-        }
-        else {
-            $optdepends = '';
-        }
-        if ($connect->content =~ /\nlicense[\s]*=[\s]*(.+)/) {
-            $license = $1;
-            $license =~ s/[")(']//g;
-            $license =~ s/#(.*)//;
-        }
-        else {
-            $license = '';
-        }
-        if ($connect->content =~ /\ngroups[\s]*=[\s]*(.+)/) {
-            $groups = $1;
-            $groups =~ s/['"\)\(]+//g;
-        }
-        else {
-            $groups = '';
-        }
-        if ($connect->content =~ /\nprovides[\s]*=[\s]*(.+)/) {
-            $provides = $1;
-            $provides =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
-            $provides =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
-            $provides =~ s/['"\)\(]+//g;
-        }
-        else {
-            $provides = '';
-        }
-        if ($connect->content =~ /\nconflicts[\s]*=[\s]*(.+)/) {
-            $conflicts = $1;
-            $conflicts =~ s/['"\(\)]+//g;
-            $conflicts =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
-            $conflicts =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
-        }
-        else {
-            $conflicts = '';
-        }
-        if ($connect->content =~ /\nreplaces[\s]*=[\s]*(.+)/) {
-            $replaces = $1;
-            $replaces =~ s/['"\)\(]+//g;
-            $replaces =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
-            $replaces =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
-        }
-        else {
-            $replaces = '';
-        }
-        if ($connect->content =~ /\narch[\s]*=[\s]*(.+)/) {
-            $arch = $1;
-            $arch =~ s/['"\(\)]+//g;
-        }
-        unless ($url =~ /[\w]+/) {
-            $url = 'None';
-        }
-        unless ($groups =~ /[\w]+/) {
-            $groups = 'None';
-        }
-        unless ($optdepends =~ /[\w]+/) {
-            $optdepends = 'None';
-        }
-        unless ($provides =~ /[\w]+/) {
-            $provides = 'None';
-        }
-        unless ($conflicts =~ /[\w]+/) {
-            $conflicts = 'None';
-        }
-        unless ($replaces =~ /[\w]+/) {
-            $replaces = 'None';
-        }
-        if ($pacmanq =~ /\n$pkg\n/) {
-            $yn = 'Yes';
-        }
-        else {
-            $yn = 'No';
-        }
-        print "\n$bred*$reset Repository\t: ${bgreen}aur\n";
-        print "$bred*$reset Name\t\t: $pkg\n";
-        print "$bred*$reset Category\t: $cat\n";
-        print "$bred*$reset Version\t: $pkgver\n";
-        print "$bred*$reset Out Of Date\t: ";
-        if ($out_of_date eq 1) {
-            print "${bred}Yes$reset\n";
-        }
-        else {
-            print "No\n";
-        }
-        print "$bred*$reset Installed\t: ";
-        if ($yn eq 'Yes') {
-            print "${bgreen}Yes$reset\n";
-        }
-        else {
-            print "No\n";
-        }
-        print "$bred*$reset URL\t\t: $url\n";
-        print "$bred*$reset AUR Link\t: $bgreen$aur_website$aur_id$reset\n";
-        print "$bred*$reset Licenses\t: $license\n";
-        print "$bred*$reset Groups\t: $groups\n";
-        print "$bred*$reset Provides\t: $provides\n";
-        print "$bred*$reset Depends On\t: $depends\n";
-        print "$bred*$reset Make Depends\t: $makedepends\n";
-        print "$bred*$reset Optional Deps\t: $optdepends\n";
-        print "$bred*$reset Conflicts\t: ";
-        if ($conflicts ne 'None') {
-            print "$bred";
-        }
-        print "$conflicts\n";
-        print "$bred*$reset Replaces\t: $replaces\n";
-        print "$bred*$reset Architecture\t: $arch\n";
-        print "$bred*$reset Description\t: $description\n\n";
+        &Info;
     }
-    exit;
 }
+sub Info {
+    $pkgbuild = "http://aur.archlinux.org/packages/$pkg/$pkg/PKGBUILD";
+    $connect = $lwp->get("$info$pkg");
+    if ($connect->content =~ /"results":"No result found"/) {
+        system "pacman -Si $pkg";
+        next;
+    }
+    if ($connect->content =~ /"ID":"([^"]+)/) {
+        $aur_id = $1;
+    }
+    if ($connect->content =~ /"NumVotes":"([^"]+)/) {
+        $votes = $1;
+    }
+    if ($connect->content =~ /"OutOfDate":"([\d]+)/) {
+        $out_of_date = $1;
+    }
+    if ($connect->content =~ /"Name":"([^"]+)/) {
+        $pkg = $1;
+    }
+    if ($connect->content =~ /"Version":"([^"]+)/) {
+        $pkgver = $1;
+    }
+    if ($connect->content =~ /"Description":"([^"]*)/) {
+        $description = $1;
+        $description =~ s[\\/][/]g;
+        $description =~ s/&quot;/"/g;
+        $description =~ s/&amp;/&/g;
+    }
+    if ($connect->content =~ /"URL":"([^"]*)/) {
+        $url = $1;
+        $url =~ s[\\/][/]g;
+    }
+    if ($connect->content =~ /"CategoryID":"([^"]+)/) {
+        $cat = $1;
+        &Parse_category;
+    }
+    $pkgbuild_connect = $lwp->get($pkgbuild);
+    if ($pkgbuild_connect->content =~ /\ndepends[\s]*=[\s]*\(([^\)]*)/) {
+        $depends = $1;
+        $depends =~ s/"|'//g;
+        $depends =~ s/\n[\s]*/\n\t\t  /g;
+        $depends =~ s/\\//g;
+    }
+    if ($pkgbuild_connect->content =~ /\nmakedepends[\s]*=[\s]*\(([^\)]*)/) {
+        $makedepends = $1;
+        $makedepends =~ s/"|'//g;
+        $makedepends =~ s/\n[\s]*/\n\t\t  /g;
+        $makedepends =~ s/\\//g;
+    }
+    else {
+        $makedepends = 'None';
+    }
+    if ($pkgbuild_connect->content =~ /\noptdepends[\s]*=[\s]*\(([^\)]*)/) {
+        $optdepends = $1;
+        $optdepends =~ s/"|'//g;
+        $optdepends =~ s/\n[\s]*/\n\t\t  /g;
+        $optdepends =~ s/\\//g;
+    }
+    else {
+        $optdepends = '';
+    }
+    if ($pkgbuild_connect->content =~ /\nlicense[\s]*=[\s]*(.+)/) {
+        $license = $1;
+        $license =~ s/[")(']//g;
+        $license =~ s/#(.*)//;
+    }
+    else {
+        $license = '';
+    }
+    if ($pkgbuild_connect->content =~ /\ngroups[\s]*=[\s]*(.+)/) {
+        $groups = $1;
+        $groups =~ s/['"\)\(]+//g;
+    }
+    else {
+        $groups = '';
+    }
+    if ($pkgbuild_connect->content =~ /\nprovides[\s]*=[\s]*(.+)/) {
+        $provides = $1;
+        $provides =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
+        $provides =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
+        $provides =~ s/['"\)\(]+//g;
+    }
+    else {
+        $provides = '';
+    }
+    if ($pkgbuild_connect->content =~ /\nconflicts[\s]*=[\s]*(.+)/) {
+        $conflicts = $1;
+        $conflicts =~ s/['"\(\)]+//g;
+        $conflicts =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
+        $conflicts =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
+    }
+    else {
+        $conflicts = '';
+    }
+    if ($pkgbuild_connect->content =~ /\nreplaces[\s]*=[\s]*(.+)/) {
+        $replaces = $1;
+        $replaces =~ s/['"\)\(]+//g;
+        $replaces =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
+        $replaces =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
+    }
+    else {
+        $replaces = '';
+    }
+    if ($pkgbuild_connect->content =~ /\narch[\s]*=[\s]*(.+)/) {
+        $arch = $1;
+        $arch =~ s/['"\(\)]+//g;
+    }
+    unless ($url =~ /[\w]+/) {
+        $url = 'None';
+    }
+    unless ($groups =~ /[\w]+/) {
+        $groups = 'None';
+    }
+    unless ($optdepends =~ /[\w]+/) {
+        $optdepends = 'None';
+    }
+    unless ($provides =~ /[\w]+/) {
+        $provides = 'None';
+    }
+    unless ($conflicts =~ /[\w]+/) {
+        $conflicts = 'None';
+    }
+    unless ($replaces =~ /[\w]+/) {
+        $replaces = 'None';
+    }
+    if ($pacmanq =~ /\n$pkg\n/) {
+        $yn = 'Yes';
+    }
+    else {
+        $yn = 'No';
+    }
+    print "\n$bred*$reset Repository\t: ${bred}AUR\n";
+    print "$bred*$reset Name\t\t: $bgreen$pkg\n";
+    print "$bred*$reset Version\t: $pkgver\n";
+    print "$bred*$reset Category\t: $cat\n";
+    print "$bred*$reset Out Of Date\t: ";
+    if ($out_of_date eq 1) {
+        print "${bred}Yes\n";
+    }
+    else {
+        print "No\n";
+    }
+    print "$bred*$reset Installed\t: ";
+    if ($yn eq 'Yes') {
+        print "${bgreen}Yes\n";
+    }
+    else {
+        print "No\n";
+    }
+    print "$bred*$reset Votes\t\t: $votes\n";
+    print "$bred*$reset URL\t\t: $url\n";
+    print "$bred*$reset AUR URL\t: $bgreen$aur_website$aur_id\n";
+    print "$bred*$reset Licenses\t: $license\n";
+    print "$bred*$reset Groups\t: $groups\n";
+    print "$bred*$reset Provides\t: $provides\n";
+    print "$bred*$reset Depends On\t: $depends\n";
+    print "$bred*$reset Make Depends\t: $makedepends\n";
+    print "$bred*$reset Optional Deps\t: $optdepends\n";
+    print "$bred*$reset Conflicts\t: ";
+    if ($conflicts ne 'None') {
+        print "$bred";
+    }
+    print "$conflicts\n";
+    print "$bred*$reset Replaces\t: $replaces\n";
+    print "$bred*$reset Architecture\t: $arch\n";
+    print "$bred*$reset Description\t: $description\n\n";
+}
+exit;
