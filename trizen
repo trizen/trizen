@@ -66,7 +66,7 @@ foreach $_ (@ARGV) {
     if ($_ =~ /^[-]+(nd$|nodesc)/) {
         $nodesc = 1;
     }
-    if ($_ eq /^[-]+devel/) {
+    if ($_ =~ /^[-]+devel/) {
         $devel = 1;
     }
     if ($_ =~ /^[-]+(mvpkg|movepkg)/) {
@@ -81,7 +81,7 @@ foreach $_ (@ARGV) {
         $usermake .= ' --skipinteg';
         $rootmake .= ' --skipinteg';
     }
-    if ($_ eq /^[-]+noedit/) {
+    if ($_ =~ /^[-]+noedit/) {
         $noedit = 1;
     }
     if ($_ =~ /^[-]+needed/) {
