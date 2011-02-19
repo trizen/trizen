@@ -34,7 +34,7 @@ $lastdep = '';
 $all_argvs = '';
 $whoami = `whoami`;
 if ($whoami ne "root\n") {
-	chomp($user = $whoami);
+    chomp($user = $whoami);
     $location = "$cache_dir-$user";
     mkdir $location;
 }
@@ -56,6 +56,9 @@ while (defined($_ = <CONF>)) {
 foreach $_ (@ARGV) {
     if ($_ =~ /^[-]+(q|quiet)$/) {
         $quiet = 1;
+    }
+    if ($_ eq '-G') {
+        $tarball_only = 1;
     }
     if ($_ eq '-Ssq') {
         $quiet = 1;
@@ -151,6 +154,7 @@ $bred*$reset Base options
     -Qm         : outputs AUR installed packages
     -Qs         : searches for installed packages
     -Ssq        : searches for package in quiet mode
+    -G          : download and extract AUR tarball only
     -N,-Rss     : outputs the AUR Newest Packages (RSS)
 
 $bred*$reset Other options
@@ -190,6 +194,21 @@ if ($all_argvs =~ / -(Q|R)/ and not $all_argvs =~ / [-]+rss /i) {
         }
     }
 }
+if ($tarball_only) {
+    foreach $pkg (@args) {
+        $lwp->mirror("http://aur.archlinux.org/packages/$pkg/$pkg.tar.gz", "$pkg.tar.gz");
+        if (-e "$pkg.tar.gz") {
+            unless ($quiet) {
+                print "$bred*$reset Unpacking $pkg.tar.gz\n";
+            }
+            `tar xf $pkg.tar.gz`;
+        }
+        else {
+            print "$bred!$reset error:$pkg doesn't exit\n";
+        }
+    }
+    print "\n$bred*$reset Done...\n";
+}
 if ($all_argvs =~ / -S[y]?u /) {
     &Update;
 }
@@ -226,10 +245,6 @@ if ($all_argvs =~ / -Ss[q]? /) {
 sub Check_aur_deps {
     ++$n;
     $aur_url = "http://aur.archlinux.org/packages.php?ID=$id";
-    unless ($newline or $quiet) {
-        print "\n";
-        $newline = 1;
-    }
     unless ($checked or $quiet) {
         print "$bred=>> $cblack${byellow}Checking for AUR deps$reset\n";
         $checked = 1;
@@ -663,11 +678,11 @@ sub Info {
     $pkgbuild = "http://aur.archlinux.org/packages/$pkg/$pkg/PKGBUILD";
     $connect = $lwp->get("$info$pkg");
     if ($connect->content =~ /"results":"No result found"/) {
-		if ($installing) {
-			return;
-		}
+        if ($installing) {
+            return;
+        }
         system "pacman -Si $pkg";
-		next;
+        next;
     }
     if ($connect->content =~ /"ID":"([^"]+)/) {
         $aur_id = $1;
