@@ -423,7 +423,6 @@ if ($all_argvs =~ / -S /) {
         splice @pacman_deps;
         splice @final_aur_deps;
         splice @pacman_deps2;
-        $newline = '';
         if ($connect->content =~ /"results":"No result found"/) {
             $check_pacman = `pacman -S --print $pkgname`;
             if ($check_pacman =~ m[://]) {
@@ -716,12 +715,16 @@ sub Info {
     $pkgbuild_connect = $lwp->get($pkgbuild);
     if ($pkgbuild_connect->content =~ /\ndepends[\s]*=[\s]*\(([^\)]*)/) {
         $depends = $1;
+        $depends =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
+        $depends =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
         $depends =~ s/"|'//g;
         $depends =~ s/\n[\s]*/\n\t\t  /g;
         $depends =~ s/\\//g;
     }
     if ($pkgbuild_connect->content =~ /\nmakedepends[\s]*=[\s]*\(([^\)]*)/) {
         $makedepends = $1;
+        $makedepends =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
+        $makedepends =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
         $makedepends =~ s/"|'//g;
         $makedepends =~ s/\n[\s]*/\n\t\t  /g;
         $makedepends =~ s/\\//g;
@@ -731,6 +734,8 @@ sub Info {
     }
     if ($pkgbuild_connect->content =~ /\noptdepends[\s]*=[\s]*\(([^\)]*)/) {
         $optdepends = $1;
+        $optdepends =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
+        $optdepends =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
         $optdepends =~ s/"|'//g;
         $optdepends =~ s/\n[\s]*/\n\t\t  /g;
         $optdepends =~ s/\\//g;
@@ -829,7 +834,11 @@ sub Info {
     print "$bred*$reset Votes\t\t: $votes\n";
     print "$bred*$reset URL\t\t: $url\n";
     print "$bred*$reset AUR URL\t: $bgreen$aur_website$aur_id\n";
-    print "$bred*$reset Licenses\t: $license\n";
+    print "$bred*$reset License";
+    if ($license =~ /[\w]+ [\w]+/) {
+        print 's';
+    }
+    print "\t: $license\n";
     print "$bred*$reset Groups\t: $groups\n";
     print "$bred*$reset Provides\t: $provides\n";
     print "$bred*$reset Depends On\t: $depends\n";
