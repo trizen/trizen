@@ -402,6 +402,7 @@ if ($all_argvs =~ / -S /) {
         next if $pkgname =~ /^-/;
         $checked = '';
         $pkg = $pkgname;
+        $installing = 1;
         &Info;
         splice @packages_for_install;
         splice @pacman_deps;
@@ -662,8 +663,11 @@ sub Info {
     $pkgbuild = "http://aur.archlinux.org/packages/$pkg/$pkg/PKGBUILD";
     $connect = $lwp->get("$info$pkg");
     if ($connect->content =~ /"results":"No result found"/) {
+		if ($installing) {
+			return;
+		}
         system "pacman -Si $pkg";
-        next;
+		next;
     }
     if ($connect->content =~ /"ID":"([^"]+)/) {
         $aur_id = $1;
