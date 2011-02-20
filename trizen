@@ -369,8 +369,14 @@ sub Update {
             $vvv = $2;
             $ood = $3;
             if ($vers ne $vvv) {
-                push @packages_for_install, $name;
-                push @for_upgrade, "$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
+                $vers_nr = $vers;
+                $vers_nr =~ s/[^\d]+|^[0]+//g;
+                $vvv_nr = $vvv;
+                $vvv_nr =~ s/[^\d]+|^[0]+//g;
+                if ($vvv_nr > $vers_nr) {
+                    push @packages_for_install, $name;
+                    push @for_upgrade, "$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
+                }
             }
             $v2 = $vvv;
             if ($ood eq 1) {
@@ -385,11 +391,14 @@ sub Update {
                 print "\n";
             }
             elsif ($vvv ne $vers) {
-                print $bgreen . " (New Update: $vvv)";
-                print $reset;
+                if ($vvv_nr > $vers_nr) {
+                    print " $bgreen(New Update: $vvv)$reset";
+                }
+                else {
+                    print " (${bgreen}AUR Version: $bred$vvv$reset)";
+                }
                 if ($v2 eq 'ood') {
-                    print $bred . ' (out-of-date)';
-                    print $reset;
+                    print " $bred(out-of-date)$reset";
                 }
                 print "\n";
             }
