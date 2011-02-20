@@ -3,7 +3,7 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Last edit on: 19 February 2011
+# Last edit on: 20 February 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use File::Path;
@@ -331,7 +331,7 @@ sub Install {
         print @file;
         print "\n";
         unless ($noconfirm or $noedit) {
-            print "$bred=>>$reset Edit PKGBUILD of $cblack$byellow$pkg$reset with '${editor}'? (y/N)\n> ";
+            print "$bred=>>$reset Edit $cblack$byellow$pkg$reset PKGBUILD with '${editor}'? (y/N)\n> ";
             chomp($yn = <STDIN>);
             if ($yn =~ /^y/i) {
                 system "$editor $cache_dir/$pkg/PKGBUILD";
@@ -450,14 +450,23 @@ if ($all_argvs =~ / -S /) {
                 next;
             }
         }
+        if ($connect->content =~ /"OutOfDate":"1"/) {
+            $out_of_date = 1;
+        }
         if ($connect->content =~ /"ID":"([^"]+)"/) {
             $id = $1;
             unless ($firstid) {
                 $firstid = $id;
             }
-            &Check_aur_deps;
-            $connect = $lwp->get("http://aur.archlinux.org/packages/$pkgname/$pkgname/PKGBUILD");
-            if ($connect->content =~ /makedepends[\s]*=[\s]*([^\w]*)([^\)]*)/ and not $connect->content =~ /makedepends[\s]*=[\s]*\([\s'"]*\)/) {
+            foreach $AUR_dep (@all_depends) {
+                unless ($pacmanq =~ /\n$AUR_dep\n/) {
+                    $check_aur = 1;
+                }
+            }
+            if ($check_aur) {
+                &Check_aur_deps;
+            }
+            if ($pkgbuild_connect->content =~ /makedepends[\s]*=[\s]*([^\w]*)([^\)]*)/ and not $pkgbuild_connect->content =~ /makedepends[\s]*=[\s]*\([\s'"]*\)/) {
                 $makedepends = $2;
                 $makedepends =~ s/[<>]+[^' "]+//g;
                 $makedepends =~ s/=[^' "]+//g;
@@ -503,11 +512,10 @@ if ($all_argvs =~ / -S /) {
                 &Check_aur_deps;
             }
         }
-        $connect = $lwp->get("$info$pkgname");
-        if ($connect->content =~ /"OutOfDate":"1"/) {
-            $out_of_date = 1;
+        if ($check_aur) {
+            print "\n";
         }
-        print "\n${bred}[!]$reset $cblack${byellow}From AUR:$reset ";
+        print "${bred}[!]$reset $cblack${byellow}From AUR:$reset ";
         foreach $aur_dep (@final_aur_deps) {
             next if $pacmanq =~ /\n$aur_dep\n/;
             if ($aur_dep) {
@@ -743,6 +751,15 @@ sub Info {
     else {
         $optdepends = '';
     }
+    $all_depends = "$depends ";
+    if ($makedepends ne 'None') {
+        $all_depends .= $makedepends;
+    }
+    $all_depends =~ s/^[\s]+|[\s]+$//g;
+    $all_depends =~ s/[\s]+/ /g;
+    $all_depends =~ s/[<>]+[^\s]+//g;
+    $all_depends =~ s/=[^\s]+//g;
+    @all_depends = split(' ', $all_depends, 0);
     if ($pkgbuild_connect->content =~ /\nlicense[\s]*=[\s]*(.+)/) {
         $license = $1;
         $license =~ s/[")(']//g;
