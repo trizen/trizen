@@ -205,6 +205,7 @@ if ($tarball_only) {
         }
         else {
             print "$bred!$reset error:$pkg doesn't exit\n";
+            next;
         }
     }
     print "\n$bred*$reset Done...\n";
@@ -423,6 +424,7 @@ if ($all_argvs =~ / -S /) {
         splice @pacman_deps;
         splice @final_aur_deps;
         splice @pacman_deps2;
+        splice @deps_ids;
         if ($connect->content =~ /"results":"No result found"/) {
             $check_pacman = `pacman -S --print $pkgname`;
             if ($check_pacman =~ m[://]) {
