@@ -373,7 +373,11 @@ sub Update {
                 $vers_nr =~ s/[^\d]+|^[0]+//g;
                 $vvv_nr = $vvv;
                 $vvv_nr =~ s/[^\d]+|^[0]+//g;
-                if ($vvv_nr > $vers_nr) {
+                if ($vvv_nr > $vers_nr and not $devel) {
+                    push @packages_for_install, $name;
+                    push @for_upgrade, "$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
+                }
+                else {
                     push @packages_for_install, $name;
                     push @for_upgrade, "$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
                 }
