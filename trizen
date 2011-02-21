@@ -21,6 +21,9 @@ if ($a and not $ARGV[1]) {
         }
     }
 }
+unless (-r "$ENV{'HOME'}/.config/") {
+    mkdir "$ENV{'HOME'}/.config/";
+}
 $makeconf_file = "$ENV{'HOME'}/.config/trizen-makepkg.conf";
 $usermake = "makepkg -s -f --install --config $makeconf_file";
 $rootmake = $usermake . ' --asroot';
@@ -43,14 +46,16 @@ else {
     mkdir $location;
 }
 $cache_dir = $location;
-open CONF, '/etc/makepkg.conf';
-open RECONF, '>', $makeconf_file;
-while (defined($_ = <CONF>)) {
-    if (not $_ =~ /PKGEXT='(.+)/) {
-        print RECONF $_;
-    }
-    else {
-        print RECONF "PKGEXT='.pkg.tar.gz'\n";
+unless (-e $makeconf_file) {
+    open CONF, '/etc/makepkg.conf';
+    open RECONF, '>', $makeconf_file;
+    while (defined($_ = <CONF>)) {
+        if (not $_ =~ /PKGEXT='(.+)/) {
+            print RECONF $_;
+        }
+        else {
+            print RECONF "PKGEXT='.pkg.tar.gz'\n";
+        }
     }
 }
 foreach $_ (@ARGV) {
@@ -202,6 +207,7 @@ if ($tarball_only) {
                 print "$bred*$reset Unpacking $pkg.tar.gz\n";
             }
             `tar xf $pkg.tar.gz`;
+            unlink "$pkg.tar.gz";
         }
         else {
             print "$bred!$reset error:$pkg doesn't exit\n";
@@ -830,6 +836,9 @@ sub Info {
     unless ($optdepends =~ /[\w]+/) {
         $optdepends = 'None';
     }
+    unless ($makedepends =~ /[\w]+/) {
+		$makedepends = 'None';
+	}
     unless ($provides =~ /[\w]+/) {
         $provides = 'None';
     }
