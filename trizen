@@ -3,7 +3,7 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Last edit on: 20 February 2011
+# Last edit on: 23 February 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use File::Path;
@@ -222,7 +222,7 @@ if ($all_argvs =~ / -S[y]?u /) {
 if ($all_argvs =~ / -Sp /) {
     foreach $pkgname (@args) {
         print "\n$bred=>>$reset PKGBUILD for $pkgname\n";
-        $pkgbuild = $lwp->get("$aur_pkgs$pkgname/$pkgname/PKGBUILD");
+        $pkgbuild = $lwp->get("$aur_pkgs/$pkgname/PKGBUILD");
         print $pkgbuild->content;
         print "\n";
     }
@@ -359,12 +359,13 @@ sub Install {
     }
 }
 sub Update {
+    $devel_signs = '';
     @aur_pkgs = `pacman -Qm`;
-    foreach $_ (@aur_pkgs) {
-        chomp($line = $_);
-        next unless $line;
+    foreach $line (@aur_pkgs) {
+        chomp $line;
+        next unless $line =~ /[\w]+/;
         unless ($devel) {
-            next if $line =~ /-git |^.+ 20(09|1(0|1|2))[\d]+|-svn/;
+            next if $line =~ /([-]+(svn|cvs|hg|bzr|darcs|git) )| 20(09|1(0|1|2))[\d]+/;
         }
         if ($line =~ /(.+) (.+)/) {
             $pkgname = $1;
@@ -380,13 +381,13 @@ sub Update {
                 $vvv_nr = $vvv;
                 $vvv_nr =~ s/[^\d]+|^[0]+//g;
                 if ($vvv_nr > $vers_nr and not $devel) {
-                    push @packages_for_install, $name;
+                    push @ood_packages, $name;
                     push @for_upgrade, "$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
                 }
-                else {
-                    push @packages_for_install, $name;
-                    push @for_upgrade, "$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
-                }
+            }
+            if ($devel and $line =~ /([-]+(svn|cvs|hg|bzr|darcs|git) )| 20(09|1(0|1|2))[\d]+/) {
+                push @ood_packages, $name;
+                push @for_upgrade, "$bred*$reset $name\n";
             }
             $v2 = $vvv;
             if ($ood eq 1) {
@@ -404,7 +405,7 @@ sub Update {
                 if ($vvv_nr > $vers_nr) {
                     print " $bgreen(New Update: $vvv)$reset";
                 }
-                else {
+                elsif (not $devel) {
                     print " (${bgreen}AUR Version: $bred$vvv$reset)";
                 }
                 if ($v2 eq 'ood') {
@@ -414,14 +415,25 @@ sub Update {
             }
         }
     }
-    if (@packages_for_install) {
+    if (@ood_packages) {
         print "\n";
         print @for_upgrade;
         print "\n";
         print "$bred=>>$reset Proceed with upgrade? (Y/n)\n> ";
         chomp($yn = <STDIN>);
         if ($yn =~ /^y|^$/i) {
-            &Install;
+            foreach $pkgname (@ood_packages) {
+                print "\n$bred*$reset Do you want to upgrade $cblack$byellow$pkgname$reset ? (Y/n)\n> ";
+                chomp($y = <STDIN>);
+                if ($y =~ /^y|^$/i) {
+                    push @packages_for_install, $pkgname;
+                    &Install;
+                    splice @packages_for_install;
+                }
+                else {
+                    next;
+                }
+            }
         }
         else {
             exit;
@@ -497,6 +509,10 @@ if ($all_argvs =~ / -S /) {
                 }
                 @makedepends = split(/\n/, $makedepends, 0);
                 foreach $makedepend (@makedepends) {
+                    if ($makedepend eq 'pkgconfig') {
+                        $makedepend = 'pkg-config';
+                    }
+                    next if $pacmanq =~ /\n$makedepend\n/;
                     $info_connect = $lwp->get("$info$makedepend");
                     if ($info_connect->content =~ /"ID":"([^"]+)"/) {
                         push @deps_ids, $1;
@@ -504,17 +520,7 @@ if ($all_argvs =~ / -S /) {
                     unless ($info_connect->content =~ /"results":"No result found"/) {
                         next;
                     }
-                    if (not $pacmanq =~ /\n$makedepend\n/) {
-                        if ($makedepend eq 'pkgconfig') {
-                            $makedepend = 'pkg-config';
-                        }
-                    }
-                    else {
-                        next;
-                    }
-                    unless ($pacmanq =~ /\n$makedepend\n/) {
-                        push @pacman_deps, $makedepend;
-                    }
+                    push @pacman_deps, $makedepend;
                 }
             }
         }
@@ -589,6 +595,7 @@ if ($all_argvs =~ / -S /) {
             }
             print "$bred!$reset warning: '${pkgname}' is already installed --reinstalling";
         }
+        $check_aur = '';
         unless ($noconfirm) {
             print "\n\n$bred=>>$reset Proceed with build (Y/n)\n> ";
             chomp($yn = <STDIN>);
@@ -703,7 +710,7 @@ if ($all_argvs =~ / -Si /) {
     }
 }
 sub Info {
-    $pkgbuild = "http://aur.archlinux.org/packages/$pkg/$pkg/PKGBUILD";
+    $pkgbuild = "http://aur.archlinux.org/packages/$pkg/PKGBUILD";
     $connect = $lwp->get("$info$pkg");
     if ($connect->content =~ /"results":"No result found"/) {
         if ($installing) {
@@ -833,12 +840,15 @@ sub Info {
     unless ($groups =~ /[\w]+/) {
         $groups = 'None';
     }
+    unless ($depends =~ /[\w]+/) {
+        $depends = 'None';
+    }
     unless ($optdepends =~ /[\w]+/) {
         $optdepends = 'None';
     }
     unless ($makedepends =~ /[\w]+/) {
-		$makedepends = 'None';
-	}
+        $makedepends = 'None';
+    }
     unless ($provides =~ /[\w]+/) {
         $provides = 'None';
     }
