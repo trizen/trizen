@@ -22,7 +22,6 @@
 # Last edit on: 06 March 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
-
 use HTML::Entities;
 
 $a = $ARGV[0];
@@ -58,8 +57,7 @@ if ($whoami ne "root\n") {
     chomp($user = $whoami);
     $location = "$cache_dir-$user";
     mkdir $location;
-}
-else {
+} else {
     $location = "$cache_dir-root";
     mkdir $location;
 }
@@ -70,8 +68,7 @@ unless (-e $makeconf_file) {
     while (defined($_ = <CONF>)) {
         if (not $_ =~ /PKGEXT='(.+)/) {
             print RECONF $_;
-        }
-        else {
+        } else {
             print RECONF "PKGEXT='.pkg.tar.gz'\n";
         }
     }
@@ -126,8 +123,7 @@ if (not $nocolors) {
     $cblack = "\e[40m";
     $byellow = "\e[1;33m";
     $reset = "\e[0m";
-}
-else {
+} else {
     $bred = '';
     $bgreen = '';
     $red = '';
@@ -212,12 +208,10 @@ $pacmanq = "\n" . `pacman -Qq` . "\n";
 if ($all_argvs =~ / -(Q|R)/ and not $all_argvs =~ / [-]+rss /i) {
     if ($all_argvs =~ / -Q/) {
         exec "pacman $all_argvs";
-    }
-    elsif ($all_argvs =~ / -R/) {
+    } elsif ($all_argvs =~ / -R/) {
         if ($whoami eq "root\n") {
             exec "pacman $all_argvs";
-        }
-        else {
+        } else {
             print 'Root ';
             exec qq[su -c "pacman $all_argvs"];
         }
@@ -256,8 +250,7 @@ if ($tarball_only) {
             }
             `tar xf $pkg.tar.gz`;
             unlink "$pkg.tar.gz";
-        }
-        else {
+        } else {
             print "$bred!$reset error:$pkg doesn't exit\n";
             next;
         }
@@ -283,8 +276,7 @@ if ($all_argvs =~ / -Ss[q]? /) {
     $keywords =~ s/\\//g;
     if ($all_argvs =~ / -Ss /) {
         system "pacman -Ss $keywords";
-    }
-    else {
+    } else {
         system "pacman -Ssq $keywords";
     }
     $rpc .= 'search';
@@ -318,35 +310,35 @@ sub Check_aur_deps {
         unless ($quiet) {
             print " ($dep_name)\n";
         }
-        if ($dep_name ne $pkgname and not 
-            $check_deps =~ /\#$dep_name$|^$dep_name\#|\#$dep_name\#|^$dep_name$/) {
-            push @final_aur_deps, $1;
+        $check_deps = join('#', @final_aur_deps);
+        if ($dep_name ne $pkgname and 
+        not $check_deps =~ /#$dep_name$|^$dep_name#|#$dep_name#|^$dep_name$/) {
+            push @final_aur_deps, $dep_name;
         }
     }
     if ($show_comments) {
         &Get_comments;
     }
     $aur_deps = $connect->content;
-    $aur_deps =~ s[</a>][\n]g;
-    @aur_deps = split(/\n/, $aur_deps, 0);
+    $aur_deps =~ s/Required by.*//;
+    @aur_deps = split(/<a href='packages.php/, $aur_deps, 0);
     foreach $line (@aur_deps) {
         next if $line eq $lastline;
         $check_deps = join('#', @final_aur_deps);
         unless ($check_deps) {
             $check_deps = 'NULL';
         }
-        if ($line =~ /do_Orphans=&SeB='>(.+)/) {
+        if ($line =~ /^\?ID=[\d']+>([^\s]+)/) {
             $dep = $1;
             $dep =~ s/[<>]+.+//;
             $dep =~ s/=.+//;
             $dep = quotemeta $dep;
             $lastdep = quotemeta $lastdep;
-            if ($check_deps =~ /\#$lastdep$|^$lastdep\#|\#$lastdep\#|^$lastdep$/ 
-            and $id ne $firstid and not $check_deps =~ /\#$dep$|^$dep\#|\#$dep\#|^$dep$/) {
+            if ($check_deps =~ /#$lastdep$|^$lastdep#|#$lastdep#|^$lastdep$/ 
+            and $id ne $firstid and not $check_deps =~ /#$dep$|^$dep#|#$dep#|^$dep$/) {
                 $dep =~ s/\\//g;
                 unshift @final_aur_deps, $dep;
-            }
-            elsif (not $check_deps =~ /\#$dep$|^$dep\#|\#$dep\#|^$dep$/) {
+            } elsif (not $check_deps =~ /#$dep$|^$dep#|#$dep#|^$dep$/) {
                 $dep =~ s/\\//g;
                 push @final_aur_deps, $dep;
             }
@@ -388,17 +380,13 @@ sub Install {
         `tar xf $cache_dir/$pkg.tar.gz -C $cache_dir`;
         if ($ENV{'EDITOR'}) {
             $editor = $ENV{'EDITOR'};
-        }
-        elsif (-e '/usr/bin/joe') {
+        } elsif (-e '/usr/bin/joe') {
             $editor = 'joe';
-        }
-        elsif (-e 'usr/bin/vim') {
+        } elsif (-e 'usr/bin/vim') {
             $editor = 'vim';
-        }
-        elsif (-e '/usr/bin/nano') {
+        } elsif (-e '/usr/bin/nano') {
             $editor = 'nano';
-        }
-        elsif (-e '/usr/bin/vi') {
+        } elsif (-e '/usr/bin/vi') {
             $editor = 'vi';
         }
         next unless open FILE, "$cache_dir/$pkg/PKGBUILD";
@@ -412,8 +400,7 @@ sub Install {
                 $comments =~ s/></\n/g;
                 $comments =~ s/[>]?([^<]+).+/$1/;
                 print "\n$comments";
-            }
-            else {
+            } else {
                 $comments = '';
             }
         }
@@ -430,8 +417,7 @@ sub Install {
         chdir "$cache_dir/$pkg";
         if ($whoami eq "root\n") {
             system $rootmake;
-        }
-        else {
+        } else {
             system $usermake;
         }
         if ($movepkg) {
@@ -484,12 +470,10 @@ sub Update {
                     print $reset;
                 }
                 print "\n";
-            }
-            elsif ($vvv ne $vers) {
+            } elsif ($vvv ne $vers) {
                 if ($vvv_nr > $vers_nr) {
                     print " $bgreen(New Update: $vvv)$reset";
-                }
-                elsif (not $devel) {
+                } elsif (not $devel) {
                     print " (${bgreen}AUR Version: $bred$vvv$reset)";
                 }
                 if ($v2 eq 'ood') {
@@ -515,17 +499,14 @@ $bred*$reset Do you want to upgrade $cblack$byellow$pkgname$reset ? (Y/n)
                     push @packages_for_install, $pkgname;
                     &Install;
                     splice @packages_for_install;
-                }
-                else {
+                } else {
                     next;
                 }
             }
-        }
-        else {
+        } else {
             exit;
         }
-    }
-    else {
+    } else {
         print "\n$bgreen* Your AUR Packages are up to date.\n\n";
         exit;
     }
@@ -551,23 +532,19 @@ $bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman
                 if ($whoami eq "root\n") {
                     if ($needed) {
                         system "pacman -S $pkgname --needed";
-                    }
-                    else {
+                    } else {
                         system "pacman -S $pkgname";
                     }
-                }
-                else {
+                } else {
                     print "\nRoot ";
                     if ($needed) {
                         system qq[su -c "pacman -S $pkgname --needed"];
-                    }
-                    else {
+                    } else {
                         system qq[su -c "pacman -S $pkgname"];
                     }
                 }
                 next;
-            }
-            else {
+            } else {
                 next;
             }
         }
@@ -683,8 +660,7 @@ $bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman
         if ($pacmanq =~ /\n$pkgname\n/) {
             if ($out_of_date) {
                 print "\n";
-            }
-            else {
+            } else {
                 print "\n\n";
             }
             $pkgname =~ s/\\//g;
@@ -709,8 +685,7 @@ sub Check_result {
     $keyword = join('', @keys);
     if ($result =~ /"Name":"[^"]*$keyword"/i) {
         push @final_results, $result;
-    }
-    elsif ($all_argvs =~ / -Ss[q]? / and $result =~ /"Description":"[^"]*$keyword"/i) {
+    } elsif ($all_argvs =~ / -Ss[q]? / and $result =~ /"Description":"[^"]*$keyword"/i) {
         push @final_results, $result;
     }
 }
@@ -865,6 +840,7 @@ sub Info {
         $depends =~ s/"|'//g;
         $depends =~ s/\n[\s]*/\n\t\t  /g;
         $depends =~ s/\\//g;
+        $depends =~ s/^[\s]+|[\s]+$//g;
     }
     if ($pkgbuild_connect->content =~ /\nmakedepends[\s]*=[\s]*\(([^\)]*)/) {
         $makedepends = $1;
@@ -873,8 +849,8 @@ sub Info {
         $makedepends =~ s/"|'//g;
         $makedepends =~ s/\n[\s]*/\n\t\t  /g;
         $makedepends =~ s/\\//g;
-    }
-    else {
+        $makedepends =~ s/^[\s]+|[\s]+$//g;
+    } else {
         $makedepends = 'None';
     }
     if ($pkgbuild_connect->content =~ /\noptdepends[\s]*=[\s]*\(([^\)]*)/) {
@@ -884,8 +860,8 @@ sub Info {
         $optdepends =~ s/"|'//g;
         $optdepends =~ s/\n[\s]*/\n\t\t  /g;
         $optdepends =~ s/\\//g;
-    }
-    else {
+        $optdepends =~ s/^[\s]+|[\s]+$//g;
+    } else {
         $optdepends = '';
     }
     $all_depends = "$depends ";
@@ -901,15 +877,13 @@ sub Info {
         $license = $1;
         $license =~ s/[")(']//g;
         $license =~ s/#(.*)//;
-    }
-    else {
+    } else {
         $license = '';
     }
     if ($pkgbuild_connect->content =~ /\ngroups[\s]*=[\s]*(.+)/) {
         $groups = $1;
         $groups =~ s/['"\)\(]+//g;
-    }
-    else {
+    } else {
         $groups = '';
     }
     if ($pkgbuild_connect->content =~ /\nprovides[\s]*=[\s]*(.+)/) {
@@ -917,8 +891,7 @@ sub Info {
         $provides =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
         $provides =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
         $provides =~ s/['"\)\(]+//g;
-    }
-    else {
+    } else {
         $provides = '';
     }
     if ($pkgbuild_connect->content =~ /\nconflicts[\s]*=[\s]*(.+)/) {
@@ -926,8 +899,7 @@ sub Info {
         $conflicts =~ s/['"\(\)]+//g;
         $conflicts =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
         $conflicts =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
-    }
-    else {
+    } else {
         $conflicts = '';
     }
     if ($pkgbuild_connect->content =~ /\nreplaces[\s]*=[\s]*(.+)/) {
@@ -935,8 +907,7 @@ sub Info {
         $replaces =~ s/['"\)\(]+//g;
         $replaces =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
         $replaces =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
-    }
-    else {
+    } else {
         $replaces = '';
     }
     if ($pkgbuild_connect->content =~ /\narch[\s]*=[\s]*(.+)/) {
@@ -970,8 +941,7 @@ sub Info {
     $pkg = quotemeta $pkg;
     if ($pacmanq =~ /\n$pkg\n/) {
         $yn = 'Yes';
-    }
-    else {
+    } else {
         $yn = 'No';
     }
     $pkg =~ s/\\//g;
@@ -982,15 +952,13 @@ sub Info {
     print "$bred*$reset Out Of Date\t: ";
     if ($out_of_date eq 1) {
         print "${bred}Yes\n";
-    }
-    else {
+    } else {
         print "No\n";
     }
     print "$bred*$reset Installed\t: ";
     if ($yn eq 'Yes') {
         print "${bgreen}Yes\n";
-    }
-    else {
+    } else {
         print "No\n";
     }
     print "$bred*$reset Votes\t\t: $votes\n";
