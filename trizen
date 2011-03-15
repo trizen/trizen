@@ -19,7 +19,7 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Last edit on: 06 March 2011
+# Latest edit on: 15 March 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use HTML::Entities;
@@ -89,13 +89,13 @@ foreach $_ (@ARGV) {
     if ($_ =~ /^[-]+(nd$|nodesc)/) {
         $nodesc = 1;
     }
-    if ($_ =~ /^[-]+devel/) {
+    if ($_ =~ /^[-]+devel$/) {
         $devel = 1;
     }
-    if ($_ =~ /^[-]+(mvpkg|movepkg)/) {
+    if ($_ =~ /^[-]+(mvpkg|movepkg)$/) {
         $movepkg = 1;
     }
-    if ($_ =~ /^[-]+(C|no[-]?comments)/) {
+    if ($_ =~ /^[-]+(C$|no[-]?comment)/) {
         $show_comments = '';
     }
     if ($_ eq '--noconfirm') {
@@ -174,16 +174,13 @@ $bred*$reset Base options
     -Sp         : outputs only PKGBUILD
     -Su         : upgrades all AUR packages
     -Sc         : clears trizen pakage-kit cache
-    -R.*        : removes packages with pacman
-    -Qm         : outputs AUR installed packages
-    -Qs         : searches for installed packages
     -Ssq        : searches for package in quiet mode
     -G          : download and extract AUR tarball only
     -N,-Rss     : outputs the AUR Newest Packages (RSS)
 
 $bred*$reset Other options
     -q          : quiet mode
-    -C          : Don't print comments
+    -C          : don't print comments
     -nc         : no color for text
     -nd         : no description for search results
     --movepkg   : after build, move pkg to the home directory
@@ -243,7 +240,7 @@ if ($tarball_only) {
     foreach $pkg (@args) {
         $pkg =~ s/\\//g;
         $pkg =~ s/\+/%2B/g;
-        $lwp->mirror("http://aur.archlinux.org/packages/$pkg/$pkg.tar.gz", "$pkg.tar.gz");
+        $lwp->mirror("$aur_pkgs$pkg/$pkg.tar.gz", "$pkg.tar.gz");
         if (-e "$pkg.tar.gz") {
             unless ($quiet) {
                 print "$bred*$reset Unpacking $pkg.tar.gz\n";
@@ -296,7 +293,7 @@ if ($all_argvs =~ / -Ss[q]? /) {
 }
 sub Check_aur_deps {
     ++$n;
-    $aur_url = "http://aur.archlinux.org/packages.php?ID=$id";
+    $aur_url = "$aur_website$id";
     unless ($checked or $quiet) {
         print "$bred=>> $cblack${byellow}Checking for AUR deps$reset\n";
         $checked = 1;
@@ -311,8 +308,7 @@ sub Check_aur_deps {
             print " ($dep_name)\n";
         }
         $check_deps = join('#', @final_aur_deps);
-        if ($dep_name ne $pkgname and 
-        not $check_deps =~ /#$dep_name$|^$dep_name#|#$dep_name#|^$dep_name$/) {
+        if ($dep_name ne $pkgname and not $check_deps =~ /#$dep_name$|^$dep_name#|#$dep_name#|^$dep_name$/) {
             push @final_aur_deps, $dep_name;
         }
     }
@@ -321,15 +317,16 @@ sub Check_aur_deps {
     }
     $aur_deps = $connect->content;
     $aur_deps =~ s/Required by.*//;
-    @aur_deps = split(/<a href='packages.php/, $aur_deps, 0);
+    @aur_deps = split(/\s/, $aur_deps, 0);
     foreach $line (@aur_deps) {
         next if $line eq $lastline;
         $check_deps = join('#', @final_aur_deps);
         unless ($check_deps) {
             $check_deps = 'NULL';
         }
-        if ($line =~ /^\?ID=[\d']+>([^\s]+)/) {
+        if ($line =~ m[^href='packages.php\?ID=[\d']+>([^\<]+)</a>]) {
             $dep = $1;
+            $dep =~ s/^\s|\s$//g;
             $dep =~ s/[<>]+.+//;
             $dep =~ s/=.+//;
             $dep = quotemeta $dep;
@@ -347,7 +344,7 @@ sub Check_aur_deps {
                 print "    $bred>$reset Found: $lastdep\n";
             }
         }
-        if ($line =~ m[packages/search/\?q=([^']+)]) {
+        if ($line =~ m[packages/search/\?q=([^'"]+)]) {
             $pac_dep = $1;
             $pac_dep =~ s/[<>]+.+//;
             $pac_dep =~ s/=.+//;
@@ -366,7 +363,7 @@ sub Install {
         $pkg =~ s/\+/%2B/g;
         $connect = $lwp->get("$info$pkg");
         next if $connect->content =~ /"results":"No result found"/;
-        $tarball = "http://aur.archlinux.org/packages/$pkg/$pkg.tar.gz";
+        $tarball = "$aur_pkgs$pkg/$pkg.tar.gz";
         $pkg =~ s/%2B/+/g;
         unless ($quiet) {
             print "\n$bred*$reset Downloading '${pkg}' tarball\n";
@@ -791,7 +788,7 @@ if ($all_argvs =~ / -Si /) {
 }
 sub Info {
     $pkg =~ s/\+/%2B/g;
-    $pkgbuild = "http://aur.archlinux.org/packages/$pkg/PKGBUILD";
+    $pkgbuild = "$aur_pkgs$pkg/PKGBUILD";
     $connect = $lwp->get("$info$pkg");
     if ($connect->content =~ /"results":"No result found"/) {
         if ($installing) {
