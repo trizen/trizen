@@ -19,7 +19,7 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Latest edit on: 15 March 2011
+# Latest edit on: 17 March 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use HTML::Entities;
@@ -324,7 +324,7 @@ sub Check_aur_deps {
         unless ($check_deps) {
             $check_deps = 'NULL';
         }
-        if ($line =~ m[^href='packages.php\?ID=[\d']+>([^\<]+)</a>]) {
+        if ($line =~ m[^href='packages.php\?ID=[\d']+>(.+)</a>]) {
             $dep = $1;
             $dep =~ s/^\s|\s$//g;
             $dep =~ s/[<>]+.+//;
@@ -443,9 +443,12 @@ sub Update {
             $ood = $3;
             if ($vers ne $vvv) {
                 $vers_nr = $vers;
-                $vers_nr =~ s/[^\d]+|^[0]+//g;
+                $vers_nr =~ s/[^\d]+//g;
                 $vvv_nr = $vvv;
-                $vvv_nr =~ s/[^\d]+|^[0]+//g;
+                $vvv_nr =~ s/[^\d]+//g;
+                if (length $vvv_nr < length $vers_nr) {
+                    $vvv_nr .= 0;
+                }
                 if ($vvv_nr > $vers_nr and not $line =~ /([-]+(svn|cvs|hg|bzr|darcs|git) )| 20(09|1(0|1|2))[\d]+/) {
                     push @ood_packages, $name;
                     push @for_upgrade, "$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
@@ -966,17 +969,29 @@ sub Info {
         print 's';
     }
     print "\t: $license\n";
-    print "$bred*$reset Groups\t: $groups\n";
-    print "$bred*$reset Provides\t: $provides\n";
-    print "$bred*$reset Depends On\t: $depends\n";
-    print "$bred*$reset Make Depends\t: $makedepends\n";
-    print "$bred*$reset Optional Deps\t: $optdepends\n";
-    print "$bred*$reset Conflicts\t: ";
-    if ($conflicts ne 'None') {
-        print "$bred";
+    if ($groups ne 'None') {
+        print "$bred*$reset Groups\t: $groups\n";
     }
-    print "$conflicts\n";
-    print "$bred*$reset Replaces\t: $replaces\n";
+    if ($provides ne 'None') {
+        print "$bred*$reset Provides\t: $provides\n";
+    }
+    print "$bred*$reset Depends On\t: $depends\n";
+    if ($makedepends ne 'None') {
+        print "$bred*$reset Make Depends\t: $makedepends\n";
+    }
+    if ($optdepends ne 'None') {
+        print "$bred*$reset Optional Deps\t: $optdepends\n";
+    }
+    if ($conflicts ne 'None') {
+        print "$bred*$reset Conflicts\t: ";
+        if ($conflicts ne 'None') {
+            print "$bred";
+        }
+        print "$conflicts\n";
+    }
+    if ($replaces ne 'None') {
+        print "$bred*$reset Replaces\t: $replaces\n";
+    }
     print "$bred*$reset Architecture\t: $arch\n";
     print "$bred*$reset Description\t: $description\n\n";
 }
