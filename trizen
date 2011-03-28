@@ -19,7 +19,7 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Latest edit on: 17 March 2011
+# Latest edit on: 28 March 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use HTML::Entities;
@@ -30,7 +30,7 @@ unless ($a) {
 }
 if ($a and not $ARGV[1]) {
     unless ($a =~ /[-]+(S[y]?u|(R|r)ss|(n|N)|Q.*|h|help)$/) {
-        unless ($a =~ /^-Sc[c]?$/) {
+        unless ($a =~ /^-Sc[c]?$|-U/) {
             if ($a =~ /^-/) {
                 &die;
             }
@@ -147,7 +147,7 @@ foreach $arg1 (@args1) {
 }
 foreach $keyword (@args) {
     $keyword =~ s/[\s]+//g;
-    $keyword = quotemeta $keyword;
+    my $keyword = quotemeta $keyword;
     push @keys, $keyword . '[^"]*';
 }
 unless ($quiet) {
@@ -259,7 +259,6 @@ if ($all_argvs =~ / -S[y]?u /) {
 }
 if ($all_argvs =~ / -Sp /) {
     foreach $pkgname (@args) {
-        $pkgname =~ s/\\//g;
         print "\n$bred=>>$reset PKGBUILD for $pkgname\n";
         $pkgname =~ s/\+/%2B/g;
         $pkgbuild = $lwp->get("$aur_pkgs/$pkgname/PKGBUILD");
@@ -268,9 +267,52 @@ if ($all_argvs =~ / -Sp /) {
     }
     exit;
 }
+if ($all_argvs =~ / -U/) {
+    require File::Find;
+    File::Find::find(\&mktree, $location);
+    sub mktree {
+        push @local_files, $File::Find::name;
+    }
+    require Cwd;
+    $cwd = Cwd::getcwd();
+    use File::Glob ();
+    @cwd_file = glob("$cwd/*");
+    foreach $pkgname (@ARGV) {
+        next if $pkgname =~ /^-/;
+        my $pkgname = quotemeta $pkgname;
+        foreach $local_pkg (@cwd_file) {
+            if ($local_pkg =~ /.+$pkgname.*\.pkg\.tar.*/ 
+            or $local_pkg =~ m[^$cwd/$pkgname$]) {
+                print "\n$bred*$reset Installing: $&\n\n";
+                &Install_local_package($&);
+            }
+        }
+    }
+    foreach $pkgname (@ARGV) {
+        next if $pkgname =~ /^-/;
+        my $pkgname = quotemeta $pkgname;
+        foreach $local_pkg (@local_files) {
+            if ($local_pkg =~ m[.*[^/]*$pkgname.*\.pkg\.tar.*]) {
+                print "\n$bred*$reset Installing: $&\n\n";
+                &Install_local_package($&);
+            } elsif ($local_pkg =~ /.*$pkgname$/ 
+            and $pkgname =~ /\\\.pkg\\\.tar/) {
+                print "\n$bred*$reset Installing: $local_pkg\n\n";
+                &Install_local_package($local_pkg);
+            }
+        }
+    }
+}
+sub Install_local_package {
+    if ($whoami eq "root\n") {
+        system "pacman -U $_[0]";
+    } else {
+        print 'Root ';
+        system qq[su -c "pacman -U "$_[0]""];
+    }
+}
 if ($all_argvs =~ / -Ss[q]? /) {
     $keywords = join(' ', @args);
-    $keywords =~ s/\\//g;
     if ($all_argvs =~ / -Ss /) {
         system "pacman -Ss $keywords";
     } else {
@@ -278,7 +320,6 @@ if ($all_argvs =~ / -Ss[q]? /) {
     }
     $rpc .= 'search';
     foreach $keyword (@args) {
-        $keyword =~ s/\\//g;
         $rpc .= "&arg=$keyword";
     }
     $rpc =~ s/\+/%2B/g;
@@ -307,8 +348,7 @@ sub Check_aur_deps {
         unless ($quiet) {
             print " ($dep_name)\n";
         }
-        $check_deps = join('#', @final_aur_deps);
-        if ($dep_name ne $pkgname and not $check_deps =~ /#$dep_name$|^$dep_name#|#$dep_name#|^$dep_name$/) {
+        if ($dep_name ne $pkgname and not grep {$_ eq $dep_name;} @final_aur_deps) {
             push @final_aur_deps, $dep_name;
         }
     }
@@ -320,23 +360,15 @@ sub Check_aur_deps {
     @aur_deps = split(/\s/, $aur_deps, 0);
     foreach $line (@aur_deps) {
         next if $line eq $lastline;
-        $check_deps = join('#', @final_aur_deps);
-        unless ($check_deps) {
-            $check_deps = 'NULL';
-        }
         if ($line =~ m[^href='packages.php\?ID=[\d']+>(.+)</a>]) {
             $dep = $1;
             $dep =~ s/^\s|\s$//g;
             $dep =~ s/[<>]+.+//;
             $dep =~ s/=.+//;
-            $dep = quotemeta $dep;
-            $lastdep = quotemeta $lastdep;
-            if ($check_deps =~ /#$lastdep$|^$lastdep#|#$lastdep#|^$lastdep$/ 
-            and $id ne $firstid and not $check_deps =~ /#$dep$|^$dep#|#$dep#|^$dep$/) {
-                $dep =~ s/\\//g;
+            if (grep {$_ eq $lastdep;} @final_aur_deps and $id ne $firstid 
+                and not grep {$_ eq $dep;} @final_aur_deps) {
                 unshift @final_aur_deps, $dep;
-            } elsif (not $check_deps =~ /#$dep$|^$dep#|#$dep#|^$dep$/) {
-                $dep =~ s/\\//g;
+            } elsif (not grep {$_ eq $dep;} @final_aur_deps) {
                 push @final_aur_deps, $dep;
             }
             $lastdep = $dep;
@@ -418,8 +450,8 @@ sub Install {
             system $usermake;
         }
         if ($movepkg) {
-            if (`ls $cache_dir/$pkg` =~ /(.+)\.pkg\.tar(.*)/) {
-                `mv $cache_dir/$pkg/$& $ENV{'HOME'}`;
+            if (`ls $cache_dir/$pkg` =~ /.+\.pkg\.tar.*/) {
+                `mv $cache_dir/$pkg/$& $ENV{'HOME'}/`;
             }
         }
     }
@@ -428,10 +460,10 @@ sub Update {
     @aur_pkgs = `pacman -Qm`;
     foreach $line (@aur_pkgs) {
         chomp $line;
-        next unless $line =~ /[\w]+/;
+        next unless $line =~ /^[\w]+/;
         $line =~ s/\+/%2B/g;
         unless ($devel) {
-            next if $line =~ /([-]+(svn|cvs|hg|bzr|darcs|git) )| 20(09|1(0|1|2))[\d]+/;
+            next if $line =~ /-(svn|cvs|hg|bzr|darcs|git)/;
         }
         if ($line =~ /(.+) (.+)/) {
             $pkgname = $1;
@@ -449,12 +481,12 @@ sub Update {
                 if (length $vvv_nr < length $vers_nr) {
                     $vvv_nr .= 0;
                 }
-                if ($vvv_nr > $vers_nr and not $line =~ /([-]+(svn|cvs|hg|bzr|darcs|git) )| 20(09|1(0|1|2))[\d]+/) {
+                if ($vvv_nr > $vers_nr and not $line =~ /-(svn|cvs|hg|bzr|darcs|git)/) {
                     push @ood_packages, $name;
                     push @for_upgrade, "$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
                 }
             }
-            if ($devel and $line =~ /([-]+(svn|cvs|hg|bzr|darcs|git) )| 20(09|1(0|1|2))[\d]+/) {
+            if ($devel and $line =~ /-(svn|cvs|hg|bzr|darcs|git)/) {
                 push @ood_packages, $name;
                 push @for_upgrade, "$bred*$reset $name\n";
             }
@@ -473,7 +505,7 @@ sub Update {
             } elsif ($vvv ne $vers) {
                 if ($vvv_nr > $vers_nr) {
                     print " $bgreen(New Update: $vvv)$reset";
-                } elsif (not $devel) {
+                } elsif (not $devel and not $vvv =~ /20(09|1(0|1|2))[\d]+/) {
                     print " (${bgreen}AUR Version: $bred$vvv$reset)";
                 }
                 if ($v2 eq 'ood') {
@@ -484,34 +516,32 @@ sub Update {
         }
     }
     if (@ood_packages) {
-        print "\n";
+		print "\n\n$bred=>>$reset Packages for upgrade:";
+        print "\n" . "=" x 80 . "\n";
         print @for_upgrade;
-        print "\n";
-        print "$bred=>>$reset Proceed with upgrade? (Y/n)\n> ";
-        chomp($yn = <STDIN>);
-        if ($yn =~ /^y|^$/i) {
-            foreach $pkgname (@ood_packages) {
-                print "
+        print "=" x 80 . "\n";
+        foreach $pkgname (@ood_packages) {
+            print "
 $bred*$reset Do you want to upgrade $cblack$byellow$pkgname$reset ? (Y/n)
 > ";
-                chomp($y = <STDIN>);
-                if ($y =~ /^y|^$/i) {
-                    push @packages_for_install, $pkgname;
-                    &Install;
-                    splice @packages_for_install;
-                } else {
-                    next;
-                }
+            chomp($y = <STDIN>);
+            if ($y =~ /^y|^$/i) {
+				print "    ->> ${bgreen}$pkgname$reset will be upgraded\n";
+                push @ARGV, $pkgname;
+            } else {
+                next;
             }
-        } else {
-            exit;
         }
+        &Pre_install;
     } else {
         print "\n$bgreen* Your AUR Packages are up to date.\n\n";
         exit;
     }
 }
 if ($all_argvs =~ / -S /) {
+    &Pre_install;
+}
+sub Pre_install {
     foreach $pkgname (@ARGV) {
         next if $pkgname =~ /^-/;
         $checked = '';
@@ -625,7 +655,7 @@ $bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman
         print "$pkgname ";
         $check_deps = join('#', @packages_for_install);
         $check_deps =~ s/$pkgname#//g;
-        $check_deps =~ s/#$|^#//;
+        $check_deps =~ s/#$|^#//g;
         @packages_for_install = split(?#?, $check_deps, 0);
         push @packages_for_install, $pkgname;
         foreach $dep (@pacman_deps) {
@@ -758,8 +788,7 @@ if ($all_argvs =~ / [-]+(n|rss) /i) {
     $url = 'http://aur.archlinux.org/rss.php';
     $connect = $lwp->get($url);
     $rss = $connect->content;
-    $rss =~ s/&quot;/"/g;
-    $rss =~ s/&amp;/&/g;
+    $rss = decode_entities($rss);
     $rss =~ s[</link>[\s]*
 [\s]*<description>|</author>[\s]*
 [\s]*<pubDate>|</title>[\s]*
@@ -821,8 +850,7 @@ sub Info {
     if ($connect->content =~ /"Description":"([^"]*)/) {
         $description = $1;
         $description =~ s[\\/][/]g;
-        $description =~ s/&quot;/"/g;
-        $description =~ s/&amp;/&/g;
+        $description = decode_entities($description);
     }
     if ($connect->content =~ /"URL":"([^"]*)/) {
         $url = $1;
