@@ -310,11 +310,13 @@ if ($all_argvs =~ / -U/) {
         next if $pkgname =~ /^-/;
         my $pkgname = quotemeta $pkgname;
         foreach $local_pkg (@cwd_file) {
-            if ($local_pkg =~ m[.+${pkgname}[^/]*\.pkg\.tar.*] 
-            or $local_pkg =~ m[^$cwd/$pkgname$] and $local_pkg =~ /\\\.pkg\\\.tar/) {
+            if ($local_pkg =~ m[.+${pkgname}[^/]*\.pkg\.tar.*]){
                 print "\n$bred*$reset Installing: $&\n\n";
                 &Install_local_package($&);
-            }
+            }elsif($local_pkg =~ /\.pkg\.tar/ and $local_pkg =~ m[^$cwd/$pkgname$]) {
+				print "\n$bred*$reset Installing: $&\n\n";
+				&Install_local_package($&);
+			}
         }
     }
     foreach $pkgname (@ARGV) {
@@ -544,7 +546,7 @@ sub Update {
             } elsif ($vvv ne $vers) {
                 if ($vvv_nr > $vers_nr) {
                     print " $bgreen(New Update: $vvv)$reset";
-                } elsif (not $devel || $vvv =~ /20(09|1(0|1|2))[\d]+/) {
+                } elsif (not $vvv =~ /20(09|1(0|1|2))[\d]+/) {
                     print " (${bgreen}AUR Version: $bred$vvv$reset)";
                 }
                 if ($v2 eq 'ood') {
