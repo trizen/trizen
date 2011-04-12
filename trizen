@@ -19,15 +19,12 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Latest edit on: 29 March 2011
+# Latest edit on: 12 April 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use HTML::Entities;
 
 $a = $ARGV[0];
-unless ($a) {
-    $a = '';
-}
 if ($a and not $ARGV[1]) {
     unless ($a =~ /[-]+(S[y]?u|(n|N)|Q.*|h|help)$/) {
         unless ($a =~ /^-Sc[c]?$|-U/) {
@@ -224,7 +221,7 @@ if ($all_argvs =~ / -(Q|R)/) {
             }
         }
         if ($not_installed) {
-            die "\n$bred [!]$reset Not installed: $packages\n\n";
+            warn "\n$bred [!]$reset Not installed: $packages\n\n";
         } else {
             &Remove_packages;
         }
@@ -305,18 +302,19 @@ if ($all_argvs =~ / -U/) {
     }
     require Cwd;
     $cwd = Cwd::getcwd();
+    use File::Glob ();
     @cwd_file = glob("$cwd/*");
     foreach $pkgname (@ARGV) {
         next if $pkgname =~ /^-/;
         my $pkgname = quotemeta $pkgname;
         foreach $local_pkg (@cwd_file) {
-            if ($local_pkg =~ m[.+${pkgname}[^/]*\.pkg\.tar.*]){
+            if ($local_pkg =~ m[.+${pkgname}[^/]*\.pkg\.tar.*]) {
                 print "\n$bred*$reset Installing: $&\n\n";
                 &Install_local_package($&);
-            }elsif($local_pkg =~ /\.pkg\.tar/ and $local_pkg =~ m[^$cwd/$pkgname$]) {
-				print "\n$bred*$reset Installing: $&\n\n";
-				&Install_local_package($&);
-			}
+            } elsif ($local_pkg =~ /\.pkg\.tar/ and $local_pkg =~ m[^$cwd/$pkgname$]) {
+                print "\n$bred*$reset Installing: $&\n\n";
+                &Install_local_package($&);
+            }
         }
     }
     foreach $pkgname (@ARGV) {
@@ -335,14 +333,14 @@ if ($all_argvs =~ / -U/) {
 }
 sub Install_local_package {
     if ($whoami eq "root\n") {
-        system "pacman -U $_[0]";
+        system "pacman -Uf $_[0]";
     } else {
         if ($cvr eq 'sudo') {
             print 'Sudo ';
-            system qq[$cvr "pacman -U "$_[0]""];
+            system qq[$cvr "pacman -Uf "$_[0]""];
         } else {
             print 'Root ';
-            system qq[$cvr "pacman -U "$_[0]""];
+            system qq[$cvr "pacman -Uf "$_[0]""];
         }
     }
 }
@@ -404,8 +402,8 @@ sub Check_aur_deps {
             $dep =~ s/^\s|\s$//g;
             $dep =~ s/[<>]+.+//;
             $dep =~ s/=.+//;
-            if (grep {$_ eq $lastdep;} @final_aur_deps and $id ne $firstid 
-            and not grep {$_ eq $dep;} @final_aur_deps) {
+            if (grep {$_ eq $lastdep;} @final_aur_deps and $id ne $firstid
+                and not grep {$_ eq $dep;} @final_aur_deps) {
                 unshift @final_aur_deps, $dep;
             } elsif (not grep {$_ eq $dep;} @final_aur_deps) {
                 push @final_aur_deps, $dep;
@@ -415,7 +413,7 @@ sub Check_aur_deps {
                 print "    $bred>$reset Found: $lastdep\n";
             }
         }
-        if ($line =~ m[packages/search/\?q=([^'"]+)]) {
+        if ($line =~ m[packages/\?q=([^'"]+)]) {
             $pac_dep = $1;
             $pac_dep =~ s/[<>]+.+//;
             $pac_dep =~ s/=.+//;
@@ -448,16 +446,15 @@ sub Install {
         `tar xf $cache_dir/$pkg.tar.gz -C $cache_dir`;
         if ($ENV{'EDITOR'}) {
             $editor = $ENV{'EDITOR'};
-        } elsif (-e '/usr/bin/joe') {
-            $editor = 'joe';
-        } elsif (-e 'usr/bin/vim') {
-            $editor = 'vim';
-        } elsif (-e '/usr/bin/nano') {
-            $editor = 'nano';
-        } elsif (-e '/usr/bin/vi') {
-            $editor = 'vi';
-        } else {
-            $editor = 'NULL';
+        }
+        @editors = ('joe', 'vim', 'nano', 'vi');
+        unless ($editor) {
+            foreach $editor_name (@editors) {
+                if (-e "/usr/bin/$editor_name") {
+                    $editor = $editor_name;
+                    last;
+                }
+            }
         }
         next unless open FILE, "$cache_dir/$pkg/PKGBUILD";
         @file = <FILE>;
@@ -532,7 +529,7 @@ sub Update {
                 push @for_upgrade, "$bred*$reset $name\n";
             }
             $v2 = $vvv;
-            if ($ood eq 1) {
+            if ($ood == 1) {
                 $v2 = 'ood';
             }
             $line =~ s/%2B/+/g;
@@ -652,8 +649,8 @@ $bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman
             if ($check_aur) {
                 &Check_aur_deps;
             }
-            if ($pkgbuild_connect->content =~ /makedepends[\s]*=[\s]*([^\w]*)([^\)]*)/ 
-            and not $pkgbuild_connect->content =~ /makedepends[\s]*=[\s]*\([\s'"]*\)/) {
+            if ($pkgbuild_connect->content =~ /makedepends[\s]*=[\s]*([^\w]*)([^\)]*)/
+                and not $pkgbuild_connect->content =~ /makedepends[\s]*=[\s]*\([\s'"]*\)/) {
                 $makedepends = $2;
                 $makedepends =~ s/[<>]+[^' "]+//g;
                 $makedepends =~ s/=[^' "]+//g;
@@ -727,9 +724,10 @@ $bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman
         @pacman_deps = sort  @pacman_deps;
         $pac_printed = '';
         foreach $dep (@pacman_deps) {
+            next unless $dep;
             next if $dep eq 'sh';
             next if $dep eq $lastdep;
-            $dep = quotemeta $dep;
+            my $dep = quotemeta $dep;
             unless ($pacmanq =~ /\n$dep\n/) {
                 unless ($pac_printed) {
                     print "\n${bgreen}[*] $cblack${byellow}From Pacman:$reset ";
@@ -743,7 +741,7 @@ $bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman
         if ($out_of_date) {
             print "\n\n$bred!$reset warning: '${pkgname}' has been flagged out of date";
         }
-        $pkgname = quotemeta $pkgname;
+        my $pkgname = quotemeta $pkgname;
         if ($pacmanq =~ /\n$pkgname\n/) {
             if ($out_of_date) {
                 print "\n";
@@ -811,7 +809,7 @@ sub Print_results {
         if ($pacmanq =~ /\n$name\n/) {
             print "[$cgreen${byellow}installed$reset] ";
         }
-        if ($ood eq 1) {
+        if ($ood == 1) {
             print "[${bred}out-of-date$reset] ";
         }
         print "$cblack$byellow($votes+)$reset ($cat) ";
@@ -1035,7 +1033,7 @@ sub Info {
     print "$bred*$reset Version\t: $version\n";
     print "$bred*$reset Category\t: $cat\n";
     print "$bred*$reset Out Of Date\t: ";
-    if ($out_of_date eq 1) {
+    if ($out_of_date == 1) {
         print "${bred}Yes\n";
     } else {
         print "No\n";
