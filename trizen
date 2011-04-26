@@ -19,7 +19,7 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Latest edit on: 12 April 2011
+# Latest edit on: 26 April 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use HTML::Entities;
@@ -172,12 +172,11 @@ if ( $all_argvs =~ / -Sc[c]? / ) {
 }
 
 sub help {
-    die "
+    die
+"
 \t   ............${bgreen}TRIZEN AUR PACKAGE MANAGER$reset............
-
-  ${bgreen}usage:$reset trizen [option] [pkgname] [pkgname] [...]
-
-$bred*$reset Base options
+\n  ${bgreen}usage:$reset trizen [option] [pkgname] [pkgname] [...]
+\n$bred*$reset Base options
     -S          : installs package
     -Ss         : searches for package
     -Si         : outputs info for package
@@ -188,8 +187,7 @@ $bred*$reset Base options
     -G          : download and extract AUR tarball only
     -N          : outputs the AUR Newest Packages (RSS)
     -U          : installs local package from /tmp or cwd
-
-$bred*$reset Other options
+\n$bred*$reset Other options
     -q          : quiet mode
     -C          : don't print comments
     -nc         : no color for text
@@ -202,10 +200,8 @@ $bred*$reset Other options
     --noconfirm : do not prompt for any confirmation
     --skipinteg : when using makepkg, do not check md5s
     --help      : outputs this message
-
-$bred*$reset Example: trizen -S bleachbit youtube-viewer -q --movepkg
-
-";
+\n$bred*$reset Example: trizen -S bleachbit youtube-viewer -q --movepkg
+\n";
 }
 
 sub die {
@@ -316,7 +312,7 @@ if ( $all_argvs =~ / -U/ ) {
         push @local_files, $File::Find::name;
     }
     require Cwd;
-    $cwd      = Cwd::getcwd();
+    $cwd = Cwd::getcwd();
     @cwd_file = glob("$cwd/*");
     foreach $pkgname (@ARGV) {
         next if $pkgname =~ /^-/;
@@ -507,8 +503,8 @@ sub Install {
         print @file;
         print "\n";
         unless ( $noconfirm or $noedit ) {
-            print
-"$bred=>>$reset Edit $cblack$byellow$pkg$reset PKGBUILD with '${editor}'? (y/N)\n> ";
+            print "$bred=>>$reset Edit $cblack$byellow$pkg$reset "
+              . "PKGBUILD with '${editor}'? (y/N)\n> ";
             chomp( $yn = <STDIN> );
             if ( $yn =~ /^y/i ) {
                 system "$editor $cache_dir/$pkg/PKGBUILD";
@@ -533,66 +529,57 @@ sub Update {
     @aur_pkgs = `pacman -Qm`;
     foreach $line (@aur_pkgs) {
         chomp $line;
-        next unless $line =~ /^[\w]+/;
+        next if $line =~ /^[\W]+/;
         $line =~ s/\+/%2B/g;
         unless ($devel) {
-            next if $line =~ /-(svn|cvs|hg|bzr|darcs|git)/;
+            next if $line =~ /-(?:svn|cvs|hg|bzr|darcs|git)/;
         }
         if ( $line =~ /(.+) (.+)/ ) {
-            $pkgname = $1;
-            $vers    = $2;
+            $local_pkgname = $1;
+            $local_version = $2;
         }
-        if ( $lwp->get("$info$pkgname")->content =~
-            /"Name":"([^"]+)".*Version":"([^"]+)".*OutOfDate":"([\d]+)"/ )
+        if ( $lwp->get("$info$local_pkgname")->content =~
+            /Version":"([^"]+)".*OutOfDate":"([\d]+)"/ )
         {
-            $name = $1;
-            $vvv  = $2;
-            $ood  = $3;
-            if ( $vers ne $vvv ) {
-                $vers_nr = $vers;
-                $vers_nr =~ s/[^\d]+//g;
-                $vvv_nr = $vvv;
-                $vvv_nr =~ s/[^\d]+//g;
-                if ( length $vvv_nr < length $vers_nr ) {
-                    $vvv_nr .= 0;
-                }
-                if ( $vvv_nr > $vers_nr
-                    and not $line =~ /-(svn|cvs|hg|bzr|darcs|git)/ )
+            $aur_version = $1;
+            $out_of_date = $2;
+            if ( $local_version ne $aur_version ) {
+                if ( $aur_version gt $local_version
+                    and not $line =~ /-(?:svn|cvs|hg|bzr|darcs|git)/ )
                 {
-                    push @ood_packages, $name;
-                    push @for_upgrade,
-"$bred*$reset $name $bred$vers$reset -> $bgreen$vvv$reset\n";
+                    push @ood_packages, $local_pkgname;
+                    push @for_upgrade,  "$bred*$reset $local_pkgname $bred"
+                      . "$local_version$reset -> $bgreen$aur_version$reset\n";
                 }
             }
-            if ( $devel and $line =~ /-(svn|cvs|hg|bzr|darcs|git)/ ) {
-                push @ood_packages, $name;
-                push @for_upgrade,  "$bred*$reset $name\n";
-            }
-            $v2 = $vvv;
-            if ( $ood == 1 ) {
-                $v2 = 'ood';
+            if ( $devel and $line =~ /-(?:svn|cvs|hg|bzr|darcs|git)/ ) {
+                push @ood_packages, $local_pkgname;
+                push @for_upgrade,  "$bred*$reset $local_pkgname\n";
             }
             $line =~ s/%2B/+/g;
             print "$bred*$reset $line";
-            if ( $vers eq $vvv ) {
-                if ( $v2 eq 'ood' ) {
+            if ( $aur_version eq $local_version ) {
+                if ($out_of_date) {
                     print $bred . ' (out-of-date)';
                     print $reset;
                 }
                 print "\n";
             }
-            elsif ( $vvv ne $vers ) {
-                if ( $vvv_nr > $vers_nr ) {
-                    print " $bgreen(New Update: $vvv)$reset";
+            else {
+                if ( $local_version lt $aur_version ) {
+                    print " $bgreen(New Update: $aur_version)$reset";
                 }
-                elsif ( not $vvv =~ /20(09|1(0|1|2))[\d]+/ ) {
-                    print " (${bgreen}AUR Version: $bred$vvv$reset)";
+                elsif ( not $local_version =~ /20(09|1(0|1|2))[\d]+/ ) {
+                    print " (${bgreen}AUR Version: $bred$aur_version$reset)";
                 }
-                if ( $v2 eq 'ood' ) {
+                if ($out_of_date) {
                     print " $bred(out-of-date)$reset";
                 }
                 print "\n";
             }
+        }
+        else {
+            next;
         }
     }
     if (@ood_packages) {
@@ -601,9 +588,8 @@ sub Update {
         print @for_upgrade;
         print '=' x 80 . "\n";
         foreach $pkgname (@ood_packages) {
-            print "
-$bred*$reset Do you want to upgrade $cblack$byellow$pkgname$reset ? (Y/n)
-> ";
+            print "\n$bred*$reset Do you want to upgrade "
+              . "$cblack$byellow$pkgname$reset ? (Y/n)\n> ";
             chomp( $y = <STDIN> );
             if ( $y =~ /^y|^$/i ) {
                 print "    ->> $bgreen$pkgname$reset will be upgraded\n";
@@ -640,9 +626,8 @@ sub Pre_install {
         if ( $connect->content =~ /"results":"No result found"/ ) {
             $check_pacman = `pacman -S --print $pkgname`;
             if ( $check_pacman =~ m[://] ) {
-                print "
-$bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman
-";
+                print "\n$bred=>>$reset Installing '$bgreen"
+                  . "$pkgname${reset}' with pacman\n";
                 if ( $whoami eq "root\n" ) {
                     if ($needed) {
                         my $pkgname = quotemeta $pkgname;
@@ -797,8 +782,8 @@ $bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman
             $lastdep = $dep;
         }
         if ($out_of_date) {
-            print
-"\n\n$bred!$reset warning: '${pkgname}' has been flagged out of date";
+            print "\n\n$bred!$reset warning: '${pkgname}' "
+              . 'has been flagged out of date';
         }
         my $pkgname = quotemeta $pkgname;
         if ( $pacmanq =~ /\n$pkgname\n/ ) {
@@ -810,12 +795,12 @@ $bred=>>$reset Installing '$bgreen$pkgname${reset}' with pacman
             }
             $pkgname =~ s/\\//g;
             if ($needed) {
-                print
-"$bred!$reset warning: '${pkgname}' is already installed --skipping\n\n";
+                print "$bred!$reset warning: '${pkgname}' "
+                  . "is already installed --skipping\n\n";
                 next;
             }
-            print
-"$bred!$reset warning: '${pkgname}' is already installed --reinstalling";
+            print "$bred!$reset warning: '${pkgname}' "
+              . 'is already installed --reinstalling';
         }
         $check_aur = '';
         unless ($noconfirm) {
@@ -920,14 +905,14 @@ if ( $all_argvs =~ / [-]+N / ) {
     $connect = $lwp->get($url);
     $rss     = $connect->content;
     $rss     = decode_entities($rss);
-    $rss =~ s[</link>[\s]*
+    $rss =~
+s[</link>[\s]*
 [\s]*<description>|</author>[\s]*
 [\s]*<pubDate>|</title>[\s]*
 [\s]*<link>|</description>[\s]*
 [\s]*<author>][---]g;
     @RSS = split( ?\n?, $rss, 0 );
     foreach $_ (@RSS) {
-
         if ( $_ =~ m[<title>(.+)---(.+)---(.+)---(.+)---(.+)</pubDate>] ) {
             print $green;
             print "\nTitle:";
