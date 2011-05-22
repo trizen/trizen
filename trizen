@@ -19,7 +19,7 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Latest edit on: 26 April 2011
+# Latest edit on: 22 May 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use HTML::Entities;
@@ -122,6 +122,9 @@ foreach $_ (@ARGV) {
     if ( $_ =~ /^[-]+needed/ ) {
         $needed = 1;
     }
+    if ( $_ =~ /^[-]+(?:h|help)$/ ) {
+        $help = 1;
+    }
 }
 if ( not $nocolors ) {
     $bred    = "\e[1;31m";
@@ -143,9 +146,8 @@ else {
     $byellow = '';
     $reset   = '';
 }
-if ( not @ARGV or $a =~ /^[-]+(h|help)$/ ) {
-    &help;
-}
+$help = 1 unless $ARGV[0];
+&help if $help;
 for ( $nr = 0 ; $nr <= $#ARGV ; ++$nr ) {
     push @all_argvs, " $ARGV[$nr] ";
 }
@@ -172,8 +174,7 @@ if ( $all_argvs =~ / -Sc[c]? / ) {
 }
 
 sub help {
-    die
-"
+    die "
 \t   ............${bgreen}TRIZEN AUR PACKAGE MANAGER$reset............
 \n  ${bgreen}usage:$reset trizen [option] [pkgname] [pkgname] [...]
 \n$bred*$reset Base options
@@ -256,13 +257,13 @@ sub Get_comments {
     $AUR =~ s/<div class="pgbox version">[^<]+//;
     $AUR =~ s/<([^>]+)>//g;
     $AUR =~ s/[\s]+Comment by:/\nComment by:/g;
-    $AUR =~ s/Comment by:(.+)/$cblack$byellow$&$reset/g;
+    $AUR =~ s/Comment by:(.+)/$cblack${byellow}Comment by:$1$reset/g;
     $AUR = decode_entities($AUR);
     until ( not $AUR =~ /\n[ \t]*\n/ ) {
         $AUR =~ s/\n[ \t]*\n/\n/g;
     }
     if ( $AUR =~ /Show all [\d]+ comments/ ) {
-        $AUR =~ s/$&[^~]+//;
+        $AUR =~ s/Show all [\d]+ comments[^~]+//;
     }
     $split = quotemeta $cblack;
     @AUR = split( /$split/, $AUR, 0 );
@@ -312,21 +313,21 @@ if ( $all_argvs =~ / -U/ ) {
         push @local_files, $File::Find::name;
     }
     require Cwd;
-    $cwd = Cwd::getcwd();
+    $cwd      = Cwd::getcwd();
     @cwd_file = glob("$cwd/*");
     foreach $pkgname (@ARGV) {
         next if $pkgname =~ /^-/;
         my $pkgname = quotemeta $pkgname;
         foreach $local_pkg (@cwd_file) {
             if ( $local_pkg =~ m[.+${pkgname}[^/]*\.pkg\.tar.*] ) {
-                print "\n$bred*$reset Installing: $&\n\n";
-                &Install_local_package($&);
+                print "\n$bred*$reset Installing: $local_pkg\n\n";
+                &Install_local_package($local_pkg);
             }
             elsif ( $local_pkg =~ /\.pkg\.tar/
                 and $local_pkg =~ m[^$cwd/$pkgname$] )
             {
-                print "\n$bred*$reset Installing: $&\n\n";
-                &Install_local_package($&);
+                print "\n$bred*$reset Installing: $local_pkg\n\n";
+                &Install_local_package($local_pkg);
             }
         }
     }
@@ -335,8 +336,8 @@ if ( $all_argvs =~ / -U/ ) {
         my $pkgname = quotemeta $pkgname;
         foreach $local_pkg (@local_files) {
             if ( $local_pkg =~ m[.*[^/]*${pkgname}[^\/]*\.pkg\.tar.*] ) {
-                print "\n$bred*$reset Installing: $&\n\n";
-                &Install_local_package($&);
+                print "\n$bred*$reset Installing: $local_pkg\n\n";
+                &Install_local_package($local_pkg);
             }
             elsif ( $local_pkg =~ /.*$pkgname$/
                 and $pkgname =~ /\\\.pkg\\\.tar/ )
@@ -486,7 +487,7 @@ sub Install {
         next unless open FILE, "$cache_dir/$pkg/PKGBUILD";
         @file = <FILE>;
         close FILE;
-        if ( @Comments and $show_comments and not $quiet ) {
+        if ( $#Comments > -1 and $show_comments and not $quiet ) {
             $comments = join( '', @Comments );
             $comments =~ s/\n/></g;
             if ( $comments =~ /(.+)<$pkg>/ ) {
@@ -518,8 +519,8 @@ sub Install {
             system $usermake;
         }
         if ($movepkg) {
-            if ( `ls $cache_dir/$pkg` =~ /.+\.pkg\.tar.*/ ) {
-                `mv $cache_dir/$pkg/$& $ENV{'HOME'}/`;
+            if ( `ls $cache_dir/$pkg` =~ /(.+)\.pkg\.tar(.*)/ ) {
+                `mv $cache_dir/$pkg/$1.pkg.tar$2 $ENV{'HOME'}/`;
             }
         }
     }
@@ -582,7 +583,7 @@ sub Update {
             next;
         }
     }
-    if (@ood_packages) {
+    if ( $#ood_packages > -1 ) {
         print "\n\n$bred=>>$reset Packages for upgrade:";
         print "\n" . '=' x 80 . "\n";
         print @for_upgrade;
@@ -729,7 +730,7 @@ sub Pre_install {
                 push @deps_ids, $1;
             }
         }
-        if (@deps_ids) {
+        if ( $#deps_ids > -1 ) {
             unless ($n) {
                 $n = 0;
             }
@@ -905,14 +906,14 @@ if ( $all_argvs =~ / [-]+N / ) {
     $connect = $lwp->get($url);
     $rss     = $connect->content;
     $rss     = decode_entities($rss);
-    $rss =~
-s[</link>[\s]*
+    $rss =~ s[</link>[\s]*
 [\s]*<description>|</author>[\s]*
 [\s]*<pubDate>|</title>[\s]*
 [\s]*<link>|</description>[\s]*
 [\s]*<author>][---]g;
     @RSS = split( ?\n?, $rss, 0 );
     foreach $_ (@RSS) {
+
         if ( $_ =~ m[<title>(.+)---(.+)---(.+)---(.+)---(.+)</pubDate>] ) {
             print $green;
             print "\nTitle:";
