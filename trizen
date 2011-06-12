@@ -19,11 +19,10 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Latest edit on: 11 June 2011
+# Latest edit on: 12 June 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use HTML::Entities;
-
 unless ( -d "$ENV{'HOME'}/.config/" ) {
     mkdir "$ENV{'HOME'}/.config/";
 }
@@ -39,7 +38,6 @@ my $lastline      = '';
 my $lastdep       = '';
 my $all_argvs     = '';
 my $show_comments = 1;
-my $whoami        = $ENV{'USER'} || `whoami`;
 my $bred          = "\e[1;31m";
 my $bgreen        = "\e[1;32m";
 my $red           = "\e[0;31m";
@@ -48,6 +46,7 @@ my $cgreen        = "\e[42m";
 my $cblack        = "\e[40m";
 my $byellow       = "\e[1;33m";
 my $reset         = "\e[0m";
+chomp( my $whoami = `whoami` );
 &help unless $ARGV[0];
 
 if ( -e '/usr/bin/sudo' ) {
@@ -56,7 +55,7 @@ if ( -e '/usr/bin/sudo' ) {
 else {
     $cvr = 'su -c';
 }
-if ( $whoami ne "root\n" ) {
+if ( $whoami ne 'root' ) {
     chomp( $user = $whoami );
     $location = "$cache_dir-$user";
     mkdir $location;
@@ -220,7 +219,7 @@ if ( $all_argvs =~ / -(?:Q|R)/ ) {
 
 sub Remove_packages {
     print "\n$bred*$reset Executing: pacman $all_argvs\n\n";
-    if ( $whoami eq "root\n" ) {
+    if ( $whoami eq 'root' ) {
         exec "pacman $all_argvs";
     }
     else {
@@ -337,7 +336,7 @@ if ( $all_argvs =~ / -U/ ) {
 }
 
 sub Install_local_package {
-    if ( $whoami eq "root\n" ) {
+    if ( $whoami eq 'root' ) {
         system "pacman -Uf $_[0]";
     }
     else {
@@ -458,7 +457,7 @@ sub Install {
             print "$bred*$reset Done.\n\n";
             print "$bred*$reset Unpacking tarball...\n";
         }
-        `tar xf '$cache_dir/$pkg.tar.gz' -C '$cache_dir'`;
+        `tar xf '$cache_dir/$pkg.tar.gz' -C '${cache_dir}'`;
         if ( $ENV{'EDITOR'} ) {
             $editor = $ENV{'EDITOR'};
         }
@@ -490,7 +489,7 @@ sub Install {
             }
         }
         chdir "$cache_dir/$pkg";
-        if ( $whoami eq "root\n" ) {
+        if ( $whoami eq 'root' ) {
             system $rootmake;
         }
         else {
@@ -603,11 +602,11 @@ sub Pre_install {
         undef @deps_ids;
 
         if ( $connect->content =~ /"results":"No result found"/ ) {
-            $check_pacman = `pacman -S --print '$pkgname'`;
+            $check_pacman = `pacman -S --print '${pkgname}'`;
             if ( $check_pacman =~ m[://] ) {
                 print "\n$bred=>>$reset Installing '$bgreen"
                   . "$pkgname${reset}' with pacman\n";
-                if ( $whoami eq "root\n" ) {
+                if ( $whoami eq 'root' ) {
                     if ($needed) {
                         my $pkgname = quotemeta $pkgname;
                         unless ( $pacmanq =~ /\n$pkgname\n/ ) {
