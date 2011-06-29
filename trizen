@@ -19,10 +19,11 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Latest edit on: 12 June 2011
+# Latest edit on: 29 June 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use HTML::Entities;
+
 unless ( -d "$ENV{'HOME'}/.config/" ) {
     mkdir "$ENV{'HOME'}/.config/";
 }
@@ -310,8 +311,7 @@ if ( $all_argvs =~ / -U/ ) {
                 &Install_local_package($local_pkg);
             }
             elsif ( $local_pkg =~ /\.pkg\.tar/
-                and $local_pkg =~ m[^$cwd/$pkgname$] )
-            {
+                and $local_pkg =~ m[^$cwd/$pkgname$] ) {
                 print "\n$bred*$reset Installing: $local_pkg\n\n";
                 &Install_local_package($local_pkg);
             }
@@ -326,8 +326,7 @@ if ( $all_argvs =~ / -U/ ) {
                 &Install_local_package($local_pkg);
             }
             elsif ( $local_pkg =~ /.*$pkgname$/
-                and $pkgname =~ /\\\.pkg\\\.tar/ )
-            {
+                and $pkgname =~ /\\\.pkg\\\.tar/ ) {
                 print "\n$bred*$reset Installing: $local_pkg\n\n";
                 &Install_local_package($local_pkg);
             }
@@ -394,8 +393,7 @@ sub Check_aur_deps {
             print " ($dep_name)\n";
         }
         if ( $dep_name ne $pkgname
-            and not grep { $_ eq $dep_name; } @final_aur_deps )
-        {
+            and not grep { $_ eq $dep_name; } @final_aur_deps ) {
             push @final_aur_deps, $dep_name;
         }
     }
@@ -414,8 +412,7 @@ sub Check_aur_deps {
             $dep =~ s/=.+//;
             if (    grep { $_ eq $lastdep; } @final_aur_deps
                 and $id ne $firstid
-                and not grep { $_ eq $dep; } @final_aur_deps )
-            {
+                and not grep { $_ eq $dep; } @final_aur_deps ) {
                 unshift @final_aur_deps, $dep;
             }
             elsif ( not grep { $_ eq $dep; } @final_aur_deps ) {
@@ -485,7 +482,7 @@ sub Install {
               . "with '${editor}'? (y/N)\n> ";
             chomp( $yn = <STDIN> );
             if ( $yn =~ /^y/i ) {
-                system "$editor $cache_dir/$pkg/PKGBUILD";
+                system "$editor '$cache_dir/$pkg/PKGBUILD'";
             }
         }
         chdir "$cache_dir/$pkg";
@@ -504,8 +501,8 @@ sub Install {
 }
 
 sub Update {
-    @aur_pkgs = `pacman -Qm`;
-    foreach $line (@aur_pkgs) {
+    my (@aur_pkgs) = `pacman -Qm`;
+    foreach my $line (@aur_pkgs) {
         chomp $line;
         next if $line =~ /^[\W]+/;
         $line =~ s/\+/%2B/g;
@@ -517,14 +514,12 @@ sub Update {
             $local_version = $2;
         }
         if ( $lwp->get("$info$local_pkgname")->content =~
-            /Version":"([^"]+)".*OutOfDate":"([\d]+)"/ )
-        {
+            /Version":"([^"]+)".*OutOfDate":"([\d]+)"/ ) {
             $aur_version = $1;
             $out_of_date = $2;
             if ( $local_version ne $aur_version ) {
                 if ( $aur_version gt $local_version
-                    and not $line =~ /-(?:svn|cvs|hg|bzr|darcs|git)/ )
-                {
+                    and not $line =~ /-(?:svn|cvs|hg|bzr|darcs|git)/ ) {
                     push @ood_packages, $local_pkgname;
                     push @for_upgrade,  "$bred*$reset $local_pkgname $bred"
                       . "$local_version$reset -> $bgreen$aur_version$reset\n";
@@ -668,8 +663,7 @@ sub Pre_install {
             if ( $pkgbuild_connect->content =~
                 /makedepends[\s]*=[\s]*([^\w]*)([^\)]*)/
                 and not $pkgbuild_connect->content =~
-                /makedepends[\s]*=[\s]*\([\s'"]*\)/ )
-            {
+                /makedepends[\s]*=[\s]*\([\s'"]*\)/ ) {
                 $makedepends = $2;
                 $makedepends =~ s/[<>]+[^' "]+//g;
                 $makedepends =~ s/=[^' "]+//g;
@@ -690,8 +684,7 @@ sub Pre_install {
                         push @deps_ids, $1;
                     }
                     unless ( $info_connect->content =~
-                        /"results":"No result found"/ )
-                    {
+                        /"results":"No result found"/ ) {
                         next;
                     }
                     push @pacman_deps, $makedepend;
@@ -731,7 +724,7 @@ sub Pre_install {
         $check_deps = join( '#', @packages_for_install );
         $check_deps =~ s/$pkgname#//g;
         $check_deps =~ s/#$|^#//g;
-        @packages_for_install = split( ?#?, $check_deps, 0 );
+        @packages_for_install = split( m?#?, $check_deps, 0 );
         push @packages_for_install, $pkgname;
         foreach $dep (@pacman_deps) {
             push @pacman_deps2, "$dep ";
@@ -798,8 +791,7 @@ sub Check_result {
         push @final_results, $result;
     }
     elsif ( $all_argvs =~ / -Ss[q]? /
-        and $result =~ /"Description":"[^"]*$keyword"/i )
-    {
+        and $result =~ /"Description":"[^"]*$keyword"/i ) {
         push @final_results, $result;
     }
 }
@@ -810,8 +802,7 @@ sub Parse_results {
         if (
             $result =~ /^"Name":"([^"]+)","Version":"([^"]*)",
 "CategoryID":"([\d]+)","Description":"([^"]*)"/x
-          )
-        {
+          ) {
             $name = $1;
             $ver  = $2;
             $cat  = $3;
@@ -821,8 +812,7 @@ sub Parse_results {
         if (
             $result =~ /"URL":"([^"]*)","URLPath":"([^"]*)","License":"([^"]*)",
 "NumVotes":"([^"]*)","OutOfDate":"([^"]*)"[\},\{\]]*$/x
-          )
-        {
+          ) {
             $url   = $1;
             $votes = $4;
             $ood   = $5;
@@ -889,7 +879,7 @@ if ( $all_argvs =~ / [-]+N / ) {
 [\s]*<pubDate>|</title>[\s]*
 [\s]*<link>|</description>[\s]*
 [\s]*<author>][---]g;
-    @RSS = split( ?\n?, $rss, 0 );
+    @RSS = split( m?\n?, $rss, 0 );
     foreach $_ (@RSS) {
 
         if ( $_ =~ m[<title>(.+)---(.+)---(.+)---(.+)---(.+)</pubDate>] ) {
