@@ -397,13 +397,13 @@ sub find_local_package {
     my $version     = defined $_[0] ? '-' . quotemeta( shift() ) : '';
     my $pkg_finded  = 0;
     foreach my $local_pkg (@local_files) {
-        if ( $local_pkg =~ m[.*[^/]*$pkgname${version}[^\/]*\.pkg\.tar.*]o ) {
+        if ( $local_pkg =~ m[.*[^/]*$pkgname${version}[^\/]*\.pkg\.tar.*] ) {
             print "\n$bred*$reset Installing: $local_pkg\n\n";
             $pkg_finded = 1;
             &install_local_package( $unq_pkgname, $local_pkg );
             last;
         }
-        elsif ( $local_pkg =~ /.*$pkgname$/o and $pkgname =~ /\\\.pkg\\\.tar/o )
+        elsif ( $local_pkg =~ /.*$pkgname$/o and $pkgname =~ /\\\.pkg\\\.tar/ )
         {
             print "\n$bred*$reset Installing: $local_pkg\n\n";
             $pkg_finded = 1;
@@ -413,7 +413,7 @@ sub find_local_package {
     }
     unless ($pkg_finded) {
         foreach my $local_pkg (@local_files) {
-            if ( $local_pkg =~ m[.*[^/]*${pkgname}[^\/]*\.pkg\.tar.*]o ) {
+            if ( $local_pkg =~ m[.*[^/]*${pkgname}[^\/]*\.pkg\.tar.*] ) {
                 print "\n$bred*$reset Installing: $local_pkg\n\n";
                 $pkg_finded = 1;
                 &install_local_package( $unq_pkgname, $local_pkg );
