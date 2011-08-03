@@ -19,7 +19,7 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Latest edit on: 02 August 2011
+# Latest edit on: 03 August 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use strict 'vars';
@@ -78,7 +78,7 @@ else {
 }
 $cache_dir = $location;
 unless ( -e $makeconf_file ) {
-    sysopen CONF, '/etc/makepkg.conf',0;
+    sysopen CONF, '/etc/makepkg.conf', 0;
     open RECONF, '>', $makeconf_file;
     while ( defined( $_ = <CONF> ) ) {
         if ( not $_ =~ /PKGEXT='(.+)/ ) {
@@ -192,7 +192,6 @@ sub help {
 \n";
     exit;
 }
-
 if ( grep { /^-Scc?$/; } @ARGV ) {
     eval 'require File::Path';
     print "\n[!] Removing $location\n";
@@ -200,7 +199,6 @@ if ( grep { /^-Scc?$/; } @ARGV ) {
     $@ ? print("[!] Error\n\n") : print("[*] Done.\n\n");
     exit;
 }
-
 require LWP::UserAgent;
 my $lwp = 'LWP::UserAgent'->new;
 $lwp->agent('Mozilla/5.0 (CLI; Trizen AUR Package Manager; U; en) Trizen/0.9');
@@ -394,29 +392,31 @@ if ( grep { /^-U/; } @ARGV ) {
 
 sub find_local_package {
     &locate_files unless grep { /^-U/; } @ARGV;
-    my $pkgname    = quotemeta shift();
-    my $version    = defined $_[0] ? '-' . quotemeta( shift() ) : '';
-    my $pkg_finded = 0;
+    my $unq_pkgname = shift();
+    my $pkgname     = quotemeta $unq_pkgname;
+    my $version     = defined $_[0] ? '-' . quotemeta( shift() ) : '';
+    my $pkg_finded  = 0;
     foreach my $local_pkg (@local_files) {
-        if ( $local_pkg =~ m[.*[^/]*$pkgname${version}[^\/]*\.pkg\.tar.*] ) {
+        if ( $local_pkg =~ m[.*[^/]*$pkgname${version}[^\/]*\.pkg\.tar.*]o ) {
             print "\n$bred*$reset Installing: $local_pkg\n\n";
             $pkg_finded = 1;
-            &install_local_package($local_pkg);
+            &install_local_package( $unq_pkgname, $local_pkg );
             last;
         }
-        elsif ( $local_pkg =~ /.*$pkgname$/ and $pkgname =~ /\\\.pkg\\\.tar/ ) {
+        elsif ( $local_pkg =~ /.*$pkgname$/o and $pkgname =~ /\\\.pkg\\\.tar/o )
+        {
             print "\n$bred*$reset Installing: $local_pkg\n\n";
             $pkg_finded = 1;
-            &install_local_package($local_pkg);
+            &install_local_package( $unq_pkgname, $local_pkg );
             last;
         }
     }
     unless ($pkg_finded) {
         foreach my $local_pkg (@local_files) {
-            if ( $local_pkg =~ m[.*[^/]*${pkgname}[^\/]*\.pkg\.tar.*] ) {
+            if ( $local_pkg =~ m[.*[^/]*${pkgname}[^\/]*\.pkg\.tar.*]o ) {
                 print "\n$bred*$reset Installing: $local_pkg\n\n";
                 $pkg_finded = 1;
-                &install_local_package($local_pkg);
+                &install_local_package( $unq_pkgname, $local_pkg );
                 last;
             }
         }
@@ -424,33 +424,19 @@ sub find_local_package {
 }
 
 sub install_local_package {
-    my $as_dep = $_[0] eq $main_pkg ? 0 : 1;
+    my $pkgname = shift();
+    my $mode = $pkgname eq $main_pkg ? '--asexplicit' : '--asdep';
     if ( $whoami eq 'root' ) {
-        if ($as_dep) {
-            system "$pacman -Uf --asdeps $_[0]";
-        }
-        else {
-            system "$pacman -Uf $_[0]";
-        }
+        system qq[$pacman -Uf $mode "$_[0]"];
     }
     else {
         if ( $sudo_or_su eq 'sudo' ) {
             print 'Sudo ';
-            if ($as_dep) {
-                system qq[$sudo_or_su "$pacman -Uf --asdeps "$_[0]""];
-            }
-            else {
-                system qq[$sudo_or_su "$pacman -Uf "$_[0]""];
-            }
+            system qq[$sudo_or_su "$pacman -Uf $mode "$_[0]""];
         }
         else {
             print 'Root ';
-            if ($as_dep) {
-                system qq[$sudo_or_su "$pacman -Uf --asdeps "$_[0]""];
-            }
-            else {
-                system qq[$sudo_or_su "$pacman -Uf "$_[0]""];
-            }
+            system qq[$sudo_or_su "$pacman -Uf $mode "$_[0]""];
         }
     }
 }
@@ -912,7 +898,7 @@ sub pre_install {
                 }
             }
             next unless sysopen FILE, "$cache_dir/$pkg/PKGBUILD", 0;
-            my @pkgbuild_file = <FILE>;
+            my (@pkgbuild_file) = <FILE>;
             close FILE;
             my $array_name = $pkg;
             $array_name =~ s/\W/_/g;
