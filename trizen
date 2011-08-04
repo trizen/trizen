@@ -1041,7 +1041,7 @@ sub info {
     }
     $pkgbuild_connect = $lwp->get($pkgbuild);
     my $depends;
-    if ( $pkgbuild_connect->content =~ /\ndepends[\s]*=[\s]*\(([^\)]*)/ ) {
+    if ( $pkgbuild_connect->content =~ /\n *depends[\s]*=[\s]*\(([^\)]*)/ ) {
         $depends = $1;
         $depends =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
         $depends =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
@@ -1051,7 +1051,7 @@ sub info {
         $depends =~ s/^[\s]+|[\s]+$//g;
     }
     my $makedepends;
-    if ( $pkgbuild_connect->content =~ /\nmakedepends[\s]*=[\s]*\(([^\)]*)/ ) {
+    if ( $pkgbuild_connect->content =~ /\n *makedepends[\s]*=[\s]*\(([^\)]*)/ ) {
         $makedepends = $1;
         $makedepends =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
         $makedepends =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
@@ -1064,7 +1064,7 @@ sub info {
         $makedepends = 'None';
     }
     my $optdepends;
-    if ( $pkgbuild_connect->content =~ /\noptdepends[\s]*=[\s]*\(([^\)]*)/ ) {
+    if ( $pkgbuild_connect->content =~ /\n *optdepends[\s]*=[\s]*\(([^\)]*)/ ) {
         $optdepends = $1;
         $optdepends =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
         $optdepends =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
@@ -1086,7 +1086,7 @@ sub info {
     $all_depends =~ s/=[^\s]+//g;
     @all_depends = split( ' ', $all_depends, 0 );
     my $license;
-    if ( $pkgbuild_connect->content =~ /\nlicense[\s]*=[\s]*(.+)/ ) {
+    if ( $pkgbuild_connect->content =~ /\n *license[\s]*=[\s]*(.+)/ ) {
         $license = $1;
         $license =~ s/[")(']//g;
         $license =~ s/#(.*)//;
@@ -1095,7 +1095,7 @@ sub info {
         $license = '';
     }
     my $groups;
-    if ( $pkgbuild_connect->content =~ /\ngroups[\s]*=[\s]*(.+)/ ) {
+    if ( $pkgbuild_connect->content =~ /\n *groups[\s]*=[\s]*(.+)/ ) {
         $groups = $1;
         $groups =~ s/['"\)\(]+//g;
     }
@@ -1103,7 +1103,7 @@ sub info {
         $groups = '';
     }
     my $provides;
-    if ( $pkgbuild_connect->content =~ /\nprovides[\s]*=[\s]*(.+)/ ) {
+    if ( $pkgbuild_connect->content =~ /\n *provides[\s]*=[\s]*(.+)/ ) {
         $provides = $1;
         $provides =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
         $provides =~ s/\$[\{]?pkgver[\}]?/$pkgver/g;
@@ -1113,7 +1113,7 @@ sub info {
         $provides = '';
     }
     my $conflicts;
-    if ( $pkgbuild_connect->content =~ /\nconflicts[\s]*=[\s]*(.+)/ ) {
+    if ( $pkgbuild_connect->content =~ /\n *conflicts[\s]*=[\s]*(.+)/ ) {
         $conflicts = $1;
         $conflicts =~ s/['"\(\)]+//g;
         $conflicts =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
@@ -1123,7 +1123,7 @@ sub info {
         $conflicts = '';
     }
     my $replaces;
-    if ( $pkgbuild_connect->content =~ /\nreplaces[\s]*=[\s]*(.+)/ ) {
+    if ( $pkgbuild_connect->content =~ /\n *replaces[\s]*=[\s]*(.+)/ ) {
         $replaces = $1;
         $replaces =~ s/['"\)\(]+//g;
         $replaces =~ s/\$[\{]?pkgname[\}]?/$pkg/g;
@@ -1133,7 +1133,7 @@ sub info {
         $replaces = '';
     }
     my $arch;
-    if ( $pkgbuild_connect->content =~ /\narch[\s]*=[\s]*(.+)/ ) {
+    if ( $pkgbuild_connect->content =~ /\n *arch[\s]*=[\s]*(.+)/ ) {
         $arch = $1;
         $arch =~ s/['"\(\)]+//g;
     }
