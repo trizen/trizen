@@ -22,10 +22,8 @@
 # Latest edit on: 03 August 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
-use strict 'vars';
-use strict 'subs';
-use HTML::Entities;
-use File::Find ('find');
+use File::Find     ('find');
+use HTML::Entities ('decode_entities');
 
 my $main_pkg      = '';
 my $show_comments = 1;
@@ -471,27 +469,25 @@ if (grep { /^-S(q)?s(q)?$/; } @ARGV) {
         }
     }
     @final_results = sort @final_results;
-    my ($name, $ver, $cat, $desc, $url, $votes, $ood);
-    foreach my $result (@final_results) {
-        if ($result =~ /^"Name":"([^"]+)","Version":"([^"]*)",
-"CategoryID":"([\d]+)","Description":"([^"]*)"/x
-          ) {
-            $name = $1;
-            $ver  = $2;
-            $cat  = $3;
-            $desc = $4;
-            ++$n;
-        }
-        if ($result =~ /"URL":"([^"]*)","URLPath":"([^"]*)","License":"([^"]*)",
-"NumVotes":"([^"]*)","OutOfDate":"([^"]*)"[\},\{\]]*$/x
-          ) {
-            $url   = $1;
-            $votes = $4;
-            $ood   = $5;
-        }
+    foreach $_ (@final_results) {
+        my (@aur_results) = split(/","/, $_, 0);
+        my $name;
+        grep { $n += 1 if /Name":"(.+)/ and $name = $1; } @aur_results;
+        my $ver;
+        grep { $ver = $1 if /Version":"(.+)/; } @aur_results;
+        my $cat;
+        grep { $cat = parse_category($1) if /CategoryID":"(.+)/; } @aur_results;
+        my $desc;
+        grep { $desc = $1 if /Description":"(.+)/; } @aur_results;
+        my $votes;
+        grep { $votes = $1 if /(?:Num)?Votes":"(.+)/; } @aur_results;
+        my $ood;
+        grep { $ood = $1 if /OutOfDate":"(.+)/; } @aur_results;
+        my $url;
+        grep { $url = $1 if /URL":"(.+)/; } @aur_results;
         $url  =~ s[\\/][/]g;
         $desc =~ s[\\/][/]g;
-        $cat = parse_category($cat);
+
         unless ($quiet) {
             print "$green$n. $bgreen";
         }
@@ -1008,7 +1004,7 @@ sub info {
         $aur_id = $1;
     }
     my $votes;
-    if ($connect->content =~ /"NumVotes":"([^"]+)/) {
+    if ($connect->content =~ /"(?:Num)?Votes":"([^"]+)/) {
         $votes = $1;
     }
     my $out_of_date;
@@ -1222,5 +1218,4 @@ sub info {
     print "$bred*$reset Description\t: $description\n\n";
     return $connect->content;
 }
-
 exit 0;
