@@ -19,11 +19,12 @@
 # Coded by Trizen (http://trizen.go.ro)
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
-# Latest edit on: 10 September 2011
+# Latest edit on: 06 November 2011
 # Email: echo dHJpemVueEBnbWFpbC5jb20K | base64 -d
 
 use File::Find     ('find');
 use HTML::Entities ('decode_entities');
+use strict;
 
 my $main_pkg      = '';
 my $show_comments = 1;
@@ -56,16 +57,16 @@ my $cgreen        = "\e[42m";
 my $cblack        = "\e[40m";
 my $byellow       = "\e[1;33m";
 my $reset         = "\e[0m";
-
-chomp(my $whoami = `whoami`);
-my @local_files;
-my @all_depends;
-my $pkgbuild_connect;
-my $pkg_version;
-&help unless scalar @ARGV;
-mkdir "$ENV{'HOME'}/.config/" unless -d "$ENV{'HOME'}/.config/";
 my $user;
 my $location;
+my $pkgbuild_connect;
+my $pkg_version;
+
+my @local_files;
+my @all_depends;
+help() unless scalar @ARGV;
+mkdir "$ENV{'HOME'}/.config/" unless -d "$ENV{'HOME'}/.config/";
+chomp(my $whoami = `whoami`);
 
 if ($whoami ne 'root') {
     $user     = $whoami;
@@ -81,7 +82,7 @@ $cache_dir = $location;
 
 unless (-e $makeconf_file) {
 
-    sysopen CONF, '/etc/makepkg.conf', 0;
+    open CONF, '<', '/etc/makepkg.conf';
 
     open RECONF, '>', $makeconf_file;
 
@@ -141,7 +142,7 @@ foreach $_ (@ARGV) {
         $needed = 1;
     }
     elsif (/^-+(?:h|help|usage|\?)$/) {
-        &help;
+        help();
     }
 }
 
@@ -220,7 +221,7 @@ $lwp->agent('Mozilla/5.0 (CLI; Trizen AUR Package Manager; U; en) Trizen/0.9');
 my $pacmanq = "\n" . `pacman -Qq` . "\n";
 
 if (grep { $_ eq '-S'; } @ARGV) {
-    &pre_install;
+    pre_install();
 }
 
 if (grep { /^-(?:Q|R)/; } @ARGV) {
@@ -382,7 +383,7 @@ if (grep { /^-Sy?u$/; } @ARGV) {
                 next;
             }
         }
-        &pre_install;
+        pre_install();
     }
     else {
         print "\n$bgreen* Your AUR Packages are up to date.\n\n";
@@ -422,26 +423,26 @@ if (grep { /^-U/; } @ARGV) {
 
             if ($local_pkg =~ m[.+\Q$pkgname\E[^/]*\.pkg\.tar.*]) {
                 print "\n$bred*$reset Installing: $local_pkg\n\n";
-                &install_local_package($local_pkg);
+                install_local_package($local_pkg);
                 last;
             }
             elsif ($local_pkg =~ /\.pkg\.tar/ and $local_pkg =~ m[^\Q$cwd\E/\Q$pkgname\E$]) {
                 print "\n$bred*$reset Installing: $local_pkg\n\n";
-                &install_local_package($local_pkg);
+                install_local_package($local_pkg);
                 last;
             }
         }
     }
-    &locate_files;
+    locate_files();
 
     foreach my $pkgname (@ARGV) {
         next if $pkgname =~ /^-/;
-        &find_local_package($pkgname);
+        find_local_package($pkgname);
     }
 }
 
 sub find_local_package {
-    &locate_files unless grep { /^-U/; } @ARGV;
+    locate_files unless grep { /^-U/; } @ARGV;
     my $unq_pkgname = shift();
     my $pkgname     = quotemeta $unq_pkgname;
     my $version     = defined $_[0] ? quotemeta shift() : '';
@@ -453,13 +454,13 @@ sub find_local_package {
         if ($local_pkg =~ m[.*[^/]*$pkgname-${version}[^\/]*\.pkg\.tar.*]) {
             print "\n$bred*$reset Installing: $local_pkg\n\n";
             $pkg_finded = 1;
-            &install_local_package($unq_pkgname, $local_pkg);
+            install_local_package($unq_pkgname, $local_pkg);
             last;
         }
         elsif ($local_pkg =~ /.*$pkgname$/ and $pkgname =~ /\\\.pkg\\\.tar/) {
             print "\n$bred*$reset Installing: $local_pkg\n\n";
             $pkg_finded = 1;
-            &install_local_package($unq_pkgname, $local_pkg);
+            install_local_package($unq_pkgname, $local_pkg);
             last;
         }
     }
@@ -471,7 +472,7 @@ sub find_local_package {
             if ($local_pkg =~ m[.*[^/]*${pkgname}[^\/]*\.pkg\.tar.*]) {
                 print "\n$bred*$reset Installing: $local_pkg\n\n";
                 $pkg_finded = 1;
-                &install_local_package($unq_pkgname, $local_pkg);
+                install_local_package($unq_pkgname, $local_pkg);
                 last;
             }
         }
@@ -483,17 +484,17 @@ sub install_local_package {
     my $mode = $pkgname eq $main_pkg ? '--asexplicit' : '--asdep';
 
     if ($whoami eq 'root') {
-        system qq[$pacman -Uf $mode "$_[0]"];
+        system "$pacman -Uf $mode '$_[0]'";
     }
     else {
 
         if ($sudo_or_su eq 'sudo') {
             print 'Sudo ';
-            system qq[$sudo_or_su "$pacman -Uf $mode "$_[0]""];
+            system "$sudo_or_su $pacman -Uf $mode '$_[0]'";
         }
         else {
             print 'Root ';
-            system qq[$sudo_or_su "$pacman -Uf $mode "$_[0]""];
+            system qq[$sudo_or_su "$pacman -Uf $mode '$_[0]'"];
         }
     }
 }
@@ -705,6 +706,7 @@ sub pre_install {
                 }
 
                 if ($show_comments) {
+                    no strict 'refs';
                     my $array_name = $dep_name;
                     $array_name =~ s/\W/_/g;
                     my $AUR = $connect->content;
@@ -1047,7 +1049,12 @@ sub pre_install {
 
             my $array_name = $pkg;
             $array_name =~ s/\W/_/g;
-            print @$array_name if $show_comments and not $quiet;
+
+            if ($show_comments and not $quiet) {
+                no strict 'refs';
+                print @$array_name;
+            }
+
             print "\n$bred=>>$reset PKGBUILD of $pkg\n\n";
             print @pkgbuild_file;
             print "\n";
@@ -1064,11 +1071,11 @@ sub pre_install {
 
             if ($whoami eq 'root') {
                 system $rootmake;
-                &find_local_package($pkg, $pkg_version);
+                find_local_package $pkg, $pkg_version;
             }
             else {
                 system $usermake;
-                &find_local_package($pkg, $pkg_version);
+                find_local_package $pkg, $pkg_version;
             }
 
             if ($movepkg) {
