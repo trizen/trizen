@@ -69,6 +69,7 @@ while (defined($_ = <PACMAN_CONF>)) {
 
     if (/^\s*#?CacheDir\s*=\s*(.+)/) {
         $dir_where_to_move_pkg = $1;
+        last;
     }
 }
 close PACMAN_CONF;
