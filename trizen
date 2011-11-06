@@ -63,6 +63,8 @@ my $pkgbuild_connect;
 my $pkg_version;
 my $dir_where_to_move_pkg;
 
+my %comments_table;
+
 open PACMAN_CONF, '<', '/etc/pacman.conf';
 
 while (defined($_ = <PACMAN_CONF>)) {
@@ -424,7 +426,7 @@ sub mktree {
 }
 
 sub locate_files {
-    undef @local_files if scalar @local_files;
+    undef @local_files if @local_files;
     find(\&mktree, $location);
 }
 if (grep { /^-U/; } @ARGV) {
@@ -598,6 +600,38 @@ if (grep { /^-S(q)?s(q)?$/; } @ARGV) {
     }
 }
 
+sub get_comments {
+    my $dep_name = shift();
+    my $AUR      = shift();
+    my $array_name;
+    $dep_name =~ tr/A-Z_a-z//cd;
+    eval "\$array_name = \@$dep_name";
+    $AUR =~ s/<div class="pgbox version">[^<]+//;
+    $AUR =~ s/<([^>]+)>//g;
+    $AUR =~ s/[\s]+Comment by:/\nComment by:/g;
+    $AUR =~ s/Comment by:(.+)/$cblack${byellow}Comment by:$1$reset/g;
+    $AUR = decode_entities($AUR);
+
+    until (not $AUR =~ /\n[ \t]*\n/) {
+        $AUR =~ s/\n[ \t]*\n/\n/g;
+    }
+
+    if ($AUR =~ /Show all [\d]+ comments/) {
+        $AUR =~ s/Show all [\d]+ comments.+//s;
+    }
+
+    my (@AUR) = split(/\Q$cblack\E/, $AUR, 0);
+
+    foreach my $comment (@AUR) {
+
+        if ($comment =~ /Comment by:/) {
+            unshift @$array_name, "$cblack$comment";
+        }
+    }
+    unshift @$array_name, "\n" if @$array_name;
+    $comments_table{$dep_name} = join('', @$array_name);
+}
+
 sub pre_install {
 
     foreach my $pkgname (@ARGV) {
@@ -716,40 +750,13 @@ sub pre_install {
                         print " ($dep_name)\n";
                     }
 
-                    if ($dep_name ne $pkgname and not grep { $_ eq $dep_name; } @final_aur_deps) {
+                    if ($dep_name ne $pkgname and not $dep_name ~~ \@final_aur_deps) {
                         push @final_aur_deps, $dep_name;
                     }
                 }
 
                 if ($show_comments) {
-                    no strict 'refs';
-                    my $array_name = $dep_name;
-                    $array_name =~ s/\W/_/g;
-                    my $AUR = $connect->content;
-                    $AUR =~ s/<div class="pgbox version">[^<]+//;
-                    $AUR =~ s/<([^>]+)>//g;
-                    $AUR =~ s/[\s]+Comment by:/\nComment by:/g;
-                    $AUR =~ s/Comment by:(.+)/$cblack${byellow}Comment by:$1$reset/g;
-                    $AUR = decode_entities($AUR);
-
-                    until (not $AUR =~ /\n[ \t]*\n/) {
-                        $AUR =~ s/\n[ \t]*\n/\n/g;
-                    }
-
-                    if ($AUR =~ /Show all [\d]+ comments/) {
-                        $AUR =~ s/Show all [\d]+ comments.+//s;
-                    }
-
-                    my $split = quotemeta $cblack;
-                    my (@AUR) = split(/$split/, $AUR, 0);
-
-                    foreach my $comment (@AUR) {
-
-                        if ($comment =~ /Comment by:/) {
-                            unshift @$array_name, "$cblack$comment";
-                        }
-                    }
-                    unshift @$array_name, "\n" if $#$array_name > -1;
+                    get_comments $dep_name, $connect->content;
                 }
 
                 my $aur_deps = $connect->content;
@@ -766,12 +773,11 @@ sub pre_install {
                         $dep =~ s/^\s|\s$//g;
                         $dep =~ s/[<>]+.+//;
                         $dep =~ s/=.+//;
-                        if (    grep { $_ eq $lastdep; } @final_aur_deps
-                            and $id ne $firstid
-                            and not grep { $_ eq $dep; } @final_aur_deps) {
+
+                        if ($lastdep ~~ \@final_aur_deps and $id ne $firstid and not $dep ~~ \@final_aur_deps) {
                             unshift @final_aur_deps, $dep;
                         }
-                        elsif (not grep { $_ eq $dep; } @final_aur_deps) {
+                        elsif (not $dep ~~ \@final_aur_deps) {
                             push @final_aur_deps, $dep;
                         }
 
@@ -859,32 +865,7 @@ sub pre_install {
                 }
 
                 if ($show_comments) {
-                    my $array_name = $dep_name;
-                    $array_name =~ s/\W/_/g;
-                    my $AUR = $connect->content;
-                    $AUR =~ s/<div class="pgbox version">[^<]+//;
-                    $AUR =~ s/<([^>]+)>//g;
-                    $AUR =~ s/[\s]+Comment by:/\nComment by:/g;
-                    $AUR =~ s/Comment by:(.+)/$cblack${byellow}Comment by:$1$reset/g;
-                    $AUR = decode_entities($AUR);
-
-                    until (not $AUR =~ /\n[ \t]*\n/) {
-                        $AUR =~ s/\n[ \t]*\n/\n/g;
-                    }
-
-                    if ($AUR =~ /Show all [\d]+ comments/) {
-                        $AUR =~ s/Show all [\d]+ comments[\s\S]+//;
-                    }
-
-                    my (@AUR) = split(/\Q$cblack\E/, $AUR, 0);
-
-                    foreach my $comment (@AUR) {
-
-                        if ($comment =~ /Comment by:/) {
-                            unshift @$array_name, "$cblack$comment";
-                        }
-                    }
-                    unshift @$array_name, "\n" if $#$array_name > -1;
+                    get_comments $dep_name, $connect->content;
                 }
 
                 my $aur_deps = $connect->content;
@@ -1063,12 +1044,10 @@ sub pre_install {
             my (@pkgbuild_file) = <FILE>;
             close FILE;
 
-            my $array_name = $pkg;
-            $array_name =~ s/\W/_/g;
-
             if ($show_comments and not $quiet) {
-                no strict 'refs';
-                print @$array_name;
+                my $array_name = $pkg;
+                $array_name =~ tr/A-Z_a-z//cd;
+                print $comments_table{$array_name};
             }
 
             print "\n$bred=>>$reset PKGBUILD of $pkg\n\n";
