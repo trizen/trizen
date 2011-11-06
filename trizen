@@ -61,6 +61,17 @@ my $user;
 my $location;
 my $pkgbuild_connect;
 my $pkg_version;
+my $dir_where_to_move_pkg;
+
+open PACMAN_CONF, '<', '/etc/pacman.conf';
+
+while (defined($_ = <PACMAN_CONF>)) {
+
+    if (/^\s*#?CacheDir\s*=\s*(.+)/) {
+        $dir_where_to_move_pkg = $1;
+    }
+}
+close PACMAN_CONF;
 
 my @local_files;
 my @all_depends;
@@ -88,7 +99,7 @@ unless (-e $makeconf_file) {
 
     while (defined($_ = <CONF>)) {
 
-        if (not $_ =~ /PKGEXT='(.+)/) {
+        if (not /PKGEXT='(.+)/) {
             print RECONF $_;
         }
         else {
@@ -117,8 +128,12 @@ foreach $_ (@ARGV) {
     elsif (/^-+devel$/) {
         $devel = 1;
     }
-    elsif (/^-+(?:mvpkg|movepkg)$/) {
+    elsif (/^-+(?:mvpkg|movepkg)=?(.*)/) {
         $movepkg = 1;
+
+        if ($1) {
+            $dir_where_to_move_pkg = $1;
+        }
     }
     elsif (/^-+(?:C$|no.?comment)/) {
         $show_comments = 0;
@@ -196,14 +211,14 @@ sub help {
     -nc         : no color for text
     -nd         : no description for search results
     --auronly   : searches for a package only on AUR
-    --movepkg   : after build, move pkg to the home directory
+    --movepkg   : move the built package to the pacman cache directory
     --needed    : don't reinstall up to date packages
     --noedit    : do not prompt to edit files
     --devel     : update devel packages during -Su
     --noconfirm : do not prompt for any confirmation
     --skipinteg : when using makepkg, do not check md5s
     --help      : outputs this message
-\n$bred*$reset Example: trizen -S bleachbit youtube-viewer -q --movepkg
+\n$bred*$reset Example: trizen -S bleachbit youtube-viewer -q --movepkg=/tmp
 \n";
     exit;
 }
@@ -627,7 +642,7 @@ sub pre_install {
                             else {
                                 print "\nSudo ";
                             }
-                            system qq[$sudo_or_su "$pacman -S $pkgname --needed"];
+                            system "$sudo_or_su $pacman -S $pkgname --needed";
                         }
                     }
                     else {
@@ -1081,7 +1096,14 @@ sub pre_install {
             if ($movepkg) {
 
                 if (`ls '$cache_dir/${pkg}'` =~ /(.+)\.pkg\.tar(.*)/) {
-                    `mv '$cache_dir/$pkg/$1.pkg.tar$2' '$ENV{'HOME'}/'`;
+
+                    if (-w $dir_where_to_move_pkg) {
+                        `mv \Q$cache_dir/$pkg/$1.pkg.tar$2\E \Q$dir_where_to_move_pkg\E`;
+                    }
+                    else {
+                        print "\n$bred*$reset Moving '${pkg}' to $dir_where_to_move_pkg\nRoot ";
+                        `su -c 'mv \Q$cache_dir/$pkg/$1.pkg.tar$2\E \Q$dir_where_to_move_pkg\E'`;
+                    }
                 }
             }
         }
