@@ -1052,7 +1052,7 @@ sub pre_install {
             if ($show_comments and not $quiet) {
                 my $array_name = $pkg;
                 $array_name =~ tr/A-Z_a-z//cd;
-                print $comments_table{$array_name};
+                print $comments_table{$array_name} if exists $comments_table{$array_name};
             }
 
             print "\n$bred=>>$reset PKGBUILD of $pkg\n\n";
