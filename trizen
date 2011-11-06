@@ -439,12 +439,12 @@ if (grep { /^-U/; } @ARGV) {
 
             if ($local_pkg =~ m[.+\Q$pkgname\E[^/]*\.pkg\.tar.*]) {
                 print "\n$bred*$reset Installing: $local_pkg\n\n";
-                install_local_package($local_pkg);
+                install_local_package('NULL', $local_pkg);
                 last;
             }
             elsif ($local_pkg =~ /\.pkg\.tar/ and $local_pkg =~ m[^\Q$cwd\E/\Q$pkgname\E$]) {
                 print "\n$bred*$reset Installing: $local_pkg\n\n";
-                install_local_package($local_pkg);
+                install_local_package('NULL', $local_pkg);
                 last;
             }
         }
