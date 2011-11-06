@@ -128,7 +128,7 @@ foreach $_ (@ARGV) {
     elsif (/^-+devel$/) {
         $devel = 1;
     }
-    elsif (/^-+(?:mvpkg|movepkg)=?(.*)/) {
+    elsif (/^-+(?:mvpkg|movepkg|M)=?(.*)/) {
         $movepkg = 1;
 
         if ($1) {
