@@ -621,15 +621,20 @@ sub get_comments {
     }
 
     my (@AUR) = split(/\Q$cblack\E/, $AUR, 0);
+    my $found_comment = 0;
 
     foreach my $comment (@AUR) {
 
         if ($comment =~ /Comment by:/) {
+            $found_comment = 1;
             unshift @$array_name, "$cblack$comment";
         }
     }
-    unshift @$array_name, "\n" if @$array_name;
-    $comments_table{$dep_name} = join('', @$array_name);
+
+    if ($found_comment) {
+        unshift @$array_name, "\n";
+        $comments_table{$dep_name} = join('', @$array_name);
+    }
 }
 
 sub pre_install {
