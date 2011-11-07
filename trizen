@@ -278,7 +278,7 @@ if (grep { /^-(?:Q|R)/; } @ARGV) {
                 }
                 else {
                     print 'Root ';
-                    exec qq[$sudo_or_su "$pacman @ARGV"];
+                    exec "$sudo_or_su '$pacman @ARGV'";
                 }
             }
         }
@@ -670,7 +670,6 @@ sub pre_install {
                     }
                 }
                 else {
-
                     if ($needed) {
                         my $pkgname = quotemeta $pkgname;
 
@@ -678,22 +677,24 @@ sub pre_install {
 
                             if ($sudo_or_su ne 'sudo') {
                                 print "\nRoot ";
+                                system "$sudo_or_su '$pacman -S $pkgname --needed'";
                             }
                             else {
                                 print "\nSudo ";
+                                system "$sudo_or_su $pacman -S $pkgname --needed";
                             }
-                            system "$sudo_or_su $pacman -S $pkgname --needed";
                         }
                     }
                     else {
 
                         if ($sudo_or_su ne 'sudo') {
                             print "\nRoot ";
+                            system "$sudo_or_su '$pacman -S $pkgname'";
                         }
                         else {
                             print "\nSudo ";
+                            system "$sudo_or_su $pacman -S $pkgname";
                         }
-                        system qq[$sudo_or_su "$pacman -S $pkgname"];
                     }
                 }
 
