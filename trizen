@@ -48,7 +48,7 @@ use Archive::Tar qw();
 use LWP::UserAgent qw();
 use File::Spec::Functions qw(catdir tmpdir curdir rel2abs);
 
-my $pkgname  = q[Trizen's AUR Package Manager];
+my $pkgname  = q{Trizen's AUR Package Manager};
 my $version  = '1.00';
 my $execname = 'trizen';
 
@@ -129,7 +129,7 @@ if (-e $config_file and (-s _) > 1) {
         $lconfig{update_config} = 1 if $config->{VERSION} ne $version;
     }
     else {
-        warn "[!] Invalid config file! ", ($! || "Doesn't returns a HASH ref!\n");
+        warn "[!] Invalid config file! ", ($! || "Doesn't return a HASH ref!\n");
     }
 }
 else {
@@ -214,11 +214,14 @@ sub help () {
     -S              : installs package
     -Ss             : searches for package
     -Si             : outputs info for package
+    -Sm             : outputs the packages maintained by [...]
     -Sp             : outputs PKGBUILD only
     -Su             : upgrades installed packages
     -Sc             : clears the cache directory
     -C              : outputs AUR comments only
     -G              : download and extract AUR tarball only
+    -R              : remove packages (see pacman -Rh)
+    -Q              : for installed packages (see pacman -Qh)
     -U              : installs local packages from /tmp or CWD
 \n$c{bgreen}Other options:$c{reset}
     --quiet         : be quiet
@@ -240,7 +243,7 @@ sub help () {
     --debug         : to see what's going on
     --help          : print this message and exit
     --version       : print version and exit
-\n$c{bred}*$c{reset} Example: $execname -S openbox-git youtube-viewer --needed
+\n$c{bred}**$c{reset} Configuration file: $config_file
 HELP
     main_quit();
 }
@@ -534,7 +537,7 @@ sub parse_quoted_words ($) {
 
     $value =~ s/["']\s*#.*//;
     $value !~ /["']/ && $value =~ s/\s*#.*//;
-    $value =~ tr{'"}{}d;
+    $value =~ tr/'"//d;
     return $value;
 }
 
@@ -662,7 +665,7 @@ sub absolute_deps ($) {
 sub show_info ($) {
     my ($info) = @_;
 
-    return if ref $info ne 'HASH';
+    return if ref $info->{results} ne 'HASH';
 
     printf "Name           : %s\n", "$c{bold}$info->{results}{Name}$c{reset}";
     printf "Version        : %s\n", $info->{results}{Version} // 'Unknown';
@@ -841,6 +844,8 @@ sub install_package ($) {
         return;
     }
 
+    ref $info->{results} eq 'HASH' or return;
+
     say "\n$c{bold}** Installing:$c{reset}: $c{bgreen}$info->{results}{Name}$c{reset}";
     say "$c{bold}** AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID});
 
@@ -1011,6 +1016,8 @@ sub update_local_packages () {
     my %for_update;
     foreach my $hash_ref (@{$multiinfo->{results}}) {
 
+        ref $hash_ref eq 'HASH' or next;
+
         my $pkgname = $hash_ref->{Name};
         my $version = $hash_ref->{Version};
 
@@ -1106,16 +1113,15 @@ if ($lconfig{S}) {    # -S
                 }
                 else {
                     warn "[!] Unable to install $pkg\n" if $lconfig{debug};
-                    next;
                 }
-                delete $lconfig{main_pkg};
             }
         }
     }
 }
 elsif ($lconfig{C}) {    # -C
     foreach my $pkg (@argv_packages) {
-        my $info = get_rpc_info($pkg);
+        my $info = get_rpc_info($pkg) or next;
+        ref $info->{results} eq 'HASH' or next;
         say "$c{bold}** AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}:$c{reset} ",
           sprintf($lconfig{aur_package_id_url}, $info->{results}{ID}),;
         foreach my $comment (get_comments($info->{results}{ID})) {
