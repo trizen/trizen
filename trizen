@@ -917,7 +917,7 @@ sub install_package ($) {
 }
 
 sub clean_cache () {
-    say "\n** Removing $lconfig{cache_dir}";
+    say "** Removing $lconfig{cache_dir}";
     rmtree($lconfig{cache_dir}) or die "error: $!";
     say "** Done!";
     main_quit();
@@ -1015,7 +1015,7 @@ sub update_local_packages () {
         my $version = $hash_ref->{Version};
 
         if ($lconfig{show_ood}) {
-            say "$c{bgreen}$pkgname$c{reset} has been flagged as out-of-date!" if $hash_ref->{OutOfDate};
+            say "$c{bgreen}$pkgname$c{reset} has been flagged out of date!" if $hash_ref->{OutOfDate};
         }
 
         if ($version gt $packages{$pkgname} or ($lconfig{devel} and $version =~ /^\d{2,}-\d{1,2}\z/)) {
@@ -1074,7 +1074,7 @@ if ($lconfig{S}) {    # -S
             show_info($info);
         }
     }
-    elsif ($lconfig{u}) {
+    elsif ($lconfig{u}) {    # -Su
         update_local_packages();
     }
     elsif ($lconfig{s}) {    # -Ss
