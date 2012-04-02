@@ -971,9 +971,8 @@ sub search_aur_packages (@) {
                 if (not $result->{Name} =~ $key_re and not $result->{Description} =~ $key_re) {
                     next LOOP_2;
                 }
-                push @matched_results, $result;
-                next LOOP_2;
             }
+            push @matched_results, $result;
         }
     }
     print_aur_results(@matched_results) or return;
