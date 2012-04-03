@@ -574,7 +574,7 @@ sub parse_pkgbuild ($) {
         $key = strip_space($key);
 
         if (
-            $value =~ s/\$([{(]?)(.+?)(??{ qr{\Q$parens{$1}\E} || qr{\b} })/
+            $value =~ s/\$([{(]?)(.+?)(??{ exists $parens{$1} ? quotemeta($parens{$1}) : qr{\b} })/
                         $2 && $_[0]->{pkgbuild}{$2} || "\$$1$2" . $parens{$1} || q{}
         /gsex
           ) {
