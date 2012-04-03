@@ -406,8 +406,8 @@ sub get_non_arguments_from_array (@) {
 sub get_comments ($) {
     my ($id) = @_;
 
-    return unless defined $id;
-    return unless $id =~ /^\d+\z/;
+    defined $id or return;
+    $id =~ /^\d+\z/ or return;
 
     my $url = sprintf($lconfig{aur_package_id_url}, $id);
     $url =~ s/^https:/http:/;
@@ -498,7 +498,7 @@ sub array_ref_or_string (@) {
 
 sub strip_space ($) {
     my ($string) = @_;
-    defined $string or return '';
+    defined $string or return q{};
     $string =~ s/^\s+//;
     return unpack 'A*', $string;
 }
@@ -524,7 +524,7 @@ sub indent_array (@) {
 sub parse_quoted_words ($) {
     my ($value) = @_;
 
-    return q{} unless defined $value;
+    defined $value or return q{};
 
     $value = strip_space($value);
 
@@ -575,7 +575,7 @@ sub parse_pkgbuild ($) {
 
         if (
             $value =~ s/\$([{(]?)(.+?)(??{ $parens{$1} || qr{\b} })/
-                        $2 && $_[0]->{pkgbuild}{$2} || "\$$1$2" . $parens{$1} || ''
+                        $2 && $_[0]->{pkgbuild}{$2} || "\$$1$2" . $parens{$1} || q{}
         /gsex
           ) {
             say "Replaced VALUE: $value" if $lconfig{debug};
@@ -958,7 +958,7 @@ sub search_aur_packages (@) {
     my @matched_results;
     foreach my $results (@all_results) {
 
-        next unless ref $results->{results} eq 'ARRAY';
+        ref $results->{results} eq 'ARRAY' or next;
 
       LOOP_2: foreach my $result (@{$results->{results}}) {
             next if $seen{$result->{Name}}++;
@@ -977,7 +977,7 @@ sub search_aur_packages (@) {
 sub list_aur_maintainer_packages ($) {
     my ($maintainer) = @_;
     my $results = decode_json(get("$lconfig{aur_rpc_base_url}?type=msearch&arg=$maintainer") or return);
-    return unless ref $results->{results} eq 'ARRAY';
+    ref $results->{results} eq 'ARRAY' or return;
     my @maintainers_packages = @{$results->{results}};
     print_aur_results(@maintainers_packages) or return;
     return 1;
@@ -997,7 +997,7 @@ sub update_local_packages () {
     close $pipe_h;
 
     my $info_request = join('&', map { "arg[]=$_" } sort keys %packages);
-    return unless defined $info_request;
+    defined $info_request or return;
 
     my $multiinfo = decode_json(
         get("$lconfig{aur_rpc_base_url}?type=multiinfo&$info_request")
@@ -1185,7 +1185,7 @@ sub _sort_items {
 
 sub save_hash {
     my ($config, $file) = @_;
-    return unless ref $config eq 'HASH';
+    ref $config eq 'HASH' or return;
     open my $fh, '>', $file or return;
     print {$fh} _sort_items(_dump($config));
     close $fh;
