@@ -222,7 +222,7 @@ sub help () {
     -G              : download and extract AUR tarball only
     -R              : remove packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
-    -U              : installs local packages from /tmp or CWD
+    -U              : installs local packages from $lconfig{cache_dir} or CWD
 \n$c{bgreen}Other options:$c{reset}
     --quiet         : be quiet
     --really_quiet  : be really quiet
@@ -463,7 +463,7 @@ sub execute_pacman_command (@) {
     say "** Pacman command: $pacman_command" if $lconfig{debug};
     {
         system $lconfig{as_root} ? $pacman_command : $user_pacman_command;
-        if ($? && $? != 256) {
+        if ($? and $login) {
             say "** Exit code: $?" if $lconfig{debug};
             $term->ask_yn(prompt => "=>> Try again?", default => 'n') and redo;
         }
