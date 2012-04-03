@@ -42,7 +42,7 @@ use autouse 'File::Basename'   => qw(basename dirname);
 use File::Spec::Functions qw(catdir tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
-my $version  = '1.00';
+my $version  = '1.01';
 my $execname = 'trizen';
 
 # Configuration dir/file
@@ -76,6 +76,7 @@ my %CONFIG = (
               lwp_show_progress  => 0,
               lwp_keep_alive     => 1,
               lwp_env_proxy      => 1,
+              packages_in_stats  => 4,
               lwp_timeout        => 60,
               build_dir          => tmpdir(),
               use_sudo           => -e '/usr/bin/sudo' ? 1 : 0,
@@ -103,6 +104,7 @@ my %lconfig = (
                update_config => 0,
                show_ood      => 0,
                as_root       => $user eq 'root' ? 1 : 0,
+               stats         => \&show_stats,
                help          => \&help,
                version       => \&version,
               );
@@ -153,7 +155,7 @@ my %categories = (
                   18 => 'xfce',
                  );
 
-my $short_arguments = 'CUSQRGbcdefghiklmnopqrstuvwy';
+my $short_arguments = 'CUNQRSGbcdefghiklmnopqrstuvwy';
 
 my %parens;
 @parens{'<', '(', '[', '{'} = ('>', ')', ']', '}');
@@ -225,6 +227,7 @@ sub help () {
     --show_ood      : show out-of-date flagged packages during -Su
     --noconfirm     : do not prompt for any confirmation
     --skipinteg     : when using makepkg, skip the checksum
+    --stats         : show some info about the installed packages
     --update_config : update configuration file before exit
     --movepkg_dir=s : move built packages in this directory (with --movepkg)
 \n$c{bgreen}Main options:$c{reset}
@@ -1059,6 +1062,87 @@ sub update_local_packages () {
     }
 
     return 1;
+}
+
+sub show_stats {
+    opendir my $dir_h, $lconfig{pacman_local_dir}
+      or die "$c{bred}\[x] Unable to open $lconfig{pacman_local_dir}$c{reset}: $!";
+
+    my $oldest = 'inf';
+    my @newest_packages = ['', 0];
+
+    my (@oldest_packages, $total_size, $num_of_pkgs, %dependencies, %reason_deps);
+    while (defined(my $subdir = readdir $dir_h)) {
+
+        next if $subdir eq q{.} or $subdir eq q{..};
+        -d "$lconfig{pacman_local_dir}/$subdir" or next;
+
+        ++$num_of_pkgs;
+        my ($current_pkg) = $subdir =~ /^(.+?)-[^-]+-[^-]+$/;
+
+        open my $fh, '<', "$lconfig{pacman_local_dir}/$subdir/desc" or next;
+        while (defined(my $line = <$fh>)) {
+            given ($line) {
+                when ("%REASON%\n") {
+                    $reason_deps{$current_pkg} = ();
+                }
+                when ("%DEPENDS%\n") {
+                    while (defined(my $dep = <$fh>)) {
+                        chomp $dep;
+                        last if $dep eq q{};
+                        $dependencies{strip_version($dep)} = ();
+                    }
+                }
+                when ($_ eq "%PROVIDES%\n" and exists $reason_deps{$current_pkg}) {
+                    while (defined(my $provided = <$fh>)) {
+                        chomp $provided;
+                        last if $provided eq q{};
+                        push @{$reason_deps{$current_pkg}}, strip_version($provided);
+                    }
+                }
+                when ("%SIZE%\n") {
+                    $total_size += <$fh>;
+                }
+                when ("%BUILDDATE%\n") {
+                    chomp(my $date = <$fh>);
+                    if ($date < $oldest) {
+                        $oldest = $date;
+                        unshift @oldest_packages, $current_pkg;
+                        pop @oldest_packages if @oldest_packages > $lconfig{packages_in_stats};
+                    }
+                    if ($date > $newest_packages[-1][1]) {
+                        unshift @newest_packages, [$current_pkg, $date];
+                        pop @newest_packages if @newest_packages > $lconfig{packages_in_stats};
+                        @newest_packages = sort { $b->[1] <=> $a->[1] } @newest_packages;
+                    }
+                }
+            }
+        }
+    }
+    closedir $dir_h;
+
+    my $as_dep_packages = keys %reason_deps;
+
+    print <<"STATS";
+$c{bold}** Total installed packages:$c{byellow} $num_of_pkgs$c{reset}
+$c{bold}** Explicitly installed packages:$c{byellow} ${\($num_of_pkgs - $as_dep_packages)}$c{reset}
+$c{bold}** Asdep installed packages:$c{byellow} $as_dep_packages$c{reset}
+$c{bold}** Theorical space used by packages:$c{byellow} ${\int $total_size / 1024**2} MB$c{reset}\n
+$c{bold}** Oldest built packages:$c{byellow} @oldest_packages$c{reset}
+$c{bold}** Newest built packages:$c{byellow} @{[map { $_->[0] } @newest_packages]}$c{reset}\n
+STATS
+
+    print "$c{bold}** Unneeded packages:$c{byellow}";
+    while (my ($key, $value) = each %reason_deps) {
+        next if exists $dependencies{$key};
+        if (ref $value eq 'ARRAY') {
+            next if grep { exists $dependencies{$_} } @{$value};
+        }
+        print qq{ $key};
+    }
+    print "$c{reset}\n";
+
+    main_quit();
 }
 
 # MAIN
