@@ -664,7 +664,7 @@ sub show_info ($) {
 
     printf "Name           : %s\n", "$c{bold}$info->{results}{Name}$c{reset}";
     printf "Version        : %s\n", $info->{results}{Version} // 'Unknown';
-    printf "Maintainer     : %s\n", $info->{results}{Maintainer} // 'None';
+    printf "Maintainer     : %s\n", $info->{results}{Maintainer} // "$c{bred}NONE$c{reset}";
     printf "Category       : %s\n", ucfirst $categories{$info->{results}{CategoryID}};
     printf "URL            : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{url}));
     printf "AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID});
@@ -930,9 +930,10 @@ sub print_aur_results (\@) {
             say $result->{Name};
         }
         else {
-            printf "$c{bold}%s$c{reset} %s %s[$c{bold}%s+$c{reset}] [%s] [%s] - %s\n", $result->{Name}, $result->{Version},
-              ($result->{OutOfDate} ? "[$c{bred}out-of-date$c{reset}] " : ''), $result->{NumVotes},
-              $categories{$result->{CategoryID}},
+            printf "$c{bold}%s$c{reset} %s %s%s[$c{bold}%s+$c{reset}] [%s] [%s] - %s\n", $result->{Name}, $result->{Version},
+              ($result->{OutOfDate} ? "[$c{bred}out-of-date$c{reset}] " : q{}),
+              ($result->{Maintainer} ? q{} : "[$c{bred}UNMAINTAINED$c{reset}] "),
+              $result->{NumVotes}, $categories{$result->{CategoryID}},
               do { localtime($result->{LastModified}) =~ /^\w+ (\w+)\s+(\d+)\s+.+? (\d+)$/ && "$2 $1 $3" },
               $result->{Description};
         }
