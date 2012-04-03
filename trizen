@@ -32,7 +32,6 @@ use strict;
 use warnings qw(all);
 
 # Autouse
-use autouse 'File::Find'       => qw(find);
 use autouse 'Getopt::Std'      => qw(getopts);
 use autouse 'URI::Escape'      => qw(uri_escape);
 use autouse 'Text::ParseWords' => qw(quotewords);
@@ -41,10 +40,11 @@ use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
 
 # Others
-use Term::UI qw();
-use Term::ReadLine qw();
-use Archive::Tar qw();
-use LWP::UserAgent qw();
+require Term::UI;
+require Term::ReadLine;
+require Archive::Tar;
+require LWP::UserAgent;
+
 use File::Spec::Functions qw(catdir tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
