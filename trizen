@@ -224,7 +224,7 @@ sub help () {
 \n$c{bgreen}Other options:$c{reset}
     --quiet         : be quiet
     --really_quiet  : be really quiet
-    --force         : set --force paramter for makepkg and pacman
+    --force         : set --force argument for makepkg and pacman
     --nocolors      : no text colors
     --aur           : only AUR packages (for: -S, -Si, -Su, -Ss)
     --noinstall     : build package only, don't install it
