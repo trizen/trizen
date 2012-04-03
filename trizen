@@ -194,6 +194,10 @@ $c{bred}    = "\e[1;31m";              # bold red
 $c{bgreen}  = "$c{cblack}\e[1;32m";    # bold green on black background
 $c{reset}   = "\e[0m";                 # reset color
 
+if ('--nocolors' ~~ \@ARGV) {
+    %c = map { $_ => q{} } keys %c;
+}
+
 #----------------------- USAGE -----------------------#
 sub help () {
     print <<"HELP";
@@ -364,10 +368,6 @@ if ($lconfig{really_quiet}) {
 
 if ($lconfig{h}) {
     help();
-}
-
-if ($lconfig{nocolors}) {
-    %c = map { $_ => q{} } keys %c;
 }
 
 #----------------------- WORK AREA -----------------------#
@@ -1066,12 +1066,12 @@ sub update_local_packages () {
 
 sub show_stats {
     opendir my $dir_h, $lconfig{pacman_local_dir}
-      or die "$c{bred}\[x] Unable to open $lconfig{pacman_local_dir}$c{reset}: $!";
+      or die "$c{bred}\[x] Unable to open dir '$lconfig{pacman_local_dir}':$c{reset} $!";
 
-    my $oldest = 'inf';
     my @newest_packages = ['', 0];
+    my @oldest_packages = ['', 'inf'];
 
-    my (@oldest_packages, $total_size, $num_of_pkgs, %dependencies, %reason_deps);
+    my ($total_size, $num_of_pkgs, %dependencies, %reason_deps);
     while (defined(my $subdir = readdir $dir_h)) {
 
         next if $subdir eq q{.} or $subdir eq q{..};
@@ -1105,10 +1105,10 @@ sub show_stats {
                 }
                 when ("%BUILDDATE%\n") {
                     chomp(my $date = <$fh>);
-                    if ($date < $oldest) {
-                        $oldest = $date;
-                        unshift @oldest_packages, $current_pkg;
+                    if ($date < $oldest_packages[-1][1]) {
+                        unshift @oldest_packages, [$current_pkg, $date];
                         pop @oldest_packages if @oldest_packages > $lconfig{packages_in_stats};
+                        @oldest_packages = sort { $a->[1] <=> $b->[1] } @oldest_packages;
                     }
                     if ($date > $newest_packages[-1][1]) {
                         unshift @newest_packages, [$current_pkg, $date];
@@ -1128,7 +1128,7 @@ $c{bold}** Total installed packages:$c{byellow} $num_of_pkgs$c{reset}
 $c{bold}** Explicitly installed packages:$c{byellow} ${\($num_of_pkgs - $as_dep_packages)}$c{reset}
 $c{bold}** Asdep installed packages:$c{byellow} $as_dep_packages$c{reset}
 $c{bold}** Theorical space used by packages:$c{byellow} ${\int $total_size / 1024**2} MB$c{reset}\n
-$c{bold}** Oldest built packages:$c{byellow} @oldest_packages$c{reset}
+$c{bold}** Oldest built packages:$c{byellow} @{[map { $_->[0] } @oldest_packages]}$c{reset}
 $c{bold}** Newest built packages:$c{byellow} @{[map { $_->[0] } @newest_packages]}$c{reset}\n
 STATS
 
@@ -1140,7 +1140,7 @@ STATS
         }
         print qq{ $key};
     }
-    print "$c{reset}\n";
+    say $c{reset};
 
     main_quit();
 }
