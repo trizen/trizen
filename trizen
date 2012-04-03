@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 02 April 2012
+# Latest edit on: 03 April 2012
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -33,7 +33,6 @@ use warnings qw(all);
 
 # Autouse
 use autouse 'File::Find'       => qw(find);
-use autouse 'List::Util'       => qw(first);
 use autouse 'Getopt::Std'      => qw(getopts);
 use autouse 'URI::Escape'      => qw(uri_escape);
 use autouse 'Text::ParseWords' => qw(quotewords);
