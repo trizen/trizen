@@ -114,7 +114,6 @@ my %lconfig = (
                update_config => 0,
                show_ood      => 0,
                as_root       => $user eq 'root' ? 1 : 0,
-               main_dir      => rel2abs(curdir()),
                help          => \&help,
                version       => \&version,
               );
@@ -609,20 +608,16 @@ sub get_package_tarball ($$) {
         return;
     }
 
-    my $tgz_file = $path . q{/} . basename($info->{results}{URLPath});
-    my $url      = "$lconfig{aur_base_url}$info->{results}{URLPath}";
+    my $tgz_file = catdir($path, basename($info->{results}{URLPath}));
+    my $url = "$lconfig{aur_base_url}$info->{results}{URLPath}";
 
     get_tgz_package($url, $tgz_file) or do { warn "[!] Unable to get the tarball for $pkg: $!"; return };
 
-    my $dir_name = join '/', dirname($tgz_file), basename($tgz_file, @tarball_formats);
+    my $dir_name = catdir(dirname($tgz_file), basename($tgz_file, @tarball_formats));
     chdir $path or do { warn "[!] Unable to chdir() to $path: $!"; return };
 
     if ($lconfig{overwrite} or not -e "$dir_name/PKGBUILD" or -z _) {
         extract_tarball($tgz_file) or do { warn "[!] Unable to extract tarball of $pkg: $!"; return };
-    }
-
-    if ($path eq $lconfig{main_dir}) {
-        unlink($tgz_file) or do { warn "[!] Unable to delete $tgz_file: $!"; return };
     }
 
     chdir $dir_name or do { warn "[!] Unable to chdir() to $dir_name: $!"; return };
@@ -795,7 +790,7 @@ sub edit_text_files () {
             system $ENV{EDITOR}, $abs_file;
 
             if ($?) {
-                warn "[!] $ENV{EDITOR} exited with code $?\n";
+                warn "[!] $ENV{EDITOR} exited with code: $?\n";
                 return;
             }
         }
@@ -1131,9 +1126,9 @@ elsif ($lconfig{C}) {    # -C
 elsif ($lconfig{G}) {    # -G
     foreach my $pkg (@argv_packages) {
         say "** Getting tarball of: $pkg" if $lconfig{debug};
-        get_package_tarball($pkg, curdir()) or next;
-        chdir $lconfig{main_dir};
-        unlink "$pkg.tar.gz" or warn "[!] Unable to delete '$lconfig{main_dir}/$pkg.tar.gz': $!";
+        get_package_tarball($pkg, q{.}) or next;
+        chdir q{..};
+        unlink "$pkg.tar.gz" or warn "[!] Unable to delete './$pkg.tar.gz': $!";
     }
 }
 elsif ($lconfig{U}) {    # -U
