@@ -39,12 +39,6 @@ use autouse 'JSON::XS'         => qw(decode_json);
 use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
 
-# Others
-require Term::UI;
-require Term::ReadLine;
-require Archive::Tar;
-require LWP::UserAgent;
-
 use File::Spec::Functions qw(catdir tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
@@ -64,10 +58,6 @@ my $user = (getpwuid $<)[0] || substr(`whoami`, 0, -1);
 if (not -d $config_dir) {
     make_path($config_dir) or warn "[!] Unable to create dir $config_dir: $!";
 }
-
-# Initializing module objects
-my $tar  = Archive::Tar->new();
-my $term = Term::ReadLine->new("$pkgname $version");
 
 #----------------------- GLOBAL VARIABLES -----------------------#
 $ENV{EDITOR} ||= 'nano';
@@ -379,6 +369,16 @@ if ($lconfig{nocolors}) {
 
 #----------------------- WORK AREA -----------------------#
 
+# Run-time loaded modules
+require Term::UI;
+require Term::ReadLine;
+require Archive::Tar;
+require LWP::UserAgent;
+
+# Initializing module objects
+my $tar  = Archive::Tar->new();
+my $term = Term::ReadLine->new("$pkgname $version");
+
 my $lwp = LWP::UserAgent->new(
                               env_proxy     => $lconfig{lwp_env_proxy},
                               keep_alive    => $lconfig{lwp_keep_alive},
@@ -493,7 +493,7 @@ sub package_is_installed ($) {
 
 sub array_ref_or_string (@) {
     my ($data) = @_;
-    return ref $data eq 'ARRAY' ? grep { defined && $_ ne q{} } @{$data} : $data // "None";
+    return ref $data eq 'ARRAY' ? grep { defined && $_ ne q{} } @{$data} : $data // 'None';
 }
 
 sub strip_space ($) {
@@ -505,7 +505,7 @@ sub strip_space ($) {
 
 sub strip_version ($) {
     my ($version) = @_;
-    $version =~ s/\s*(?:==|[<>]=?)[^,\}\{]+//g;
+    $version =~ s/\s*(?:==?|[<>]=?)[^,{}]+//g;
     return strip_space($version);
 }
 
@@ -680,7 +680,7 @@ sub show_info ($) {
     printf "Replaces       : %s\n",   indent_array(array_ref_or_string($info->{pkgbuild}{replaces}));
     printf "Architecture   : %s\n",   indent_array(array_ref_or_string($info->{pkgbuild}{arch}));
     printf "Last Update    : %s\n",   scalar localtime($info->{results}{LastModified} || $info->{results}{FirstSubmitted});
-    printf "Description    : %s\n\n", $info->{results}{Description} // 'None';
+    printf "Description    : %s\n\n", array_ref_or_string($info->{pkgbuild}{pkgdesc});
 
     return 1;
 }
