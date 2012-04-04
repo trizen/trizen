@@ -166,8 +166,9 @@ my @tarball_formats = qw
   .tar.lzma .tar .gz .tar.lzo .tar.7z
   );
 
+# Skip these packages
 my %ignored_packages;
-@ignored_packages{qw{ sh svn }} = ();    # skip this packages
+@ignored_packages{qw{ sh svn java-environment }} = ();
 
 my $tar_suffixes = join('|', map { quotemeta } @tarball_formats);
 my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$tar_suffixes)\z/;
