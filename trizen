@@ -170,6 +170,7 @@ my @tarball_formats = qw
 my %ignored_packages;
 @ignored_packages{qw{ sh svn java-environment }} = ();
 
+my %just_installed;
 my $tar_suffixes = join('|', map { quotemeta } @tarball_formats);
 my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$tar_suffixes)\z/;
 
@@ -823,6 +824,25 @@ sub run_makepkg_command ($) {
     return 1;
 }
 
+sub install_local_tarball ($$) {
+    my ($pkg, $argument) = @_;
+
+    if (run_makepkg_command($pkg)) {
+        if (not exists $just_installed{$pkg}) {
+            $just_installed{$pkg} = 1;
+            if ($lconfig{noinstall}) {
+                move_built_package($pkg) if $lconfig{movepkg};
+                return 1;
+            }
+            elsif (install_local_package($pkg, q{-U}, $argument)) {
+                return 1;
+            }
+        }
+        return 1;
+    }
+    return;
+}
+
 sub install_package ($) {
     my ($pkg) = @_;
 
@@ -896,28 +916,11 @@ sub install_package ($) {
 
     if (defined $lconfig{main_pkg} and $pkg eq $lconfig{main_pkg}) {    # install as explicit
         say "** Installing as explicit: $pkg" if $lconfig{debug};
-        if (run_makepkg_command($pkg)) {
-            if ($lconfig{noinstall}) {
-                move_built_package($pkg) if $lconfig{movepkg};
-                return 1;
-            }
-            elsif (install_local_package($pkg, qw{-U --asexplicit})) {
-                delete $lconfig{main_pkg};
-                return 1;
-            }
-        }
+        install_local_tarball($pkg, '--asexplicit') and return 1;
     }
-    else {    # install as dependency
+    else {                                                              # install as dependency
         say "** Installing as dependency: $pkg" if $lconfig{debug};
-        if (run_makepkg_command($pkg)) {
-            if ($lconfig{noinstall}) {
-                move_built_package($pkg) if $lconfig{movepkg};
-                return 1;
-            }
-            elsif (install_local_package($pkg, qw{-U --asdep})) {
-                return 1;
-            }
-        }
+        install_local_tarball($pkg, '--asdep') and return 1;
     }
 
     return;
