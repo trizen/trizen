@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 04 April 2012
+# Latest edit on: 05 April 2012
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -42,7 +42,7 @@ use autouse 'File::Basename'   => qw(basename dirname);
 use File::Spec::Functions qw(catdir tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
-my $version  = '1.01';
+my $version  = '1.02';
 my $execname = 'trizen';
 
 # Configuration dir/file
@@ -115,8 +115,10 @@ if (-e $config_file and (-s _) > 1) {
     if (ref $config eq 'HASH') {
         while (my ($k, $v) = each %{$config}) {
             $lconfig{$k} = $v;
+            $CONFIG{$k}  = $v;
         }
         $lconfig{update_config} = 1 if $config->{VERSION} ne $version;
+        $CONFIG{VERSION} = $version;
     }
     else {
         warn "[!] Invalid config file! ", ($! || "Doesn't return a HASH ref!\n");
