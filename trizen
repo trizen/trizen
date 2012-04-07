@@ -487,12 +487,12 @@ sub is_available_in_pacman_repo (@) {
 }
 
 sub package_is_installed ($) {
-    my ($pkg) = @_;
+    my $pkg = quotemeta shift;
 
     opendir(my $dir_h, $lconfig{pacman_local_dir}) or return;
 
     while (defined(my $dir = readdir($dir_h))) {
-        if ($dir =~ m{^\Q$pkg\E-[^-]+-\d+\z}) {
+        if ($dir =~ m{^$pkg-[^-]+-\d+\z}) {
             closedir $dir_h;
             return 1;
         }
@@ -570,7 +570,7 @@ sub strip_version ($) {
 sub indent_array (@) {
     my $first = strip_space(shift);
 
-    return $first if not @_;
+    @_ or return $first;
 
     my $rest = join "\n", @_;
     $rest =~ s/^\s+//gm;
@@ -588,7 +588,7 @@ sub parse_quoted_words ($) {
 
     if ($value =~ /^\((.+)\)\z/s) {
         $value = $1;
-        return [grep { defined && $_ ne q{} } quotewords(qr{\s+|#.*}, 0, $value)];
+        return [grep { defined && $_ ne q{} } quotewords(qr{\s+|(?-s:#.*)}, 0, $value)];
     }
 
     $value =~ s/["']\s*#.*//;
@@ -612,19 +612,10 @@ sub parse_pkgbuild ($) {
         (\w+)           # capturing word key (e.g.: pkgname)
         \s*=\s*         # =
         (               # capturing value
-            \(.*?\)\s*      # multi line values (e.g.: ('value1' \n 'value2'))
-                |           # OR
-            (?-s:.+)\s*     # a single value (e.g.: 'value')
+             \(.*?\)        # multi line values (e.g.: ('value1' \n 'value2'))
+                 |          # OR
+             (?-s:.+)       # a single value (e.g.: 'value')
         )               # end of capture
-#        (?=             # start of lookahead
-#               \w+\s*=      # there is a key folowed by an equal sign (e.g.: _rel =)
-#                |           # OR
-#       \w+\s*\(\s*\)\s*\{   # a subroutine call (e.g.: build() )
-#                |           # OR
-#              \w+\b         # a simple word (e.g. case)
-#                |           # OR
-#              \s*\z         # end of the PKGBUILD
-#    )                   # end of lookahead
     }smgx
       ) {
         my $key = $1;
@@ -633,7 +624,7 @@ sub parse_pkgbuild ($) {
 
         if (
             $value =~ s/\$([{(]?)(.+?)(??{ exists $parens{$1} ? quotemeta($parens{$1}) : qr{\b} })/
-                        $2 && $_[0]->{pkgbuild}{$2} || "\$$1$2" . $parens{$1} || q{}
+                            $_[0]->{pkgbuild}{$2} || "\$$1$2" . ($parens{$1} || q{})
         /gsex
           ) {
             say "Replaced VALUE: $value" if $lconfig{debug};
@@ -719,26 +710,27 @@ sub show_info ($) {
 
     return if ref $info->{results} ne 'HASH';
 
-    printf "Name           : %s\n", "$c{bold}$info->{results}{Name}$c{reset}";
-    printf "Version        : %s\n", $info->{results}{Version} // 'Unknown';
-    printf "Maintainer     : %s\n", $info->{results}{Maintainer} // "$c{bred}NONE$c{reset}";
-    printf "Category       : %s\n", ucfirst $categories{$info->{results}{CategoryID}};
-    printf "URL            : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{url}));
-    printf "AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID});
-    printf "Licenses       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{license}));
-    printf "Votes          : %d\n", $info->{results}{NumVotes};
-    printf "Installed      : %s\n", package_is_installed($info->{results}{Name}) ? 'Yes' : 'No';
-    printf "Out Of Date    : %s\n", $info->{results}{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No';
-    printf "Groups         : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{groups}));
-    printf "Provides       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{provides}));
-    printf "Depends On     : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{depends}));
-    printf "Make Deps      : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{makedepends}));
-    printf "Optional Deps  : %s\n",   indent_array(array_ref_or_string($info->{pkgbuild}{optdepends}));
-    printf "Conflicts With : %s\n",   indent_array(array_ref_or_string($info->{pkgbuild}{conflicts}));
-    printf "Replaces       : %s\n",   indent_array(array_ref_or_string($info->{pkgbuild}{replaces}));
-    printf "Architecture   : %s\n",   indent_array(array_ref_or_string($info->{pkgbuild}{arch}));
-    printf "Last Update    : %s\n",   scalar localtime($info->{results}{LastModified} || $info->{results}{FirstSubmitted});
-    printf "Description    : %s\n\n", array_ref_or_string($info->{pkgbuild}{pkgdesc});
+    say map { sprintf $c{bold} . $_->[0], $c{reset} . $_->[1] }
+      ["Name           : %s\n", "$c{bold}$info->{results}{Name}$c{reset}"],
+      ["Version        : %s\n", $info->{results}{Version} // 'Unknown'],
+      ["Maintainer     : %s\n", $info->{results}{Maintainer} // "$c{bred}NONE$c{reset}"],
+      ["Category       : %s\n", ucfirst $categories{$info->{results}{CategoryID}}],
+      ["URL            : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{url}))],
+      ["AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID})],
+      ["Licenses       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{license}))],
+      ["Votes          : %s\n", $info->{results}{NumVotes}],
+      ["Installed      : %s\n", package_is_installed($info->{results}{Name}) ? 'Yes' : 'No'],
+      ["Out Of Date    : %s\n", $info->{results}{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
+      ["Groups         : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{groups}))],
+      ["Provides       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{provides}))],
+      ["Depends On     : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{depends}))],
+      ["Make Deps      : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{makedepends}))],
+      ["Optional Deps  : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{optdepends}))],
+      ["Conflicts With : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{conflicts}))],
+      ["Replaces       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{replaces}))],
+      ["Architecture   : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{arch}))],
+      ["Last Update    : %s\n", scalar localtime($info->{results}{LastModified} || $info->{results}{FirstSubmitted})],
+      ["Description    : %s\n", array_ref_or_string($info->{pkgbuild}{pkgdesc})];
 
     return 1;
 }
