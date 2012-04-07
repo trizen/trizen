@@ -594,7 +594,7 @@ sub parse_quoted_words ($) {
     $value =~ s/["']\s*#.*//;
     $value !~ /["']/ && $value =~ s/\s*#.*//;
     $value =~ tr/'"//d;
-    return $value;
+    return $value =~ /\w/ ? $value : 'None';
 }
 
 sub parse_pkgbuild ($) {
