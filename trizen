@@ -612,9 +612,10 @@ sub parse_pkgbuild ($) {
         (\w+)           # capturing word key (e.g.: pkgname)
         \s*=\s*         # =
         (               # capturing value
-             \(.*?\)        # multi line values (e.g.: ('value1' \n 'value2'))
+             \(.*?\)\s*        #  multi line values (e.g.: ('value1' \n 'value2'))
+        (?=(?:\#(?-s:.*))?\n)  # followed by an optional comment and a newline (e.g.: ('te)st') # comm)
                  |          # OR
-             (?-s:.+)       # a single value (e.g.: 'value')
+             (?-s:.+)          # a single value (e.g.: 'value')
         )               # end of capture
     }smgx
       ) {
