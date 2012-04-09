@@ -669,7 +669,10 @@ sub get_package_tarball ($$) {
         extract_tarball($tgz_file) or do { warn "[!] Unable to extract tarball of $pkg: $!"; return };
     }
 
-    chdir $dir_name or do { warn "[!] Unable to chdir() to $dir_name: $!"; return };
+    if (-d $dir_name) {
+        chdir $dir_name or do { warn "[!] Unable to chdir() to $dir_name: $!"; return };
+    }
+
     return $info;
 }
 
