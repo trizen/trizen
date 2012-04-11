@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 05 April 2012
+# Latest edit on: 11 April 2012
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -563,7 +563,7 @@ sub strip_space ($) {
 
 sub strip_version ($) {
     my ($version) = @_;
-    $version =~ s/\s*(?:==?|[<>]=?)[^,{}]+//g;
+    $version =~ s/\s*(?:==?|[<>]=?).+//sg;
     return strip_space($version);
 }
 
@@ -600,9 +600,9 @@ sub parse_quoted_words ($) {
 sub parse_pkgbuild ($) {
     ref $_[0] eq 'HASH' or return;
 
-    open my $pkg_fh, '<', 'PKGBUILD' or do { warn "[!] Unable to open PKGBUILD for read: $!"; return };
-    my $pkgbuild = do { local $/; <$pkg_fh> };
-    close $pkg_fh;
+    -f -r -s 'PKGBUILD' or do { warn "[!] Invalid PKGBUILD: $!"; return };
+
+    my $pkgbuild = do { local (@ARGV, $/) = 'PKGBUILD'; <> };
 
     $pkgbuild =~ s/^\s*#.*//gm;
 
