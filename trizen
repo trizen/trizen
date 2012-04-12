@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 11 April 2012
+# Latest edit on: 12 April 2012
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -241,8 +241,9 @@ sub help () {
 \n$c{bgreen}Main options:$c{reset}
     --debug         : to see what's going on
     --help          : print this message and exit
-    --version       : print version and exit
-\n$c{bred}**$c{reset} Configuration file: $config_file
+    --version       : print version and exit\n
+$c{bred}**$c{reset} Each key from config is a valid argument if is preceded by '--'
+$c{bred}**$c{reset} Configuration file: $config_file
 HELP
     main_quit();
 }
@@ -832,10 +833,13 @@ sub output_file_content ($) {
 sub edit_text_files () {
     foreach my $file (grep { -T and not -z _ } glob('*')) {
 
-        next if not $file ~~ ['PKGBUILD', qr/(?:^|\.)install\z/] and (-s $file) > 50 * 1024;    # ignore files larger than 50 KB
-        next if chr ord $file eq q{.};                                                    # ignore hidden files
-        next if substr($file, -1) eq q{~};                                                # ignore backup (~) files
-        next if substr($file, -4) eq q{.bak};                                             # ignore backup (.bak) files
+        next if substr($file, -1) eq q{~};       # ignore backup (~) files
+        next if substr($file, -4) eq q{.bak};    # ignore backup (.bak) files
+        next if chr ord $file eq q{.};           # ignore hidden files
+
+        next
+          if (-s $file) > 50 * 1024
+          and not $file ~~ ['PKGBUILD', qr/(?:^|\.)install\z/];    # ignore files larger than 50 KB
 
         output_file_content($file) or next;
 
