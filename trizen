@@ -29,7 +29,7 @@ eval 'exec perl -S $0 ${1+"$@"}'
 
 use 5.010;
 use strict;
-use warnings qw(all);
+use warnings;
 
 # Autouse
 use autouse 'Getopt::Std'      => qw(getopts);
@@ -832,9 +832,10 @@ sub output_file_content ($) {
 sub edit_text_files () {
     foreach my $file (grep { -T and not -z _ } glob('*')) {
 
-        next if chr ord $file eq q{.};    # ignore hidden files
-        next if substr($file, -1) eq q{~};       # ignore backup (~) files
-        next if substr($file, -4) eq q{.bak};    # ignore backup (.bak) files
+        next if not $file ~~ ['PKGBUILD', qr/(?:^|\.)install\z/] and (-s $file) > 50 * 1024;    # ignore files larger than 50 KB
+        next if chr ord $file eq q{.};                                                    # ignore hidden files
+        next if substr($file, -1) eq q{~};                                                # ignore backup (~) files
+        next if substr($file, -4) eq q{.bak};                                             # ignore backup (.bak) files
 
         output_file_content($file) or next;
 
