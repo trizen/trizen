@@ -611,13 +611,13 @@ sub parse_pkgbuild ($) {
         $pkgbuild =~ m{
         ^\s*            # at the beginning of line
         (\w+)           # capturing word key (e.g.: pkgname)
-        \h*=\h*         # =
+        \h*=\h*         # optional horizontal space around the '='
         (               # capturing value
-             \(.*?\)            # multi line values (e.g.: ('value1' \n 'value2'))
+             \(.*?\)            # multi line values // e.g.: key=('value1' \n 'value2')
             (?=                 # start of look-ahead
                 \s*                  # there may be some space
                 (?:\#(?-s:.*))?      # and an optional comment
-                (?:\n|\z)            # and a newline or end of the string (e.g.: ('te)st') # comm)
+                (?:\n|\z)            # and a newline or end of the string // e.g.: key=('test') # comm
             )                   # end of look-ahead
                  |              # OR
              (?-s:.*)           # a single value (e.g.: 'value')
