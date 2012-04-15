@@ -594,7 +594,8 @@ sub parse_quoted_words ($) {
 
     $value =~ s/["']\s*#.*//;
     $value !~ /["']/ && $value =~ s/\s*#.*//;
-    $value =~ tr/'"//d;
+    $value =~ s/^['"]//;
+    $value =~ s/['"]$//;
     return $value =~ /\w/ ? $value : 'None';
 }
 
