@@ -508,33 +508,34 @@ sub versioncmp ($$) {
     # Code from Sort::Versions
     # http://search.cpan.org/~edavis/Sort-Versions-1.5/Versions.pm
 
-    my @A = ($_[0] =~ /([-.]|\d+|[^-.\d]+)/g);
-    my @B = ($_[1] =~ /([-.]|\d+|[^-.\d]+)/g);
+    my (@A) = $_[0] =~ /([-.]|\d+|[^-.\d]+)/g;
+    my (@B) = $_[1] =~ /([-.]|\d+|[^-.\d]+)/g;
 
     my ($A, $B);
     while (@A and @B) {
         $A = shift @A;
         $B = shift @B;
-        if ($A eq '-' and $B eq '-') {
+
+        if ($A eq q{-} and $B eq q{-}) {
             next;
         }
-        elsif ($A eq '-') {
+        elsif ($A eq q{-}) {
             return -1;
         }
-        elsif ($B eq '-') {
+        elsif ($B eq q{-}) {
             return 1;
         }
-        elsif ($A eq '.' and $B eq '.') {
+        elsif ($A eq q{.} and $B eq q{.}) {
             next;
         }
-        elsif ($A eq '.') {
+        elsif ($A eq q{.}) {
             return -1;
         }
-        elsif ($B eq '.') {
+        elsif ($B eq q{.}) {
             return 1;
         }
         elsif ($A =~ /^\d+$/ and $B =~ /^\d+$/) {
-            if ($A =~ /^0/ || $B =~ /^0/) {
+            if ($A =~ /^0/ or $B =~ /^0/) {
                 return $A cmp $B if $A cmp $B;
             }
             else {
@@ -547,7 +548,7 @@ sub versioncmp ($$) {
             return $A cmp $B if $A cmp $B;
         }
     }
-    @A <=> @B;
+    return @A <=> @B;
 }
 
 sub array_ref_or_string (@) {
