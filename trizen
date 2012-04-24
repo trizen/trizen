@@ -616,9 +616,9 @@ sub parse_pkgbuild ($) {
         (               # capturing value
              \(.*?\)            # multi line values // e.g.: key=('value1' \n 'value2')
             (?=                 # start of look-ahead
-                \s*                  # there may be some space
-                (?:\#(?-s:.*))?      # and an optional comment
-                (?:\n|\z)            # and a newline or end of the string // e.g.: key=('test') # comm
+                \s*                  # there may be some space               //
+                (?:\#(?-s:.*))?      # and an optional comment              // e.g.: key=('test'); # comm
+                (?:[\n;]|\z)         # and a newline or end of the string  //
             )                   # end of look-ahead
                  |              # OR
              (?-s:.*)           # a single value (e.g.: 'value')
@@ -637,6 +637,7 @@ sub parse_pkgbuild ($) {
             say "Replaced VALUE: $value" if $lconfig{debug};
         }
 
+        $value =~ s/;+\z//;
         $_[0]->{pkgbuild}{$key} = parse_quoted_words($value);
     }
 
