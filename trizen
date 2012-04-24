@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 15 April 2012
+# Latest edit on: 24 April 2012
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -242,7 +242,7 @@ sub help () {
     --debug         : to see what's going on
     --help          : print this message and exit
     --version       : print version and exit\n
-$c{bred}**$c{reset} Each key from config is a valid argument if is preceded by '--'
+$c{bred}**$c{reset} Each key config is a valid argument if is preceded by '--'
 $c{bred}**$c{reset} Configuration file: $config_file
 HELP
     main_quit();
@@ -723,7 +723,7 @@ sub show_info ($) {
     say map { sprintf $c{bold} . $_->[0], $c{reset} . $_->[1] }
       ["Name           : %s\n", "$c{bold}$info->{results}{Name}$c{reset}"],
       ["Version        : %s\n", $info->{results}{Version} // 'Unknown'],
-      ["Maintainer     : %s\n", $info->{results}{Maintainer} // "$c{bred}NONE$c{reset}"],
+      ["Maintainer     : %s\n", $info->{results}{Maintainer} // "$c{bred}None$c{reset}"],
       ["Category       : %s\n", ucfirst $categories{$info->{results}{CategoryID}}],
       ["URL            : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{url}))],
       ["AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID})],
@@ -1130,8 +1130,11 @@ sub show_stats {
     opendir my $dir_h, $lconfig{pacman_local_dir}
       or die "$c{bred}\[x] Unable to open dir '$lconfig{pacman_local_dir}':$c{reset} $!";
 
-    my @newest_packages = ['', 0];
-    my @oldest_packages = ['', 'inf'];
+    my @newest_built_packages = [q{}, 0];
+    my @oldest_built_packages = [q{}, 'inf'];
+
+    my @newest_installed_packages = [q{}, 0];
+    my @oldest_installed_packages = [q{}, 'inf'];
 
     my ($total_size, $num_of_pkgs, %dependencies, %reason_deps);
     while (defined(my $subdir = readdir $dir_h)) {
@@ -1167,15 +1170,28 @@ sub show_stats {
                 }
                 when ("%BUILDDATE%\n") {
                     chomp(my $date = <$fh>);
-                    if ($date < $oldest_packages[-1][1]) {
-                        unshift @oldest_packages, [$current_pkg, $date];
-                        @oldest_packages = sort { $a->[1] <=> $b->[1] } @oldest_packages;
-                        pop @oldest_packages if @oldest_packages > $lconfig{packages_in_stats};
+                    if ($date < $oldest_built_packages[-1][1]) {
+                        unshift @oldest_built_packages, [$current_pkg, $date];
+                        @oldest_built_packages = sort { $a->[1] <=> $b->[1] } @oldest_built_packages;
+                        pop @oldest_built_packages if @oldest_built_packages > $lconfig{packages_in_stats};
                     }
-                    if ($date > $newest_packages[-1][1]) {
-                        unshift @newest_packages, [$current_pkg, $date];
-                        @newest_packages = sort { $b->[1] <=> $a->[1] } @newest_packages;
-                        pop @newest_packages if @newest_packages > $lconfig{packages_in_stats};
+                    if ($date > $newest_built_packages[-1][1]) {
+                        unshift @newest_built_packages, [$current_pkg, $date];
+                        @newest_built_packages = sort { $b->[1] <=> $a->[1] } @newest_built_packages;
+                        pop @newest_built_packages if @newest_built_packages > $lconfig{packages_in_stats};
+                    }
+                }
+                when ("%INSTALLDATE%\n") {
+                    chomp(my $date = <$fh>);
+                    if ($date < $oldest_installed_packages[-1][1]) {
+                        unshift @oldest_installed_packages, [$current_pkg, $date];
+                        @oldest_installed_packages = sort { $a->[1] <=> $b->[1] } @oldest_installed_packages;
+                        pop @oldest_installed_packages if @oldest_installed_packages > $lconfig{packages_in_stats};
+                    }
+                    if ($date > $newest_installed_packages[-1][1]) {
+                        unshift @newest_installed_packages, [$current_pkg, $date];
+                        @newest_installed_packages = sort { $b->[1] <=> $a->[1] } @newest_installed_packages;
+                        pop @newest_installed_packages if @newest_installed_packages > $lconfig{packages_in_stats};
                     }
                 }
             }
@@ -1190,8 +1206,10 @@ $c{bold}** Total installed packages:$c{byellow} $num_of_pkgs$c{reset}
 $c{bold}** Explicitly installed packages:$c{byellow} ${\($num_of_pkgs - $as_dep_packages)}$c{reset}
 $c{bold}** Asdep installed packages:$c{byellow} $as_dep_packages$c{reset}
 $c{bold}** Theorical space used by packages:$c{byellow} ${\int $total_size / 1024**2} MB$c{reset}\n
-$c{bold}** Oldest built packages:$c{byellow} @{[map { $_->[0] } @oldest_packages]}$c{reset}
-$c{bold}** Newest built packages:$c{byellow} @{[map { $_->[0] } @newest_packages]}$c{reset}\n
+$c{bold}** Oldest built packages:$c{byellow} @{[map { $_->[0] } @oldest_built_packages]}$c{reset}
+$c{bold}** Newest built packages:$c{byellow} @{[map { $_->[0] } @newest_built_packages]}$c{reset}\n
+$c{bold}** Oldest installed packages:$c{byellow} @{[map { $_->[0] } @oldest_installed_packages]}$c{reset}
+$c{bold}** Newest installed packages:$c{byellow} @{[map { $_->[0] } @newest_installed_packages]}$c{reset}\n
 STATS
 
     print "$c{bold}** Unneeded packages:$c{byellow}";
