@@ -942,11 +942,19 @@ sub install_package ($) {
     if (ref $info->{pkgbuild}{depends} eq 'ARRAY') {
 
         foreach my $dep (
-                         grep { defined && /^\w/ }
-                         map  { strip_version($_) }
-                         map  { absolute_deps($_) }
-                         (ref $info->{pkgbuild}{makedepends} eq 'ARRAY' ? @{$info->{pkgbuild}{makedepends}} : ()),
-                         @{$info->{pkgbuild}{depends}}
+            grep { defined && /^\w/ }
+            map  { strip_version($_) }
+            map  { absolute_deps($_) }
+
+            # Makedepends
+            ref $info->{pkgbuild}{makedepends} eq 'ARRAY'
+            ? @{$info->{pkgbuild}{makedepends}}
+            : $info->{pkgbuild}{makedepends},
+
+            # Depends
+            ref $info->{pkgbuild}{depends} eq 'ARRAY'
+            ? @{$info->{pkgbuild}{depends}}
+            : $info->{pkgbuild}{depends}
           ) {
 
             if (exists $ignored_packages{$dep}) {    # next if $dep exists in %ignored_packages
