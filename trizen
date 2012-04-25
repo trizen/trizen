@@ -1290,8 +1290,8 @@ elsif ($lconfig{C}) {    # -C
     foreach my $pkg (@argv_packages) {
         my $info = get_rpc_info($pkg) or next;
         ref $info->{results} eq 'HASH' or next;
-        say "$c{bold}** AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}:$c{reset} ",
-          sprintf($lconfig{aur_package_id_url}, $info->{results}{ID}),;
+        say "$c{bold}** AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}$c{reset}\n$c{bold}** URL:$c{reset} ",
+          sprintf($lconfig{aur_package_id_url}, $info->{results}{ID}), "\n";
         foreach my $comment (get_comments($info->{results}{ID})) {
             say $comment;
         }
