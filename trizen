@@ -698,7 +698,10 @@ sub get_rpc_info ($) {
 
 sub absolute_deps ($) {
 
+    return if not defined $_[0] or $_[0] eq q{};
+
     # For something like: perl-{gtk2-{imageview,unique},xml-fast},mplayer
+    # *Almost* the same as: return glob($string);
     my @chunks = grep { defined && $_ ne q{} } split(/([{}])|,/, shift);
 
     my (@output, @root);
