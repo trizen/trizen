@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 24 April 2012
+# Latest edit on: 19 July 2012
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -42,7 +42,7 @@ use autouse 'File::Basename'   => qw(basename dirname);
 use File::Spec::Functions qw(catdir tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
-my $version  = '1.02';
+my $VERSION  = '1.03';
 my $execname = 'trizen';
 
 # Configuration dir/file
@@ -63,7 +63,7 @@ if (not -d $config_dir) {
 $ENV{EDITOR} ||= 'nano';
 
 my %CONFIG = (
-              VERSION            => $version,
+              VERSION            => $VERSION,
               show_comments      => 0,
               quiet              => 0,
               debug              => 0,
@@ -109,24 +109,48 @@ my %lconfig = (
                version       => \&version,
               );
 
-if (-e $config_file and (-s _) > 1) {
-    my $config = do $config_file or die "error in reading $config_file: $!";
+my $config_header = <<"EOH";
+#!/usr/bin/perl
 
-    if (ref $config eq 'HASH') {
-        while (my ($k, $v) = each %{$config}) {
-            $lconfig{$k} = $v;
-            $CONFIG{$k}  = $v;
+# $pkgname configuration file
+# Updated on ${\(scalar localtime)}
+
+EOH
+
+our $CONFIG;
+
+sub dump_configuration ($$) {
+    my ($config, $configuration_file) = @_;
+
+    open my $config_fh, '>', $configuration_file or return;
+
+    require Data::Dump;
+    my $dumped_config = q{our $CONFIG = } . Data::Dump::dump($config);
+    print $config_fh $config_header, $dumped_config;
+    close $config_fh;
+}
+
+if (-e $config_file and (-s _) > 1) {
+    require $config_file;    # Load the configuration files
+
+    if (ref $CONFIG eq 'HASH') {
+        my @valid_keys = grep exists $CONFIG{$_}, keys $CONFIG;
+        @CONFIG{@valid_keys}  = @{$CONFIG}{@valid_keys};
+        @lconfig{@valid_keys} = @{$CONFIG}{@valid_keys};
+
+        if ($CONFIG{VERSION} != $VERSION) {
+            $lconfig{update_config} = 1;
+            $CONFIG{VERSION}        = $VERSION;
         }
-        $lconfig{update_config} = 1 if $config->{VERSION} ne $version;
-        $CONFIG{VERSION} = $version;
     }
     else {
-        warn "[!] Invalid config file! ", ($! || "Doesn't return a HASH ref!\n");
+        warn "[!] Invalid config file! ", ($! || "\$CONFIG must be a HASH ref!\n");
+        $lconfig{update_config} = 1;
     }
 }
 else {
     say "** Saving configuration file" if $lconfig{debug};
-    Config::save_hash(\%CONFIG, $config_file) or warn "Unable to create configuration file $config_file: $!";
+    dump_configuration(\%CONFIG, $config_file) or warn "Can't open $config_file for write: $!";
 }
 
 $lconfig{cache_dir} = catdir($lconfig{build_dir}, "$execname-$user");
@@ -182,7 +206,7 @@ sub install_package ($);
 # Main quit
 sub main_quit () {
     if ($lconfig{update_config}) {
-        Config::save_hash(\%CONFIG, $config_file);
+        dump_configuration(\%CONFIG, $config_file);
     }
     exit $?;
 }
@@ -251,7 +275,7 @@ HELP
 @ARGV or help();
 
 sub version () {
-    say "$pkgname v$version";
+    say "$pkgname v$VERSION";
     main_quit();
 }
 
@@ -366,6 +390,10 @@ if ($lconfig{debug}) {
     $lconfig{lwp_show_progress} = 1;
 }
 
+if ($lconfig{quiet}) {
+    close STDERR;
+}
+
 if ($lconfig{really_quiet}) {
     close STDOUT;
     close STDERR;
@@ -389,14 +417,14 @@ require LWP::UserAgent;
 
 # Initializing module objects
 my $tar  = Archive::Tar->new();
-my $term = Term::ReadLine->new("$pkgname $version");
+my $term = Term::ReadLine->new("$pkgname $VERSION");
 
 my $lwp = LWP::UserAgent->new(
                               env_proxy     => $lconfig{lwp_env_proxy},
                               keep_alive    => $lconfig{lwp_keep_alive},
                               show_progress => $lconfig{lwp_show_progress},
                               timeout       => $lconfig{lwp_timeout},
-                              agent         => "Mozilla/5.0 (CLI; $pkgname) $execname/$version",
+                              agent         => "Mozilla/5.0 (CLI; $pkgname) $execname/$VERSION",
                              );
 
 sub get ($) {
@@ -488,12 +516,13 @@ sub is_available_in_pacman_repo (@) {
 }
 
 sub package_is_installed ($) {
-    my $pkg = quotemeta shift;
+    my ($pkg)   = @_;
+    my $regex = qr{^\Q$pkg\E-[^-]+-\d+\z};
 
     opendir(my $dir_h, $lconfig{pacman_local_dir}) or return;
 
     while (defined(my $dir = readdir($dir_h))) {
-        if ($dir =~ m{^$pkg-[^-]+-\d+\z}) {
+        if ($dir =~ $regex) {
             closedir $dir_h;
             return 1;
         }
@@ -565,7 +594,7 @@ sub strip_space ($) {
 
 sub strip_version ($) {
     my ($version) = @_;
-    $version =~ s/\s*(?:==?|[<>]=?).+//sg;
+    $version =~ s/\s*[<=>]=?.+//sg;
     return strip_space($version);
 }
 
@@ -638,7 +667,7 @@ sub parse_pkgbuild ($) {
             say "Replaced VALUE: $value" if $lconfig{debug};
         }
 
-        $value =~ s/;+\z//;
+        $value =~ s/\s*;+\s*\z//;
         $_[0]->{pkgbuild}{$key} = parse_quoted_words($value);
     }
 
@@ -700,7 +729,7 @@ sub absolute_deps ($) {
 
     return q{} if not defined $_[0] or $_[0] eq q{};
 
-    # For something like: perl-{gtk2-{imageview,unique},xml-fast},mplayer
+    # For something like: perl-{gtk2-{imageview,unique},xml-fast}
     # *Almost* the same as: return glob($string);
     my @chunks = grep { defined && $_ ne q{} } split(/([{}])|,/, shift);
 
@@ -801,7 +830,7 @@ sub move_built_package ($) {
             rename($pkg_tarball, catdir($lconfig{movepkg_dir}, basename($pkg_tarball)))
               or warn "[!] Unable to move $pkg into $lconfig{movepkg_dir}: $!";
         }
-        elsif (-d _) {
+        else {
             say "** Moving '${pkg_tarball}' into '$lconfig{movepkg_dir}'";
             system $lconfig{use_sudo}
               ? "$lconfig{sudo_command} mv '${pkg_tarball}' '$lconfig{movepkg_dir}'"
@@ -830,25 +859,24 @@ sub install_local_package (@) {
 sub output_file_content ($) {
     my ($file) = @_;
 
+    local $/ = undef;
     open my $fh, '<', $file or do { warn "[!] Unable to open $file for read: $!"; return };
     say "\n=>> Content of $file:";
-    while (defined(my $line = <$fh>)) {
-        print $line;
-    }
+    print <$fh>;
     close $fh;
 
     return 1;
 }
 
 sub edit_text_files () {
-    foreach my $file (grep { -T and not -z _ } glob('*')) {
+    foreach my $file (grep { -f and not -z _ } glob('*')) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
         next if substr($file, -4) eq q{.bak};    # ignore backup (.bak) files
         next if chr ord $file eq q{.};           # ignore hidden files
 
         next
-          if (-s $file) > 50 * 1024
+          if ((-s $file) > 50 * 1024 or not -T _)
           and not $file ~~ ['PKGBUILD', qr/(?:^|\.)install\z/];    # ignore files larger than 50 KB
 
         output_file_content($file) or next;
@@ -943,39 +971,36 @@ sub install_package ($) {
     print "\n";
     show_info($info) or return;
 
-    if (ref $info->{pkgbuild}{depends} eq 'ARRAY') {
+    foreach my $dep (
+        grep { defined && /^\w/ }
+        map  { strip_version($_) }
+        map  { absolute_deps($_) }
 
-        foreach my $dep (
-            grep { defined && /^\w/ }
-            map  { strip_version($_) }
-            map  { absolute_deps($_) }
+        # Makedepends
+        ref $info->{pkgbuild}{makedepends} eq 'ARRAY'
+        ? @{$info->{pkgbuild}{makedepends}}
+        : $info->{pkgbuild}{makedepends},
 
-            # Makedepends
-            ref $info->{pkgbuild}{makedepends} eq 'ARRAY'
-            ? @{$info->{pkgbuild}{makedepends}}
-            : $info->{pkgbuild}{makedepends},
+        # Depends
+        ref $info->{pkgbuild}{depends} eq 'ARRAY'
+        ? @{$info->{pkgbuild}{depends}}
+        : $info->{pkgbuild}{depends}
+      ) {
 
-            # Depends
-            ref $info->{pkgbuild}{depends} eq 'ARRAY'
-            ? @{$info->{pkgbuild}{depends}}
-            : $info->{pkgbuild}{depends}
-          ) {
+        if (exists $ignored_packages{$dep}) {    # next if $dep exists in %ignored_packages
+            say "** Ignored package: $dep" if $lconfig{debug};
+            next;
+        }
 
-            if (exists $ignored_packages{$dep}) {    # next if $dep exists in %ignored_packages
-                say "** Ignored package: $dep" if $lconfig{debug};
-                next;
-            }
-
-            if (not $lconfig{install_all} and package_is_installed($dep)) {
-                say "** Skipping package $dep - already installed!" if $lconfig{debug};
-            }
-            elsif (is_available_in_pacman_repo($dep)) {
-                say "** Package $dep is available in pacman's repository!" if $lconfig{debug};
-            }
-            else {
-                say "** Trying to install package: $dep" if $lconfig{debug};
-                install_package($dep) or do { warn "[!] Unable to install: $dep\n"; next };
-            }
+        if (not $lconfig{install_all} and package_is_installed($dep)) {
+            say "** Skipping package $dep - already installed!" if $lconfig{debug};
+        }
+        elsif (is_available_in_pacman_repo($dep)) {
+            say "** Package $dep is available in pacman's repository!" if $lconfig{debug};
+        }
+        else {
+            say "** Trying to install package: $dep" if $lconfig{debug};
+            install_package($dep) or do { warn "[!] Unable to install: $dep\n"; next };
         }
     }
 
@@ -1332,41 +1357,3 @@ elsif ($lconfig{Q}) {                                  # -Q
 }
 
 main_quit();
-
-package Config;
-
-sub _dump {
-    require Data::Dumper;
-    return Data::Dumper::Dumper(shift);
-}
-
-sub _sort_items {
-    my ($data) = @_;
-    my ($items) = $data =~ /\{(.+?)\s*\};?\s*\z/s;
-    $items .= ',';
-    $data = "#!/usr/bin/perl\n\nscalar {"
-      . join(
-             "\n",
-             (
-              sort { lc $a cmp lc $b }
-                split(/\n/, $items, 0)
-             )
-            ) . "\n};\n";
-
-    $data =~ s{=>\s*'(\d+)',\s*$}  {=> $1,}gm;
-    $data =~ s{(.+?)\s*=>\s*(.+)}{
-        sprintf '%s%*s', $1, 40 - length($1) + length($2), ' => ' . $2;
-    }egm;
-    return $data;
-}
-
-sub save_hash {
-    my ($config, $file) = @_;
-    ref $config eq 'HASH' or return;
-    open my $fh, '>', $file or return;
-    print {$fh} _sort_items(_dump($config));
-    close $fh;
-    return 1;
-}
-
-1;
