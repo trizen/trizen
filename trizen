@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 19 July 2012
+# Latest edit on: 04 November 2012
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -32,10 +32,10 @@ use strict;
 use warnings;
 
 # Autouse
-use autouse 'Getopt::Std'      => qw(getopts);
+use autouse 'Getopt::Std'      => qw(getopts($;$));
 use autouse 'URI::Escape'      => qw(uri_escape);
 use autouse 'Text::ParseWords' => qw(quotewords);
-use autouse 'JSON::XS'         => qw(decode_json);
+use autouse 'JSON::XS'         => qw(decode_json($));
 use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
 
@@ -50,7 +50,8 @@ my $config_dir = (
                   defined $ENV{XDG_CONFIG_HOME}
                   ? $ENV{XDG_CONFIG_HOME}
                   : ($ENV{HOME} || $ENV{LOGDIR} || (getpwuid $<)[7] || `echo -n ~`) . '/.config'
-                 ) . "/$execname";
+                 )
+  . "/$execname";
 
 my $config_file = catdir($config_dir, "$execname.conf");
 my $user = (getpwuid $<)[0] || substr(`whoami`, 0, -1);
@@ -131,7 +132,7 @@ sub dump_configuration ($$) {
 }
 
 if (-e $config_file and (-s _) > 1) {
-    require $config_file;    # Load the configuration files
+    require $config_file;    # Load the configuration file
 
     if (ref $CONFIG eq 'HASH') {
         my @valid_keys = grep exists $CONFIG{$_}, keys $CONFIG;
@@ -459,13 +460,14 @@ sub get_comments ($) {
     my @comments;
     while (
         $content =~ m{
-        <div\b.*?>\s*<p\b.*?>\s*
-        Comment[ ]by:\s*(.*?)[ ]                        # Comment by: user
-        on\s+(\w+,[ ]\d+[ ]\w+[ ]\d+[ ]\d+:\d+).*?      # on Sun, 06 Nov 2011 23:42:50 +0000
-        </p>\s*</div>
-        (?:\s*<blockquote\b.*?>)?
-        \s*<div>\s*(.*?)</div>                          # Comment
-    }gsix
+            <h4>\s*
+                        Comment\s+by\s+(\S+)
+         \s*</h4>\s*
+        <p\s+class="timestamp">(.*?)</p>\s*
+        <div\s+class="article-content">\s*
+            <p>\s*(.*?)\s*</p>\s*
+        </div>
+        }gsix
       ) {
         my $author  = $1;
         my $date    = $2;
@@ -473,6 +475,7 @@ sub get_comments ($) {
         $comment =~ s{<.*?>}{}gs;
         $author  =~ s{<.*?>}{}gs;
         $comment = HTML::Entities::decode_entities($comment);
+        $comment =~ s/\h{2,}/ /g;
         unshift @comments, <<"EOC"
 $c{cblack}$c{byellow}Comment by: $c{bgreen}$author$c{reset}$c{cblack}$c{byellow} on $date$c{reset}
 $comment
@@ -516,7 +519,7 @@ sub is_available_in_pacman_repo (@) {
 }
 
 sub package_is_installed ($) {
-    my ($pkg)   = @_;
+    my ($pkg) = @_;
     my $regex = qr{^\Q$pkg\E-[^-]+-\d+\z};
 
     opendir(my $dir_h, $lconfig{pacman_local_dir}) or return;
@@ -1243,7 +1246,7 @@ sub show_stats {
 $c{bold}** Total installed packages:$c{byellow} $num_of_pkgs$c{reset}
 $c{bold}** Explicitly installed packages:$c{byellow} ${\($num_of_pkgs - $as_dep_packages)}$c{reset}
 $c{bold}** Asdep installed packages:$c{byellow} $as_dep_packages$c{reset}
-$c{bold}** Theorical space used by packages:$c{byellow} ${\int $total_size / 1024**2} MB$c{reset}\n
+$c{bold}** Theoretical space used by packages:$c{byellow} ${\int $total_size / 1024**2} MB$c{reset}\n
 $c{bold}** Oldest built packages:$c{byellow} @{[map { $_->[0] } @oldest_built_packages]}$c{reset}
 $c{bold}** Newest built packages:$c{byellow} @{[map { $_->[0] } @newest_built_packages]}$c{reset}\n
 $c{bold}** Oldest installed packages:$c{byellow} @{[map { $_->[0] } @oldest_installed_packages]}$c{reset}
