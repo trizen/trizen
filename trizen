@@ -872,7 +872,7 @@ sub output_file_content ($) {
 }
 
 sub edit_text_files () {
-    foreach my $file (grep { -f and not -z _ } glob('*')) {
+    foreach my $file (sort grep { -f and not -z _ } glob('*')) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
         next if substr($file, -4) eq q{.bak};    # ignore backup (.bak) files
