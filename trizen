@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 04 November 2012
+# Latest edit on: 19 December 2012
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -39,7 +39,7 @@ use autouse 'JSON::XS'         => qw(decode_json($));
 use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
 
-use File::Spec::Functions qw(catdir tmpdir curdir rel2abs);
+use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
 my $VERSION  = '1.03';
@@ -47,13 +47,13 @@ my $execname = 'trizen';
 
 # Configuration dir/file
 my $config_dir = (
-                  defined $ENV{XDG_CONFIG_HOME}
+                    $ENV{XDG_CONFIG_HOME}
                   ? $ENV{XDG_CONFIG_HOME}
                   : ($ENV{HOME} || $ENV{LOGDIR} || (getpwuid $<)[7] || `echo -n ~`) . '/.config'
                  )
   . "/$execname";
 
-my $config_file = catdir($config_dir, "$execname.conf");
+my $config_file = catfile($config_dir, "$execname.conf");
 my $user = (getpwuid $<)[0] || substr(`whoami`, 0, -1);
 
 if (not -d $config_dir) {
@@ -84,9 +84,9 @@ my %CONFIG = (
               su_command         => 'su -c',
               sudo_command       => 'sudo',
               makepkg_command    => 'makepkg --syncdeps --force --clean',
-              aur_rpc_base_url   => 'http://aur.archlinux.org/rpc.php',
+              aur_rpc_base_url   => 'https://aur.archlinux.org/rpc.php',
               aur_package_id_url => 'https://aur.archlinux.org/packages.php?ID=%s',
-              aur_base_url       => 'http://aur.archlinux.org',
+              aur_base_url       => 'https://aur.archlinux.org',
               movepkg_dir        => '/var/cache/pacman/pkg',
               pacman_local_dir   => '/var/lib/pacman/local',
               pacman_command     => 'pacman',
@@ -447,12 +447,10 @@ sub get_non_arguments_from_array (@) {
 sub get_comments ($) {
     my ($id) = @_;
 
-    defined $id or return;
+    $id // return;
     $id =~ /^\d+\z/ or return;
 
     my $url = sprintf($lconfig{aur_package_id_url}, $id);
-    $url =~ s/^https:/http:/;
-
     my $content = get($url) or return;
 
     require HTML::Entities;
@@ -473,7 +471,7 @@ sub get_comments ($) {
         my $date    = $2;
         my $comment = $3;
         $comment =~ s{<.*?>}{}gs;
-        $author  =~ s{<.*?>}{}gs;
+        $author =~ s{<.*?>}{}gs;
         $comment = HTML::Entities::decode_entities($comment);
         $comment =~ s/\h{2,}/ /g;
         unshift @comments, <<"EOC"
@@ -590,7 +588,7 @@ sub array_ref_or_string (@) {
 
 sub strip_space ($) {
     my ($string) = @_;
-    defined $string or return q{};
+    $string // return q{};
     $string =~ s/^\s+//;
     return unpack 'A*', $string;
 }
@@ -616,8 +614,7 @@ sub indent_array (@) {
 sub parse_quoted_words ($) {
     my ($value) = @_;
 
-    defined $value or return q{};
-
+    $value // return q{};
     $value = strip_space($value);
 
     if ($value =~ /^\((.+)\)\z/s) {
@@ -697,7 +694,7 @@ sub get_package_tarball ($$) {
         return;
     }
 
-    my $tgz_file = catdir($path, basename($info->{results}{URLPath}));
+    my $tgz_file = catfile($path, basename($info->{results}{URLPath}));
     my $url = "$lconfig{aur_base_url}$info->{results}{URLPath}";
 
     get_tgz_package($url, $tgz_file) or do { warn "[!] Unable to get the tarball for $pkg: $!"; return };
@@ -730,10 +727,10 @@ sub get_rpc_info ($) {
 
 sub absolute_deps ($) {
 
-    return q{} if not defined $_[0] or $_[0] eq q{};
+    return q{} if (not defined $_[0] or $_[0] eq q{});
 
     # For something like: perl-{gtk2-{imageview,unique},xml-fast}
-    # *Almost* the same as: return glob($string);
+    # Same as: return glob($string); -- but faster.
     my @chunks = grep { defined && $_ ne q{} } split(/([{}])|,/, shift);
 
     my (@output, @root);
@@ -770,8 +767,11 @@ sub show_info ($) {
       ["Out Of Date    : %s\n", $info->{results}{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
       ["Groups         : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{groups}))],
       ["Provides       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{provides}))],
-      ["Depends On     : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{depends}))],
-      ["Make Deps      : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{makedepends}))],
+      ["Depends On     : %s\n",
+        indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{depends}))],
+      [ "Make Deps      : %s\n",
+        indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{makedepends}))
+      ],
       ["Optional Deps  : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{optdepends}))],
       ["Conflicts With : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{conflicts}))],
       ["Replaces       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{replaces}))],
@@ -796,7 +796,7 @@ sub find_local_package ($$) {
             # When exists more than one packages built,
             # get the newest version available
             if (defined $newest_package) {
-                my ($new_version) = $file           =~ /($pkg_suffix_re)/;
+                my ($new_version) = $file =~ /($pkg_suffix_re)/;
                 my ($old_version) = $newest_package =~ /($pkg_suffix_re)/;
                 $newest_package = "$dir/$file" if versioncmp($old_version, $new_version) == -1;
             }
@@ -822,7 +822,7 @@ sub base_package_name ($) {
 
 sub move_built_package ($) {
     my ($pkg) = @_;
-    my $pkg_tarball = find_local_package($pkg, catdir($lconfig{cache_dir}, $pkg)) or return;
+    my $pkg_tarball = find_local_package($pkg, catfile($lconfig{cache_dir}, $pkg)) or return;
 
     if (not -d $lconfig{movepkg_dir}) {
         make_path($lconfig{movepkg_dir}) or warn "[!] Unable to create $lconfig{movepkg_dir}: $!";
@@ -830,7 +830,7 @@ sub move_built_package ($) {
     if (-d $lconfig{movepkg_dir}) {
         if (-w _) {
             say "** Moving $pkg_tarball into $lconfig{movepkg_dir}" if $lconfig{debug};
-            rename($pkg_tarball, catdir($lconfig{movepkg_dir}, basename($pkg_tarball)))
+            rename($pkg_tarball, catfile($lconfig{movepkg_dir}, basename($pkg_tarball)))
               or warn "[!] Unable to move $pkg into $lconfig{movepkg_dir}: $!";
         }
         else {
@@ -846,7 +846,7 @@ sub move_built_package ($) {
 sub install_local_package (@) {
     my ($pkg, @pacman_argvs) = @_;
 
-    my $pkg_tarball = find_local_package($pkg, catdir($lconfig{cache_dir}, $pkg))
+    my $pkg_tarball = find_local_package($pkg, catfile($lconfig{cache_dir}, $pkg))
       or do { warn "[!] Unable to find the built tarball for $pkg\n"; return };
 
     if (execute_pacman_command(1, $pkg_tarball, @pacman_argvs)) {
@@ -1036,7 +1036,8 @@ sub print_aur_results (\@) {
             say $result->{Name};
         }
         else {
-            printf "$c{bold}%s$c{reset} %s %s%s[$c{bold}%s+$c{reset}] [%s] [%s] - %s\n", $result->{Name}, $result->{Version},
+            printf "$c{bold}%s$c{reset} %s %s%s[$c{bold}%s+$c{reset}] [%s] [%s] - %s\n", $result->{Name},
+              $result->{Version},
               ($result->{OutOfDate} ? "[$c{bred}out-of-date$c{reset}] " : q{}),
               ($result->{Maintainer} ? q{} : "[$c{bred}UNMAINTAINED$c{reset}] "),
               $result->{NumVotes}, $categories{$result->{CategoryID}},
@@ -1104,7 +1105,6 @@ sub update_local_packages () {
     close $pipe_h;
 
     my $info_request = join('&', map { "arg[]=$_" } sort keys %packages);
-    defined $info_request or return;
 
     my $multiinfo = decode_json(
         get("$lconfig{aur_rpc_base_url}?type=multiinfo&$info_request")
@@ -1126,7 +1126,8 @@ sub update_local_packages () {
             say "$c{bgreen}$pkgname$c{reset} has been flagged out of date!" if $hash_ref->{OutOfDate};
         }
 
-        if (versioncmp($packages{$pkgname}, $version) == -1 or ($lconfig{devel} and $version =~ /^\d{2,}-\d{1,2}\z/)) {
+        if (versioncmp($packages{$pkgname}, $version) == -1
+            or ($lconfig{devel} and $version =~ /^\d{2,}-\d{1,2}\z/)) {
             $for_update{++$i} = $pkgname;
             $for_update{$pkgname} = $pkgname;
             printf("$c{bblue}%2s$c{reset}. $c{bold}%s$c{reset}: $c{bred}%s$c{reset} --> $c{bgreen}%s$c{reset}\n",
@@ -1143,7 +1144,8 @@ sub update_local_packages () {
     if (keys %for_update) {
         given ($term->readline("\n=>> Choose packages for upgrade (default: all)\n>$c{reset} ")) {
             when (['all', q{}]) {
-                @for_update = sort map { $for_update{$_} } grep { /^\d{1,2}\z/ and $_ > 0 and $_ <= $i } keys %for_update;
+                @for_update =
+                  sort map { $for_update{$_} } grep { /^\d{1,2}\z/ and $_ > 0 and $_ <= $i } keys %for_update;
             }
             default {
                 @for_update = map { $for_update{$_} } grep { exists $for_update{$_} } split /[,\s]+/;
@@ -1171,13 +1173,29 @@ sub show_stats {
     opendir my $dir_h, $lconfig{pacman_local_dir}
       or die "$c{bred}\[x] Unable to open dir '$lconfig{pacman_local_dir}':$c{reset} $!";
 
-    my @newest_built_packages = [q{}, 0];
-    my @oldest_built_packages = [q{}, 'inf'];
-
-    my @newest_installed_packages = [q{}, 0];
-    my @oldest_installed_packages = [q{}, 'inf'];
-
     my ($total_size, $num_of_pkgs, %dependencies, %reason_deps);
+
+    my %packages;
+    my $append_package = sub {
+        my ($date, $pkg, $key) = @_;
+
+        $packages{$key}{new} //= [[q{}, 0]];
+        $packages{$key}{old} //= [[q{}, 'inf']];
+
+        if ($date < $packages{$key}{old}[-1][1]) {
+            unshift @{$packages{$key}{old}}, [$pkg, $date];
+            @{$packages{$key}{old}} = sort { $a->[1] <=> $b->[1] } @{$packages{$key}{old}};
+            pop @{$packages{$key}{old}} if @{$packages{$key}{old}} > $lconfig{packages_in_stats};
+        }
+        if ($date > $packages{$key}{new}[-1][1]) {
+            unshift @{$packages{$key}{new}}, [$pkg, $date];
+            @{$packages{$key}{new}} = sort { $b->[1] <=> $a->[1] } @{$packages{$key}{new}};
+            pop @{$packages{$key}{new}} if @{$packages{$key}{new}} > $lconfig{packages_in_stats};
+        }
+        return 1;
+
+    };
+
     while (defined(my $subdir = readdir $dir_h)) {
 
         next if $subdir eq q{.} or $subdir eq q{..};
@@ -1186,7 +1204,7 @@ sub show_stats {
         ++$num_of_pkgs;
         my ($current_pkg) = $subdir =~ /^(.+?)-[^-]+-[^-]+$/;
 
-        open my $fh, '<', "$lconfig{pacman_local_dir}/$subdir/desc" or next;
+        open my $fh, '<', catfile($lconfig{pacman_local_dir}, $subdir, 'desc') or next;
         while (defined(my $line = <$fh>)) {
             given ($line) {
                 when ("%REASON%\n") {
@@ -1211,29 +1229,11 @@ sub show_stats {
                 }
                 when ("%BUILDDATE%\n") {
                     chomp(my $date = <$fh>);
-                    if ($date < $oldest_built_packages[-1][1]) {
-                        unshift @oldest_built_packages, [$current_pkg, $date];
-                        @oldest_built_packages = sort { $a->[1] <=> $b->[1] } @oldest_built_packages;
-                        pop @oldest_built_packages if @oldest_built_packages > $lconfig{packages_in_stats};
-                    }
-                    if ($date > $newest_built_packages[-1][1]) {
-                        unshift @newest_built_packages, [$current_pkg, $date];
-                        @newest_built_packages = sort { $b->[1] <=> $a->[1] } @newest_built_packages;
-                        pop @newest_built_packages if @newest_built_packages > $lconfig{packages_in_stats};
-                    }
+                    $append_package->($date, $current_pkg, 'built');
                 }
                 when ("%INSTALLDATE%\n") {
                     chomp(my $date = <$fh>);
-                    if ($date < $oldest_installed_packages[-1][1]) {
-                        unshift @oldest_installed_packages, [$current_pkg, $date];
-                        @oldest_installed_packages = sort { $a->[1] <=> $b->[1] } @oldest_installed_packages;
-                        pop @oldest_installed_packages if @oldest_installed_packages > $lconfig{packages_in_stats};
-                    }
-                    if ($date > $newest_installed_packages[-1][1]) {
-                        unshift @newest_installed_packages, [$current_pkg, $date];
-                        @newest_installed_packages = sort { $b->[1] <=> $a->[1] } @newest_installed_packages;
-                        pop @newest_installed_packages if @newest_installed_packages > $lconfig{packages_in_stats};
-                    }
+                    $append_package->($date, $current_pkg, 'installed');
                 }
             }
         }
@@ -1247,10 +1247,10 @@ $c{bold}** Total installed packages:$c{byellow} $num_of_pkgs$c{reset}
 $c{bold}** Explicitly installed packages:$c{byellow} ${\($num_of_pkgs - $as_dep_packages)}$c{reset}
 $c{bold}** Asdep installed packages:$c{byellow} $as_dep_packages$c{reset}
 $c{bold}** Theoretical space used by packages:$c{byellow} ${\int $total_size / 1024**2} MB$c{reset}\n
-$c{bold}** Oldest built packages:$c{byellow} @{[map { $_->[0] } @oldest_built_packages]}$c{reset}
-$c{bold}** Newest built packages:$c{byellow} @{[map { $_->[0] } @newest_built_packages]}$c{reset}\n
-$c{bold}** Oldest installed packages:$c{byellow} @{[map { $_->[0] } @oldest_installed_packages]}$c{reset}
-$c{bold}** Newest installed packages:$c{byellow} @{[map { $_->[0] } @newest_installed_packages]}$c{reset}\n
+$c{bold}** Oldest built packages:$c{byellow} @{[map { $_->[0] } @{$packages{built}{old}}]}$c{reset}
+$c{bold}** Newest built packages:$c{byellow} @{[map { $_->[0] } @{$packages{built}{new}}]}$c{reset}\n
+$c{bold}** Oldest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{installed}{old}}]}$c{reset}
+$c{bold}** Newest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{installed}{new}}]}$c{reset}\n
 STATS
 
     print "$c{bold}** Unneeded packages:$c{byellow}";
