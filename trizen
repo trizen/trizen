@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 19 December 2012
+# Latest edit on: 27 December 2012
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -38,6 +38,7 @@ use autouse 'Text::ParseWords' => qw(quotewords);
 use autouse 'JSON::XS'         => qw(decode_json($));
 use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
+use autouse 'List::Util'       => qw(first(&@));
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
@@ -1056,7 +1057,7 @@ sub search_aur_packages (@) {
     }
 
     my @all_results;
-    foreach my $key (grep { length() > 1 } map { uri_escape($_) } @keys) {
+    foreach my $key (map { uri_escape($_) } grep { length() > 1 } @keys) {
         push @all_results, decode_json(get("$lconfig{aur_rpc_base_url}?type=search&arg=$key") or next);
     }
 
@@ -1145,7 +1146,7 @@ sub update_local_packages () {
         given ($term->readline("\n=>> Choose packages for upgrade (default: all)\n>$c{reset} ")) {
             when (['all', q{}]) {
                 @for_update =
-                  sort map { $for_update{$_} } grep { /^\d{1,2}\z/ and $_ > 0 and $_ <= $i } keys %for_update;
+                  sort map { $for_update{$_} } grep { /^[0-9]{1,2}\z/ && $_ > 0 && $_ <= $i } keys %for_update;
             }
             default {
                 @for_update = map { $for_update{$_} } grep { exists $for_update{$_} } split /[,\s]+/;
@@ -1257,7 +1258,7 @@ STATS
     while (my ($key, $value) = each %reason_deps) {
         next if exists $dependencies{$key};
         if (ref $value eq 'ARRAY') {
-            next if grep { exists $dependencies{$_} } @{$value};
+            next if first { exists $dependencies{$_} } @{$value};
         }
         print qq{ $key};
     }
