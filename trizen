@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2010-2012 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
+# Copyright (C) 2010-2013 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 27 December 2012
+# Latest edit on: 17 February 2013
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -56,6 +56,7 @@ my $config_dir = (
 
 my $config_file = catfile($config_dir, "$execname.conf");
 my $user = (getpwuid $<)[0] || substr(`whoami`, 0, -1);
+my $arch = substr(`arch`, 0, -1);
 
 if (not -d $config_dir) {
     make_path($config_dir) or warn "[!] Unable to create dir $config_dir: $!";
@@ -935,6 +936,14 @@ sub install_local_tarball ($$) {
     return;
 }
 
+sub _is_lib32 ($) {
+    my ($pkg) = @_;
+    if ($arch ne 'x86_64') {
+        return 1 if $pkg =~ /^lib32-\w/;
+    }
+    return;
+}
+
 sub install_package ($) {
     my ($pkg) = @_;
 
@@ -993,6 +1002,11 @@ sub install_package ($) {
 
         if (exists $ignored_packages{$dep}) {    # next if $dep exists in %ignored_packages
             say "** Ignored package: $dep" if $lconfig{debug};
+            next;
+        }
+
+        if (_is_lib32($dep)) {
+            say "** Ignoring lib32-* package arch '$arch': $dep" if $lconfig{debug};
             next;
         }
 
