@@ -1172,7 +1172,11 @@ sub update_local_packages () {
     }
 
     foreach my $pkgname (@for_update) {
-        $lconfig{main_pkg} = $pkgname;
+
+        if (`pacman -Qi \Q$pkgname\E` =~ /^Install Reason\s*:\s*Explicitly installed/im) {
+            $lconfig{main_pkg} = $pkgname;
+        }
+
         if (install_package($pkgname)) {
             say "** $pkgname has been upgraded!" if $lconfig{debug};
         }
