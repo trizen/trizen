@@ -21,7 +21,7 @@
 # Created on:  07 July 2010, 12:00 PM
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 17 February 2013
+# Latest edit on: 02 April 2013
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -43,7 +43,7 @@ use autouse 'List::Util'       => qw(first(&@));
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
-my $VERSION  = '1.03';
+my $VERSION  = '1.04';
 my $execname = 'trizen';
 
 # Configuration dir/file
@@ -56,7 +56,7 @@ my $config_dir = (
 
 my $config_file = catfile($config_dir, "$execname.conf");
 my $user = (getpwuid $<)[0] || substr(`whoami`, 0, -1);
-my $arch = substr(`arch`, 0, -1);
+my $arch = substr(`uname -m`, 0, -1);
 
 if (not -d $config_dir) {
     make_path($config_dir) or warn "[!] Unable to create dir $config_dir: $!";
@@ -106,6 +106,7 @@ my %lconfig = (
                noinstall     => 0,
                update_config => 0,
                show_ood      => 0,
+               asdep         => 0,
                as_root       => $user eq 'root' ? 1 : 0,
                stats         => \&show_stats,
                help          => \&help,
@@ -254,6 +255,7 @@ sub help () {
     --force         : set --force argument for makepkg and pacman
     --nocolors      : no text colors
     --aur           : only AUR packages (for: -S, -Si, -Su, -Ss)
+    --asdep         : installs package as dependency
     --noinstall     : build package only, don't install it
     --movepkg       : move the built package to the pacman cache directory
     --needed        : don't reinstall up to date packages
@@ -944,6 +946,20 @@ sub _is_lib32 ($) {
     return;
 }
 
+sub install_as_dep ($) {
+    my ($pkg) = @_;
+    say "** Installing the following package as dependency: $pkg" if $lconfig{debug};
+    install_local_tarball($pkg, '--asdep') and return 1;
+    return;
+}
+
+sub install_as_explicit ($) {
+    my ($pkg) = @_;
+    say "** Installing the following package as explicit: $pkg" if $lconfig{debug};
+    install_local_tarball($pkg, '--asexplicit') and return 1;
+    return;
+}
+
 sub install_package ($) {
     my ($pkg) = @_;
 
@@ -1026,12 +1042,15 @@ sub install_package ($) {
     say "** Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
     if (defined $lconfig{main_pkg} and $pkg eq $lconfig{main_pkg}) {    # install as explicit
-        say "** Installing as explicit: $pkg" if $lconfig{debug};
-        install_local_tarball($pkg, '--asexplicit') and return 1;
+        (
+         $lconfig{asdep}
+         ? install_as_dep($pkg)
+         : install_as_explicit($pkg)
+        )
+          && return 1;
     }
     else {                                                              # install as dependency
-        say "** Installing as dependency: $pkg" if $lconfig{debug};
-        install_local_tarball($pkg, '--asdep') and return 1;
+        install_as_dep($pkg) and return 1;
     }
 
     return;
