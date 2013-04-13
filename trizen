@@ -471,13 +471,16 @@ sub get_comments ($) {
         </div>
         }gsix
       ) {
+
         my $author  = $1;
         my $date    = $2;
         my $comment = $3;
+
         $comment =~ s{<.*?>}{}gs;
         $author =~ s{<.*?>}{}gs;
         $comment = HTML::Entities::decode_entities($comment);
         $comment =~ s/\h{2,}/ /g;
+
         unshift @comments, <<"EOC"
 $c{cblack}$c{byellow}Comment by: $c{bgreen}$author$c{reset}$c{cblack}$c{byellow} on $date$c{reset}
 $comment
@@ -1161,7 +1164,7 @@ sub update_local_packages () {
         }
 
         if (versioncmp($packages{$pkgname}, $version) == -1
-            or ($lconfig{devel} and $version =~ /^\d{2,}-\d{1,2}\z/)) {
+            or ($lconfig{devel} and $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs)\z/)) {
             $for_update{++$i} = $pkgname;
             $for_update{$pkgname} = $pkgname;
             printf("$c{bblue}%2s$c{reset}. $c{bold}%s$c{reset}: $c{bred}%s$c{reset} --> $c{bgreen}%s$c{reset}\n",
