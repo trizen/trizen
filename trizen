@@ -917,6 +917,9 @@ sub run_makepkg_command ($) {
             if ($term->ask_yn(prompt => "=>> Do you want to exit now?", default => 'y')) {
                 exit 65;    # Package not installed
             }
+            else{
+                return;
+            }
         }
     }
     return 1;
