@@ -38,7 +38,6 @@ use autouse 'Text::ParseWords' => qw(quotewords);
 use autouse 'JSON::XS'         => qw(decode_json($));
 use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
-use autouse 'List::Util'       => qw(first(&@));
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
@@ -1295,11 +1294,12 @@ $c{bold}** Oldest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{
 $c{bold}** Newest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{installed}{new}}]}$c{reset}\n
 STATS
 
+    require List::Util;
     print "$c{bold}** Unneeded packages:$c{byellow}";
     while (my ($key, $value) = each %reason_deps) {
         next if exists $dependencies{$key};
         if (ref $value eq 'ARRAY') {
-            next if first { exists $dependencies{$_} } @{$value};
+            next if List::Util::first(sub { exists $dependencies{$_} }, @{$value});
         }
         print qq{ $key};
     }
