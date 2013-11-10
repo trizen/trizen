@@ -1,4 +1,4 @@
-#!/usr/bin/perl -X
+#!/usr/bin/perl
 #
 # Copyright (C) 2010-2013 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
 #
@@ -16,12 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# Author: Trizen
+# Author: Daniel "Trizen" Șuteu
 # License: GPLv3
-# Created on:  07 July 2010, 12:00 PM
+# First creation on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 02 April 2013
+# Latest edit on: 10 November 2013
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -30,6 +30,8 @@ eval 'exec perl -S $0 ${1+"$@"}'
 use 5.010;
 use strict;
 use warnings;
+
+no if $] >= 5.018, warnings => 'experimental';
 
 # Autouse
 use autouse 'Getopt::Std'      => qw(getopts($;$));
@@ -42,7 +44,7 @@ use autouse 'File::Basename'   => qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
-my $VERSION  = '1.04';
+my $VERSION  = '1.05';
 my $execname = 'trizen';
 
 # Configuration dir/file
@@ -76,9 +78,8 @@ my %CONFIG = (
               overwrite          => 1,
               force              => 1,
               lwp_show_progress  => 0,
-              lwp_keep_alive     => 1,
               lwp_env_proxy      => 1,
-              packages_in_stats  => 4,
+              packages_in_stats  => 5,
               lwp_timeout        => 60,
               build_dir          => tmpdir(),
               use_sudo           => -e '/usr/bin/sudo' ? 1 : 0,
@@ -189,10 +190,25 @@ my $short_arguments = 'CUNQRSGbcdefghiklmnopqrstuvwy';
 my %parens;
 @parens{'<', '(', '[', '{'} = ('>', ')', ']', '}');
 
-my @tarball_formats = qw
-  (
-  .tar.gz .tgz .tar.xz .tar.bz2
-  .tar.lzma .tar .gz .tar.lzo .tar.7z
+# The order matters!
+my @package_suffices = qw (
+  .tar.7z
+  .tar.Z
+  .tar.bz2
+  .tar.gz
+  .tar.lz
+  .tar.lzma
+  .tar.lzo
+  .tar.xz
+  .tgz
+  .xz
+  .7z
+  .bz2
+  .gz
+  .lzma
+  .lzo
+  .tar
+  .zip
   );
 
 # Skip these packages
@@ -200,8 +216,8 @@ my %ignored_packages;
 @ignored_packages{qw{ sh svn java-environment }} = ();
 
 my %just_installed;
-my $tar_suffixes = join('|', map { quotemeta } @tarball_formats);
-my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$tar_suffixes)\z/;
+my $pkg_suffices = join('|', map { quotemeta } @package_suffices);
+my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/;
 
 # Subroutine prototypes
 sub install_package ($);
@@ -425,7 +441,6 @@ my $term = Term::ReadLine->new("$pkgname $VERSION");
 
 my $lwp = LWP::UserAgent->new(
                               env_proxy     => $lconfig{lwp_env_proxy},
-                              keep_alive    => $lconfig{lwp_keep_alive},
                               show_progress => $lconfig{lwp_show_progress},
                               timeout       => $lconfig{lwp_timeout},
                               agent         => "Mozilla/5.0 (CLI; $pkgname) $execname/$VERSION",
@@ -703,7 +718,7 @@ sub get_package_tarball ($$) {
 
     get_tgz_package($url, $tgz_file) or do { warn "[!] Unable to get the tarball for $pkg: $!"; return };
 
-    my $dir_name = catdir(dirname($tgz_file), basename($tgz_file, @tarball_formats));
+    my $dir_name = catdir(dirname($tgz_file), basename($tgz_file, @package_suffices));
     chdir $path or do { warn "[!] Unable to chdir() to $path: $!"; return };
 
     if ($lconfig{overwrite} or not -e "$dir_name/PKGBUILD" or -z _) {
@@ -771,11 +786,8 @@ sub show_info ($) {
       ["Out Of Date    : %s\n", $info->{results}{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
       ["Groups         : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{groups}))],
       ["Provides       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{provides}))],
-      ["Depends On     : %s\n",
-        indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{depends}))],
-      [ "Make Deps      : %s\n",
-        indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{makedepends}))
-      ],
+      ["Depends On     : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{depends}))],
+      ["Make Deps      : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{makedepends}))],
       ["Optional Deps  : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{optdepends}))],
       ["Conflicts With : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{conflicts}))],
       ["Replaces       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{replaces}))],
