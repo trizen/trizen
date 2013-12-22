@@ -4,14 +4,13 @@ trizen
 trizen is a lightweight wrapper for AUR, written in Perl.
 
 Main features:
-
-* Install packages from AUR
-* Search for packages in AUR
-* Read package comments from AUR
+* Installation of packages from AUR
+* Search support for AUR packages
+* Reading AUR comments for packages
+* Checking for AUR package updates
 * Full AUR dependencies support
-* Update the packages from AUR
-* Can interact with 'pacman'
-* Edit support for TXT files
+* Interaction with 'pacman'
+* Edit support for text files
 
 It has a syntax similar with pacman:
 
