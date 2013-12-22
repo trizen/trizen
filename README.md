@@ -10,6 +10,7 @@ Main features:
 * Read package comments from AUR
 * Full AUR dependencies support
 * Update the packages from AUR
+* Can interact with 'pacman'
 
 It has a syntax similar with pacman:
 
@@ -27,6 +28,7 @@ It has a syntax similar with pacman:
     -U              : installs local packages from /tmp or CWD
 
 But it has other options too:
+
     --quiet         : be quiet
     --really_quiet  : be really quiet
     --force         : set --force argument for makepkg and pacman
