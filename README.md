@@ -7,7 +7,7 @@ Main features:
 * Installation of packages from AUR
 * Search support for AUR packages
 * Reading AUR comments for packages
-* Checking for AUR package updates
+* Updating the installed AUR packages
 * Full AUR dependencies support
 * Interaction with 'pacman'
 * Edit support for text files
