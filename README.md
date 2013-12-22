@@ -1,7 +1,7 @@
 trizen
 ======
 
-trizen is a lightweight wrapper for AUR in Perl.
+trizen is a lightweight wrapper for AUR written in Perl.
 
 Main features:
 
@@ -11,6 +11,7 @@ Main features:
 * Full AUR dependencies support
 * Update the packages from AUR
 * Can interact with 'pacman'
+* Edit support for TXT files
 
 It has a syntax similar with pacman:
 
