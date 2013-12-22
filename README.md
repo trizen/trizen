@@ -9,7 +9,7 @@ Main features:
 * Reading AUR comments for packages
 * Updating the installed AUR packages
 * Full AUR dependencies support
-* Interaction with 'pacman'
+* Built-in interaction with 'pacman'
 * Edit support for text files
 
 It has a syntax similar with pacman:
