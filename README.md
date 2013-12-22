@@ -1,7 +1,7 @@
 trizen
 ======
 
-trizen is a lightweight wrapper for AUR written in Perl.
+trizen is a lightweight wrapper for AUR, written in Perl.
 
 Main features:
 
