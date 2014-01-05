@@ -221,6 +221,7 @@ my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/;
 
 # Subroutine prototypes
 sub install_package ($);
+sub move_built_package($);
 
 # Main quit
 sub main_quit () {
@@ -850,11 +851,21 @@ sub move_built_package ($) {
               or warn "[!] Unable to move $pkg into $lconfig{movepkg_dir}: $!";
         }
         else {
-            say "** Moving '${pkg_tarball}' into '$lconfig{movepkg_dir}'";
+            say "** Moving `${pkg_tarball}' into `$lconfig{movepkg_dir}'";
+
             system $lconfig{use_sudo}
               ? "$lconfig{sudo_command} mv '${pkg_tarball}' '$lconfig{movepkg_dir}'"
-              : qq{$lconfig{su_command} 'mv \Q$pkg_tarball\E $lconfig{movepkg_dir}'};
-            $? and warn "error: 'mv' command exited with code: $?\n";
+              : qq{$lconfig{su_command} 'mv \Q$pkg_tarball\E \Q$lconfig{movepkg_dir}\E'};
+
+            if ($?) {
+                warn "[!] Unable to move package `$pkg' into `$lconfig{movepkg_dir}' -- exit code: $?\n";
+                if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
+                    move_built_package($pkg);
+                }
+            }
+            else {
+                say "** Package `$pkg' has been successfully moved into `$lconfig{movepkg_dir}'.";
+            }
         }
     }
 }
