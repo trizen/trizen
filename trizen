@@ -21,7 +21,7 @@
 # First creation on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 12 January 2014
+# Latest edit on: 27 April 2014
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -31,7 +31,8 @@ use 5.010;
 use strict;
 use warnings;
 
-no if $] >= 5.018, warnings => 'experimental';
+no if $] >= 5.018, warnings => 'experimental::smartmatch';
+no if $] >= 5.018, warnings => 'deprecated';
 
 # Autouse
 use autouse 'Getopt::Std'      => qw(getopts($;$));
@@ -138,7 +139,7 @@ if (-e $config_file and (-s _) > 1) {
     require $config_file;    # Load the configuration file
 
     if (ref $CONFIG eq 'HASH') {
-        my @valid_keys = grep exists $CONFIG{$_}, keys $CONFIG;
+        my @valid_keys = grep exists $CONFIG{$_}, keys %{$CONFIG};
         @CONFIG{@valid_keys}  = @{$CONFIG}{@valid_keys};
         @lconfig{@valid_keys} = @{$CONFIG}{@valid_keys};
 
