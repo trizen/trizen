@@ -541,14 +541,14 @@ sub is_available_in_pacman_repo (@) {
 
 sub package_is_installed ($) {
     my ($pkg) = @_;
-    my $regex = qr{^\Q$pkg\E-[^-]+-\d+\z};
+    my $regex = qr{^\Q$pkg\E-([^-]+-\d+)\z};
 
     opendir(my $dir_h, $lconfig{pacman_local_dir}) or return;
 
     while (defined(my $dir = readdir($dir_h))) {
         if ($dir =~ $regex) {
             closedir $dir_h;
-            return 1;
+            return $1;
         }
     }
 
@@ -992,14 +992,9 @@ sub install_package ($) {
 
     say "** Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
-    if (package_is_installed($pkg)) {
-        say "** Package $pkg is already installed!" if $lconfig{debug};
-        return 1 if $lconfig{needed};
-    }
-
     my $info;
     if (ref($info = get_package_tarball($pkg, $lconfig{cache_dir})) eq 'HASH') {
-        say "** Package $pkg is found in AUR!" if $lconfig{debug};
+        say "** Package `$pkg' is found in AUR!" if $lconfig{debug};
     }
     elsif (not $lconfig{aur} and is_available_in_pacman_repo($pkg)) {
         execute_pacman_command(1, qw(-S), $pkg) and return 1;
@@ -1011,6 +1006,18 @@ sub install_package ($) {
     }
 
     ref $info->{results} eq 'HASH' or return;
+
+    if (my $version = package_is_installed($pkg)) {
+        say "** Package `$pkg' is already installed!" if $lconfig{debug};
+        if ($lconfig{needed}) {
+            if (versioncmp($version, $info->{results}{Version}) >= 0) {
+                return 1;    # package is installed and up-to-date
+            }
+            else {
+                say "** Package `$pkg' is NOT up-to-date!" if $lconfig{debug};
+            }
+        }
+    }
 
     say "\n$c{bold}** Installing:$c{reset}: $c{bgreen}$info->{results}{Name}$c{reset}";
     say "$c{bold}** AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID});

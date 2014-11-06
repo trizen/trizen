@@ -1,7 +1,7 @@
 # Maintainer: Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>
 
 pkgname=trizen
-pkgver=118.c70015d
+pkgver=119.de14113
 pkgrel=1
 pkgdesc="Trizen's AUR Package Manager: A lightweight wrapper for AUR."
 arch=('any')
@@ -12,6 +12,9 @@ makedepends=('git')
 depends=(
          'perl>=5.10.0'
          'perl-libwww'
+         'perl-term-ui'
+         'perl-log-message'
+         'perl-log-message-simple'
          'pacman'
          'perl-json-xs'
          'perl-data-dump'
