@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2010-2014 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
+# Copyright (C) 2010-2015 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # First creation on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 27 April 2014
+# Latest edit on: 02 January 2015
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -165,25 +165,26 @@ if (not -d $lconfig{cache_dir}) {
 }
 
 my %categories = (
-                  1  => 'none',
-                  2  => 'daemons',
-                  3  => 'devel',
-                  4  => 'editors',
-                  5  => 'emulators',
-                  6  => 'games',
-                  7  => 'gnome',
-                  8  => 'i18n',
-                  9  => 'kde',
-                  19 => 'kernels',
-                  10 => 'lib',
-                  11 => 'modules',
-                  12 => 'multimedia',
-                  13 => 'network',
-                  14 => 'office',
-                  15 => 'science',
-                  16 => 'system',
-                  17 => 'x11',
-                  18 => 'xfce',
+                  '2'  => 'daemons',
+                  '3'  => 'devel',
+                  '4'  => 'editors',
+                  '5'  => 'emulators',
+                  '20' => 'fonts',
+                  '6'  => 'games',
+                  '7'  => 'gnome',
+                  '8'  => 'i18n',
+                  '9'  => 'kde',
+                  '19' => 'kernels',
+                  '10' => 'lib',
+                  '11' => 'modules',
+                  '12' => 'multimedia',
+                  '13' => 'network',
+                  '14' => 'office',
+                  '15' => 'science',
+                  '16' => 'system',
+                  '21' => 'wayland',
+                  '17' => 'x11',
+                  '18' => 'xfce',
                  );
 
 my $short_arguments = 'CUNQRSGbcdefghiklmnopqrstuvwy';
