@@ -780,7 +780,7 @@ sub show_info ($) {
       ["Name           : %s\n", "$c{bold}$info->{results}{Name}$c{reset}"],
       ["Version        : %s\n", $info->{results}{Version} // 'Unknown'],
       ["Maintainer     : %s\n", $info->{results}{Maintainer} // "$c{bred}None$c{reset}"],
-      ["Category       : %s\n", ucfirst $categories{$info->{results}{CategoryID}}],
+      ["Category       : %s\n", ucfirst $categories{$info->{results}{CategoryID}} // 'none'],
       ["URL            : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{url}))],
       ["AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID})],
       ["Licenses       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{license}))],
@@ -1109,7 +1109,7 @@ sub print_aur_results (\@) {
               $result->{Version},
               ($result->{OutOfDate} ? "[$c{bred}out-of-date$c{reset}] " : q{}),
               ($result->{Maintainer} ? q{} : "[$c{bred}UNMAINTAINED$c{reset}] "),
-              $result->{NumVotes}, $categories{$result->{CategoryID}},
+              $result->{NumVotes}, $categories{$result->{CategoryID}} // 'none',
               do { localtime($result->{LastModified}) =~ /^\w+ (\w+)\s+(\d+)\s+.+? (\d+)$/ && "$2 $1 $3" },
               $result->{Description};
         }
