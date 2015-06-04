@@ -38,7 +38,6 @@ no if $] >= 5.018, warnings => 'deprecated';
 use autouse 'Getopt::Std'      => qw(getopts($;$));
 use autouse 'URI::Escape'      => qw(uri_escape);
 use autouse 'Text::ParseWords' => qw(quotewords);
-use autouse 'JSON::XS'         => qw(decode_json($));
 use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
 
@@ -448,6 +447,11 @@ my $lwp = LWP::UserAgent->new(
                               timeout       => $lconfig{lwp_timeout},
                               agent         => "Mozilla/5.0 (CLI; $pkgname) $execname/$VERSION",
                              );
+
+sub decode_json($) {
+    require JSON;
+    JSON::decode_json($_[0]);
+}
 
 sub get ($) {
     my $response = $lwp->get(shift);
