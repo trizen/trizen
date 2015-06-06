@@ -21,7 +21,7 @@
 # First creation on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 02 January 2015
+# Latest edit on: 06 June 2015
 # http://trizen.googlecode.com
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -449,7 +449,7 @@ my $lwp = LWP::UserAgent->new(
                              );
 
 sub decode_json($) {
-    require JSON;
+    state $x = require JSON;
     JSON::decode_json($_[0]);
 }
 
@@ -478,7 +478,7 @@ sub get_comments ($) {
     my $url = sprintf($lconfig{aur_package_id_url}, $id);
     my $content = get($url) or return;
 
-    require HTML::Entities;
+    state $x = require HTML::Entities;
 
     my @comments;
     while (
@@ -1330,7 +1330,7 @@ $c{bold}** Oldest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{
 $c{bold}** Newest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{installed}{new}}]}$c{reset}\n
 STATS
 
-    require List::Util;
+    state $x = require List::Util;
     print "$c{bold}** Unneeded packages:$c{byellow}";
     while (my ($key, $value) = each %reason_deps) {
         next if exists $dependencies{$key};
