@@ -36,10 +36,10 @@ no if $] >= 5.018, warnings => 'deprecated';
 
 # Autouse
 use autouse 'Getopt::Std'      => qw(getopts($;$));
-use autouse 'URI::Escape'      => qw(uri_escape);
 use autouse 'Text::ParseWords' => qw(quotewords);
 use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
+use autouse 'URI::Escape'      => qw(uri_escape uri_unescape);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
@@ -703,15 +703,25 @@ sub get_package_tarball ($$) {
 
     get_tgz_package($url, $tgz_file) or do { warn "[!] Unable to get the tarball for $pkg: $!"; return };
 
-    my $dir_name = catdir(dirname($tgz_file), basename($tgz_file, @package_suffices));
+    my $dir_name = uri_unescape(catdir(dirname($tgz_file), basename($tgz_file, @package_suffices)));
+
+    if ($lconfig{debug}) {
+        say "** Changing directory to: $path";
+    }
+
     chdir $path or do { warn "[!] Unable to chdir() to $path: $!"; return };
 
     if ($lconfig{overwrite} or not -e "$dir_name/PKGBUILD" or -z _) {
         extract_tarball($tgz_file) or do { warn "[!] Unable to extract tarball of $pkg: $!"; return };
     }
 
+    if ($lconfig{debug}) {
+        say "** Trying to change directory to: $dir_name";
+    }
+
     if (-d $dir_name) {
         chdir $dir_name or do { warn "[!] Unable to chdir() to $dir_name: $!"; return };
+        say "** Changed directory successfully to: $dir_name" if $lconfig{debug};
     }
 
     return $info;
@@ -725,8 +735,8 @@ sub extract_tarball ($) {
 }
 
 sub get_rpc_info ($) {
-    my $pkg = uri_escape(shift);
-    return decode_json(get("$lconfig{aur4_rpc_base_url}?type=info&arg=$pkg") or return);
+    my ($pkg) = @_;
+    return decode_json(get("$lconfig{aur4_rpc_base_url}?type=info&arg=" . uri_escape($pkg)) or return);
 }
 
 sub absolute_deps ($) {
@@ -1154,7 +1164,7 @@ sub update_local_packages () {
     }
     close $pipe_h;
 
-    my $info_request = join('&', map { "arg[]=$_" } sort keys %packages);
+    my $info_request = join('&', map { "arg[]=$_" } map { uri_escape($_) } sort keys %packages);
 
     my $multiinfo = decode_json(
         get("$lconfig{aur4_rpc_base_url}?type=multiinfo&$info_request")
