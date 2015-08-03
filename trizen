@@ -1218,7 +1218,7 @@ sub update_local_packages () {
 
     foreach my $pkgname (@for_update) {
 
-        if (`pacman -Qi \Q$pkgname\E` =~ /^Install Reason\s*:\s*Explicitly installed/im) {
+        if (not(`/usr/bin/pacman -Qi \Q$pkgname\E` =~ /^.*?Install.+?Reason.*?:.*?dependency\b/im)) {
             $lconfig{main_pkg} = $pkgname;
         }
 
