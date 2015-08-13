@@ -21,8 +21,8 @@
 # First creation on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 01 July 2015
-# http://trizen.googlecode.com
+# Latest edit on: 13 August 2015
+# http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
@@ -44,7 +44,7 @@ use autouse 'URI::Escape'      => qw(uri_escape uri_unescape);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
-my $VERSION  = '1.06';
+my $VERSION  = '1.07';
 my $execname = 'trizen';
 
 # Configuration dir/file
@@ -67,31 +67,31 @@ if (not -d $config_dir) {
 $ENV{EDITOR} ||= 'nano';
 
 my %CONFIG = (
-              VERSION             => $VERSION,
-              show_comments       => 0,
-              quiet               => 0,
-              debug               => 0,
-              nocolors            => 0,
-              movepkg             => 0,
-              noedit              => 0,
-              skipinteg           => 0,
-              overwrite           => 1,
-              force               => 1,
-              lwp_show_progress   => 0,
-              lwp_env_proxy       => 1,
-              packages_in_stats   => 5,
-              lwp_timeout         => 60,
-              build_dir           => tmpdir(),
-              use_sudo            => -e '/usr/bin/sudo' ? 1 : 0,
-              su_command          => 'su -c',
-              sudo_command        => 'sudo',
-              makepkg_command     => 'makepkg --syncdeps --clean',
-              aur4_rpc_base_url   => 'https://aur4.archlinux.org/rpc.php',
-              aur4_package_id_url => 'https://aur4.archlinux.org/packages.php?ID=%s',
-              aur4_base_url       => 'https://aur4.archlinux.org',
-              movepkg_dir         => '/var/cache/pacman/pkg',
-              pacman_local_dir    => '/var/lib/pacman/local',
-              pacman_command      => 'pacman',
+              VERSION            => $VERSION,
+              show_comments      => 0,
+              quiet              => 0,
+              debug              => 0,
+              nocolors           => 0,
+              movepkg            => 0,
+              noedit             => 0,
+              skipinteg          => 0,
+              overwrite          => 1,
+              force              => 1,
+              lwp_show_progress  => 0,
+              lwp_env_proxy      => 1,
+              packages_in_stats  => 5,
+              lwp_timeout        => 60,
+              build_dir          => tmpdir(),
+              use_sudo           => -e '/usr/bin/sudo' ? 1 : 0,
+              su_command         => 'su -c',
+              sudo_command       => 'sudo',
+              makepkg_command    => 'makepkg --syncdeps --clean',
+              aur_rpc_base_url   => 'https://aur.archlinux.org/rpc.php',
+              aur_package_id_url => 'https://aur.archlinux.org/packages.php?ID=%s',
+              aur_base_url       => 'https://aur.archlinux.org',
+              movepkg_dir        => '/var/cache/pacman/pkg',
+              pacman_local_dir   => '/var/lib/pacman/local',
+              pacman_command     => 'pacman',
              );
 
 my %lconfig = (
@@ -453,7 +453,7 @@ sub get_comments ($) {
     $id // return;
     $id =~ /^\d+\z/ or return;
 
-    my $url = sprintf($lconfig{aur4_package_id_url}, $id);
+    my $url = sprintf($lconfig{aur_package_id_url}, $id);
     my $content = get($url) or return;
 
     state $x = require HTML::Entities;
@@ -699,7 +699,7 @@ sub get_package_tarball ($$) {
     }
 
     my $tgz_file = catfile($path, basename($info->{results}{URLPath}));
-    my $url = "$lconfig{aur4_base_url}$info->{results}{URLPath}";
+    my $url = "$lconfig{aur_base_url}$info->{results}{URLPath}";
 
     get_tgz_package($url, $tgz_file) or do { warn "[!] Unable to get the tarball for $pkg: $!"; return };
 
@@ -736,7 +736,7 @@ sub extract_tarball ($) {
 
 sub get_rpc_info ($) {
     my ($pkg) = @_;
-    return decode_json(get("$lconfig{aur4_rpc_base_url}?type=info&arg=" . uri_escape($pkg)) or return);
+    return decode_json(get("$lconfig{aur_rpc_base_url}?type=info&arg=" . uri_escape($pkg)) or return);
 }
 
 sub absolute_deps ($) {
@@ -773,7 +773,7 @@ sub show_info ($) {
       ["Version        : %s\n", $info->{results}{Version} // 'Unknown'],
       ["Maintainer     : %s\n", $info->{results}{Maintainer} // "$c{bred}None$c{reset}"],
       ["URL            : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{url}))],
-      ["AUR URL        : %s\n", sprintf($lconfig{aur4_package_id_url}, $info->{results}{ID})],
+      ["AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID})],
       ["Licenses       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{license}))],
       ["Votes          : %s\n", $info->{results}{NumVotes}],
       ["Installed      : %s\n", package_is_installed($info->{results}{Name}) ? 'Yes' : 'No'],
@@ -1012,7 +1012,7 @@ sub install_package ($) {
     }
 
     say "\n$c{bold}** Installing:$c{reset}: $c{bgreen}$info->{results}{Name}$c{reset}";
-    say "$c{bold}** AUR URL:$c{reset} ", sprintf($lconfig{aur4_package_id_url}, $info->{results}{ID});
+    say "$c{bold}** AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID});
 
     if ($lconfig{show_comments}) {
         foreach my $comment (get_comments($info->{results}{ID})) {
@@ -1117,7 +1117,7 @@ sub search_aur_packages (@) {
 
     my @all_results;
     foreach my $key (map { uri_escape($_) } grep { length() > 1 } @keys) {
-        push @all_results, decode_json(get("$lconfig{aur4_rpc_base_url}?type=search&arg=$key") or next);
+        push @all_results, decode_json(get("$lconfig{aur_rpc_base_url}?type=search&arg=$key") or next);
     }
 
     my @keys_re = map { qr/\Q$_\E/i } @keys;
@@ -1144,7 +1144,7 @@ sub search_aur_packages (@) {
 
 sub list_aur_maintainer_packages ($) {
     my ($maintainer) = @_;
-    my $results = decode_json(get("$lconfig{aur4_rpc_base_url}?type=msearch&arg=$maintainer") or return);
+    my $results = decode_json(get("$lconfig{aur_rpc_base_url}?type=msearch&arg=$maintainer") or return);
     ref $results->{results} eq 'ARRAY' or return;
     my @maintainers_packages = @{$results->{results}};
     print_aur_results(@maintainers_packages) or return;
@@ -1167,7 +1167,7 @@ sub update_local_packages () {
     my $info_request = join('&', map { "arg[]=$_" } map { uri_escape($_) } sort keys %packages);
 
     my $multiinfo = decode_json(
-        get("$lconfig{aur4_rpc_base_url}?type=multiinfo&$info_request")
+        get("$lconfig{aur_rpc_base_url}?type=multiinfo&$info_request")
           or do { warn "** Unable to get info for local packages\n"; return }
     );
 
@@ -1387,7 +1387,7 @@ elsif ($lconfig{C}) {    # -C
         my $info = get_rpc_info($pkg) or next;
         ref $info->{results} eq 'HASH' or next;
         say "$c{bold}** AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}$c{reset}\n$c{bold}** URL:$c{reset} ",
-          sprintf($lconfig{aur4_package_id_url}, $info->{results}{ID}), "\n";
+          sprintf($lconfig{aur_package_id_url}, $info->{results}{ID}), "\n";
         foreach my $comment (get_comments($info->{results}{ID})) {
             say $comment;
         }
