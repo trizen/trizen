@@ -461,10 +461,9 @@ sub get_comments ($) {
     my @comments;
     while (
         $content =~ m{
-            <h4>\s*
-                        Comment\s+by\s+(\S+)
+            <h4\b.*?>\s*
+                (\S(?-s:.*?))\ commented\ on\ (\d\d\d\d-\d\d-\d\d\ \d\d:\d\d)
          \s*</h4>\s*
-        <p\s+class="timestamp">(.*?)</p>\s*
         <div\s+class="article-content">\s*
             <p>\s*(.*?)\s*</p>\s*
         </div>
