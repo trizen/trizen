@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2010-2015 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
+# Copyright (C) 2010-2016 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # First creation on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 13 August 2015
+# Latest edit on: 29 February 2016
 # http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -44,8 +44,10 @@ use autouse 'URI::Escape'      => qw(uri_escape uri_unescape);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
-my $VERSION  = '1.07';
+my $VERSION  = '1.08';
 my $execname = 'trizen';
+
+my $AUR_V = "5";    # current version of AurJson
 
 # Configuration dir/file
 my $config_dir = (
@@ -692,10 +694,12 @@ sub get_package_tarball ($$) {
     my ($pkg, $path) = @_;
     my $info = get_rpc_info($pkg);
 
-    if (ref $info->{results} ne 'HASH') {
+    if (ref($info->{results}) ne 'ARRAY' and !@{$info->{results}}) {
         warn "[!] Unbale to find $pkg in AUR!\n" if $lconfig{debug};
         return;
     }
+
+    $info = {results => $info->{results}[0]};
 
     my $tgz_file = catfile($path, basename($info->{results}{URLPath}));
     my $url = "$lconfig{aur_base_url}$info->{results}{URLPath}";
@@ -735,7 +739,7 @@ sub extract_tarball ($) {
 
 sub get_rpc_info ($) {
     my ($pkg) = @_;
-    return decode_json(get("$lconfig{aur_rpc_base_url}?type=info&arg=" . uri_escape($pkg)) or return);
+    return decode_json(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=info&arg=" . uri_escape($pkg)) or return);
 }
 
 sub absolute_deps ($) {
@@ -775,13 +779,14 @@ sub show_info ($) {
       ["AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID})],
       ["Licenses       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{license}))],
       ["Votes          : %s\n", $info->{results}{NumVotes}],
+      ["Popularity     : %s\n", $info->{results}{Popularity}],
       ["Installed      : %s\n", package_is_installed($info->{results}{Name}) ? 'Yes' : 'No'],
       ["Out Of Date    : %s\n", $info->{results}{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
       ["Groups         : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{groups}))],
-      ["Provides       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{provides}))],
       ["Depends On     : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{depends}))],
       ["Make Deps      : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{makedepends}))],
       ["Optional Deps  : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{optdepends}))],
+      ["Provides       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{provides}))],
       ["Conflicts With : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{conflicts}))],
       ["Replaces       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{replaces}))],
       ["Architecture   : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{arch}))],
@@ -1095,11 +1100,12 @@ sub print_aur_results (\@) {
             say $result->{Name};
         }
         else {
-            printf "$c{bold}%s$c{reset} %s %s%s[$c{bold}%s+$c{reset}] [%s] - %s\n", $result->{Name},
+            printf "$c{bold}%s$c{reset} %s %s%s[$c{bold}%s+$c{reset}] [%s] [%s] - %s\n", $result->{Name},
               $result->{Version},
               ($result->{OutOfDate} ? "[$c{bred}out-of-date$c{reset}] " : q{}),
               ($result->{Maintainer} ? q{} : "[$c{bred}UNMAINTAINED$c{reset}] "),
               $result->{NumVotes},
+              $result->{Popularity},
               do { localtime($result->{LastModified}) =~ /^\w+ (\w+)\s+(\d+)\s+.+? (\d+)$/ && "$2 $1 $3" },
               $result->{Description};
         }
@@ -1116,7 +1122,7 @@ sub search_aur_packages (@) {
 
     my @all_results;
     foreach my $key (map { uri_escape($_) } grep { length() > 1 } @keys) {
-        push @all_results, decode_json(get("$lconfig{aur_rpc_base_url}?type=search&arg=$key") or next);
+        push @all_results, decode_json(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=search&arg=$key") or next);
     }
 
     my @keys_re = map { qr/\Q$_\E/i } @keys;
@@ -1143,7 +1149,7 @@ sub search_aur_packages (@) {
 
 sub list_aur_maintainer_packages ($) {
     my ($maintainer) = @_;
-    my $results = decode_json(get("$lconfig{aur_rpc_base_url}?type=msearch&arg=$maintainer") or return);
+    my $results = decode_json(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=msearch&arg=$maintainer") or return);
     ref $results->{results} eq 'ARRAY' or return;
     my @maintainers_packages = @{$results->{results}};
     print_aur_results(@maintainers_packages) or return;
@@ -1166,7 +1172,7 @@ sub update_local_packages () {
     my $info_request = join('&', map { "arg[]=$_" } map { uri_escape($_) } sort keys %packages);
 
     my $multiinfo = decode_json(
-        get("$lconfig{aur_rpc_base_url}?type=multiinfo&$info_request")
+        get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=multiinfo&$info_request")
           or do { warn "** Unable to get info for local packages\n"; return }
     );
 
@@ -1384,10 +1390,11 @@ if ($lconfig{S}) {    # -S
 elsif ($lconfig{C}) {    # -C
     foreach my $pkg (@argv_packages) {
         my $info = get_rpc_info($pkg) or next;
-        ref $info->{results} eq 'HASH' or next;
+        ref($info->{results}) eq 'ARRAY' && @{$info->{results}} or next;
+        $info = $info->{results}[0];
         say "$c{bold}** AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}$c{reset}\n$c{bold}** URL:$c{reset} ",
-          sprintf($lconfig{aur_package_id_url}, $info->{results}{ID}), "\n";
-        foreach my $comment (get_comments($info->{results}{ID})) {
+          sprintf($lconfig{aur_package_id_url}, $info->{ID}), "\n";
+        foreach my $comment (get_comments($info->{ID})) {
             say $comment;
         }
     }
