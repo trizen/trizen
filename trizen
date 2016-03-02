@@ -618,67 +618,6 @@ sub indent_array (@) {
     return "$first\n$rest";
 }
 
-sub parse_quoted_words ($) {
-    my ($value) = @_;
-
-    $value // return q{};
-    $value = strip_space($value);
-
-    if ($value =~ /^\((.+)\)\z/s) {
-        $value = $1;
-        return [grep { defined && $_ ne q{} } quotewords(qr{\s+|(?-s:#.*)}, 0, $value)];
-    }
-
-    $value =~ s/["']\s*#.*//;
-    $value !~ /["']/ && $value =~ s/\s*#.*//;
-    $value =~ s/^['"]//;
-    $value =~ s/['"]$//;
-    return $value =~ /\S/ ? $value : ();
-}
-
-sub parse_pkgbuild ($) {
-    ref $_[0] eq 'HASH' or return;
-
-    -f -r -s 'PKGBUILD' or do { warn "[!] Invalid PKGBUILD: $!"; return };
-
-    my $pkgbuild = do { local (@ARGV, $/) = 'PKGBUILD'; <> };
-
-    $pkgbuild =~ s/^\s*#.*//gm;
-
-    while (
-        $pkgbuild =~ m{
-        ^\h*            # at the beginning of line
-        (\w+)           # capturing word key (e.g.: pkgname)
-        \h*=\h*         # optional horizontal space around the '='
-        (               # capturing value
-             \(.*?\)            # multi line values // e.g.: key=('value1' \n 'value2')
-            (?=                 # start of look-ahead
-                \s*                  # there may be some space               //
-                (?:\#(?-s:.*))?      # and an optional comment              // e.g.: key=('test'); # comm
-                (?:\R|;|\z)          # and a newline or end of the string  //
-            )                   # end of look-ahead
-                 |              # OR
-             (?-s:.*)           # a single value (e.g.: 'value')
-        )               # end of capture
-    }smgx
-      ) {
-        my $key = $1;
-        chomp(my $value = $2);
-
-        next if exists $_[0]->{pkgbuild}{$key};
-        $key = strip_space($key);
-
-        if ($value =~ s~\$\{?(\w+)\}?~$_[0]->{pkgbuild}{$1} // "\$$1"~gse) {
-            say "Replaced VALUE: $value" if $lconfig{debug};
-        }
-
-        $value =~ s/\s*;+\s*\z//;
-        $_[0]->{pkgbuild}{$key} = parse_quoted_words($value);
-    }
-
-    return 1;
-}
-
 sub get_tgz_package ($$) {
     my ($url, $output) = @_;
     if ($lconfig{overwrite} or not -e $output or -z _) {
@@ -699,6 +638,7 @@ sub get_package_tarball ($$) {
         return;
     }
 
+    $info->{resultcount} > 0 or return;
     $info = {results => $info->{results}[0]};
 
     my $tgz_file = catfile($path, basename($info->{results}{URLPath}));
@@ -767,31 +707,33 @@ sub absolute_deps ($) {
 }
 
 sub show_info ($) {
-    my ($info) = @_;
+    my ($data) = @_;
 
-    return if ref $info->{results} ne 'HASH';
+    ref($data->{results}) eq 'HASH' or return;
+
+    my $info = $data->{results};
 
     say map { sprintf $c{bold} . $_->[0], $c{reset} . $_->[1] }
-      ["Name           : %s\n", "$c{bold}$info->{results}{Name}$c{reset}"],
-      ["Version        : %s\n", $info->{results}{Version} // 'Unknown'],
-      ["Maintainer     : %s\n", $info->{results}{Maintainer} // "$c{bred}None$c{reset}"],
-      ["URL            : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{url}))],
-      ["AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID})],
-      ["Licenses       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{license}))],
-      ["Votes          : %s\n", $info->{results}{NumVotes}],
-      ["Popularity     : %s\n", $info->{results}{Popularity}],
-      ["Installed      : %s\n", package_is_installed($info->{results}{Name}) ? 'Yes' : 'No'],
-      ["Out Of Date    : %s\n", $info->{results}{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
-      ["Groups         : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{groups}))],
-      ["Depends On     : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{depends}))],
-      ["Make Deps      : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{pkgbuild}{makedepends}))],
-      ["Optional Deps  : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{optdepends}))],
-      ["Provides       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{provides}))],
-      ["Conflicts With : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{conflicts}))],
-      ["Replaces       : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{replaces}))],
-      ["Architecture   : %s\n", indent_array(array_ref_or_string($info->{pkgbuild}{arch}))],
-      ["Last Update    : %s\n", scalar localtime($info->{results}{LastModified} || $info->{results}{FirstSubmitted})],
-      ["Description    : %s\n", array_ref_or_string($info->{pkgbuild}{pkgdesc})];
+      ["Name           : %s\n", "$c{bold}$info->{Name}$c{reset}"],
+      ["Version        : %s\n", $info->{Version} // 'Unknown'],
+      ["Maintainer     : %s\n", $info->{Maintainer} // "$c{bred}None$c{reset}"],
+      ["URL            : %s\n", $info->{URL}],
+      ["AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{ID})],
+      ["License        : %s\n", indent_array(array_ref_or_string($info->{License}))],
+      ["Votes          : %s\n", $info->{NumVotes}],
+      ["Popularity     : %s\n", $info->{Popularity}],
+      ["Installed      : %s\n", package_is_installed($info->{Name}) ? 'Yes' : 'No'],
+      ["Out Of Date    : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
+      ["Depends On     : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{Depends}))],
+      ["Make Deps      : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{MakeDepends}))],
+      ["Check Deps     : %s\n", indent_array(map { absolute_deps($_) } array_ref_or_string($info->{CheckDepends}))],
+      ["Optional Deps  : %s\n", indent_array(array_ref_or_string($info->{OptDepends}))],
+      ["Provides       : %s\n", indent_array(array_ref_or_string($info->{Provides}))],
+      ["Conflicts With : %s\n", indent_array(array_ref_or_string($info->{Conflicts}))],
+      ["Replaces       : %s\n", indent_array(array_ref_or_string($info->{Replaces}))],
+      ["Package Base   : %s\n", $info->{PackageBase}],
+      ["Last Update    : %s\n", scalar localtime($info->{LastModified} || $info->{FirstSubmitted})],
+      ["Description    : %s\n", $info->{Description}];
 
     return 1;
 }
@@ -895,7 +837,10 @@ sub output_file_content ($) {
     return 1;
 }
 
-sub edit_text_files () {
+sub edit_text_files ($) {
+    my ($info) = @_;
+
+    my $edited = 0;
     foreach my $file (sort grep { -f and not -z _ } glob('*')) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
@@ -911,11 +856,48 @@ sub edit_text_files () {
         if ($term->ask_yn(prompt => "=>> Do you want to edit ${file}?", default => 'n')) {
             my $abs_file = rel2abs($file);
             system $ENV{EDITOR}, $abs_file;
+            $edited ||= 1;
 
             if ($?) {
                 warn "[!] $ENV{EDITOR} exited with code: $?\n";
                 return;
             }
+        }
+    }
+
+    # When PKGBUILD is updated, we have to recompute the dependencies
+    if ($edited) {
+        system 'mksrcinfo';
+
+        if ($?) {
+            warn "[!] mksrcinfo exited with code: $?\n";
+            return;
+        }
+
+        open(my $fh, '<:utf8', '.SRCINFO') or do {
+            warn "[!] Can't open " . rel2abs(".SRCINFO") . " for reading: $!";
+            return;
+        };
+
+        my %data;
+        while (defined(my $line = <$fh>)) {
+            if ($line =~ /^\s*(\w+)\s*=\s*(.*\S)/) {
+                push @{$data{$1}}, $2;
+            }
+        }
+
+        my %pairs = (
+                     Depends      => 'depends',
+                     License      => 'license',
+                     MakeDepends  => 'makedepends',
+                     OptDepends   => 'optdepends',
+                     Provides     => 'provides',
+                     Conflicts    => 'conflicts',
+                     CheckDepends => 'checkdepends',
+                    );
+
+        while (my ($key1, $key2) = each %pairs) {
+            $info->{results}{$key1} = $data{$key2};
         }
     }
 
@@ -1024,8 +1006,7 @@ sub install_package ($) {
         }
     }
 
-    edit_text_files() if not $lconfig{noedit};    # edit PKGBUILD and other -T files
-    parse_pkgbuild($info) or return;
+    edit_text_files($info) if not $lconfig{noedit};    # edit PKGBUILD and other -T files
 
     print "\n";
     show_info($info) or return;
@@ -1036,14 +1017,10 @@ sub install_package ($) {
         map  { absolute_deps($_) }
 
         # Makedepends
-        ref $info->{pkgbuild}{makedepends} eq 'ARRAY'
-        ? @{$info->{pkgbuild}{makedepends}}
-        : $info->{pkgbuild}{makedepends},
+        (exists($info->{results}{MakeDepends}) ? @{$info->{results}{MakeDepends}} : ()),
 
         # Depends
-        ref $info->{pkgbuild}{depends} eq 'ARRAY'
-        ? @{$info->{pkgbuild}{depends}}
-        : $info->{pkgbuild}{depends}
+        (exists($info->{results}{Depends}) ? @{$info->{results}{Depends}} : ()),
       ) {
 
         if (exists $ignored_packages{$dep}) {    # next if $dep exists in %ignored_packages
@@ -1346,7 +1323,6 @@ if ($lconfig{S}) {    # -S
             !$lconfig{aur} && is_available_in_pacman_repo($pkgname)
               ? execute_pacman_command(0, qw(-Si), $pkgname)
               : (my $info = get_package_tarball($pkgname, $lconfig{cache_dir}));
-            parse_pkgbuild($info) or next;
             show_info($info);
         }
     }
