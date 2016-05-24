@@ -844,20 +844,15 @@ sub edit_text_files ($) {
 
     # When PKGBUILD is updated, we have to recompute the dependencies
     if ($edited) {
-        system 'mksrcinfo';
+        my @srcinfo = `makepkg --printsrcinfo`;
 
         if ($?) {
-            warn "[!] mksrcinfo exited with code: $?\n";
+            warn "[!] `makepkg --printsrcinfo` exited with code: $?\n";
             return;
         }
 
-        open(my $fh, '<:utf8', '.SRCINFO') or do {
-            warn "[!] Can't open " . rel2abs(".SRCINFO") . " for reading: $!";
-            return;
-        };
-
         my %data;
-        while (defined(my $line = <$fh>)) {
+        foreach my $line (@srcinfo) {
             if ($line =~ /^\s*(\w+)\s*=\s*(.*\S)/) {
                 push @{$data{$1}}, $2;
             }
