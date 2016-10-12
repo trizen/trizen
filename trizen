@@ -81,7 +81,7 @@ my %CONFIG = (
               noedit             => 0,
               skipinteg          => 0,
               overwrite          => 1,
-              force              => 1,
+              force              => 0,
               lwp_show_progress  => 0,
               lwp_env_proxy      => 1,
               packages_in_stats  => 5,
@@ -90,7 +90,7 @@ my %CONFIG = (
               use_sudo           => -e '/usr/bin/sudo' ? 1 : 0,
               su_command         => 'su -c',
               sudo_command       => 'sudo',
-              makepkg_command    => 'makepkg --syncdeps --clean',
+              makepkg_command    => 'makepkg --syncdeps --force --clean',
               aur_rpc_base_url   => 'https://aur.archlinux.org/rpc.php',
               aur_package_id_url => 'https://aur.archlinux.org/packages.php?ID=%s',
               aur_base_url       => 'https://aur.archlinux.org',
@@ -374,7 +374,6 @@ if ($lconfig{quiet} or $lconfig{q}) {
 
 if ($lconfig{force}) {
     push @pacman_arguments, '--force';
-    $lconfig{makepkg_command} .= ' --force';
 }
 
 if ($lconfig{noconfirm}) {
