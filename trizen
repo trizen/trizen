@@ -247,13 +247,13 @@ sub help () {
     -G              : download and extract AUR tarball only
     -R              : remove packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
-    -U              : installs local packages from $lconfig{cache_dir} or CWD
+    -U              : installs local packages from $lconfig{cache_dir} or .
 \n$c{bgreen}Other options:$c{reset}
     --quiet         : be quiet
     --really_quiet  : be really quiet
-    --force         : set --force argument for makepkg and pacman
+    --force         : set --force argument for pacman
     --nocolors      : no text colors
-    --aur           : only AUR packages (for: -S, -Si, -Su, -Ss)
+    --aur           : only AUR packages (with -S, -Si, -Su, -Ss)
     --asdep         : installs package as dependency
     --noinstall     : build package only, don't install it
     --movepkg       : move the built package to the pacman cache directory
