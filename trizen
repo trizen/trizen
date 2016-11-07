@@ -919,6 +919,7 @@ sub install_built_package ($@) {
         if ("$name.pkg.tar.gz" =~ /^(.*?)$pkg_suffix_re/o) {
             my $basename = $1;
             next if $basename eq $pkg;
+            $already_built{$basename} = 1;
             push @packages, $basename;
         }
     }
@@ -946,8 +947,7 @@ sub install_built_package ($@) {
 
             # Install the selected packages
             foreach my $name (@reply) {
-                $already_built{$name} = 1;
-                install_local_package($name, q{-U}, q{--noconfirm}, @args);
+                install_local_package($name, q{-U}, q{--noconfirm}, q{--needed}, @args);
             }
         }
     }
@@ -1066,6 +1066,11 @@ sub install_package ($) {
 
     say "\n$c{bold}** Installing:$c{reset}: $c{bgreen}$info->{results}{Name}$c{reset}";
     say "$c{bold}** AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID});
+
+    # When a package is already built, install it without building it again.
+    if ($already_built{$pkg}) {
+        return install_built_package($pkg, $lconfig{asdep} ? '--asdeps' : '--asexplicit');
+    }
 
     if ($lconfig{show_comments}) {
         foreach my $comment (get_comments($info->{results}{ID})) {
