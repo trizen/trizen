@@ -981,10 +981,6 @@ sub build_and_install_package ($@) {
     # Check to see if the current package was
     # already built, so we don't build it twice.
     if ($already_built{$pkg}) {
-
-        $lconfig{noinstall} && return 1;
-        package_is_installed($pkg) && return 1;
-
         return install_built_package($pkg, @args);
     }
 
