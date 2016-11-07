@@ -199,7 +199,9 @@ my @package_suffices = qw (
 my %ignored_packages;
 @ignored_packages{qw{ sh svn java-environment }} = ();
 
-my %already_built;
+my %already_built;        # will keep track of built packages
+my %already_installed;    # will keep track of installed packages
+
 my $pkg_suffices = join('|', map { quotemeta } @package_suffices);
 my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/o;
 
@@ -660,7 +662,9 @@ sub get_package_tarball ($$) {
         say "** Changing directory to: $path";
     }
 
-    chdir $path or do { warn "[!] Unable to chdir() to $path: $!"; return };
+    chdir($path) or do { warn "[!] Unable to chdir() to $path: $!"; return };
+
+    $info->{_localpath} = rel2abs($dir_name);    # directory that contains the PKGBUILD
 
     if ($lconfig{overwrite} or not -e "$dir_name/PKGBUILD" or -z _) {
         extract_tarball($tgz_file) or do { warn "[!] Unable to extract tarball of $pkg: $!"; return };
@@ -908,7 +912,10 @@ sub install_local_package (@) {
         return 1;
     }
 
+    return 1 if $already_installed{$pkg};
+
     if (execute_pacman_command(1, $pkg_tarball, @pacman_argvs)) {
+        $already_installed{$pkg} = 1;
         if ($lconfig{movepkg}) {
             move_built_package($pkg);
         }
@@ -1074,7 +1081,12 @@ sub install_package ($) {
 
     # When a package is already built, install it without building it again.
     if ($already_built{$pkg}) {
-        return install_built_package($pkg, $lconfig{asdep} ? '--asdeps' : '--asexplicit');
+        if ($pkg eq $lconfig{main_pkg}) {
+            return install_built_package($pkg, $lconfig{asdep} ? '--asdeps' : '--asexplicit');
+        }
+        else {
+            return install_built_package($pkg, '--asdeps');
+        }
     }
 
     if ($lconfig{show_comments}) {
@@ -1124,10 +1136,10 @@ sub install_package ($) {
         }
     }
 
-    chdir catdir($lconfig{cache_dir}, $pkg);
+    chdir($info->{_localpath});
     say "** Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
-    if (defined($lconfig{main_pkg}) and $pkg eq $lconfig{main_pkg}) {    # install as explicit
+    if ($pkg eq $lconfig{main_pkg}) {    # install as explicit
         (
          $lconfig{asdep}
          ? install_as_dep($pkg)
@@ -1135,7 +1147,7 @@ sub install_package ($) {
         )
           and return 1;
     }
-    else {                                                               # install as dependency
+    else {                               # install as dependency
         install_as_dep($pkg) and return 1;
     }
 
