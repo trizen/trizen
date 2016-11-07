@@ -198,9 +198,9 @@ my @package_suffices = qw (
 my %ignored_packages;
 @ignored_packages{qw{ sh svn java-environment }} = ();
 
-my %just_installed;
+my %already_built;
 my $pkg_suffices = join('|', map { quotemeta } @package_suffices);
-my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/;
+my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/o;
 
 # Subroutine prototypes
 sub install_package ($);
@@ -731,8 +731,8 @@ sub find_local_package ($$) {
             # When exists more than one packages built,
             # get the newest version available
             if (defined $newest_package) {
-                my ($new_version) = $file =~ /($pkg_suffix_re)/;
-                my ($old_version) = $newest_package =~ /($pkg_suffix_re)/;
+                my ($new_version) = $file =~ /($pkg_suffix_re)/o;
+                my ($old_version) = $newest_package =~ /($pkg_suffix_re)/o;
                 $newest_package = "$dir/$file" if versioncmp($old_version, $new_version) == -1;
             }
 
@@ -751,13 +751,13 @@ sub find_local_package ($$) {
 
 sub base_package_name ($) {
     my $pkg = basename(shift);
-    $pkg =~ s/$pkg_suffix_re//;
+    $pkg =~ s/$pkg_suffix_re//o;
     return $pkg;
 }
 
 sub move_built_package ($) {
     my ($pkg) = @_;
-    my $pkg_tarball = find_local_package($pkg, catfile($lconfig{cache_dir}, $pkg)) or return;
+    my $pkg_tarball = find_local_package($pkg, curdir()) or return;
 
     if (not -d $lconfig{movepkg_dir}) {
         make_path($lconfig{movepkg_dir}) or warn "[!] Unable to create $lconfig{movepkg_dir}: $!";
@@ -791,7 +791,7 @@ sub move_built_package ($) {
 sub install_local_package (@) {
     my ($pkg, @pacman_argvs) = @_;
 
-    my $pkg_tarball = find_local_package($pkg, catfile($lconfig{cache_dir}, $pkg))
+    my $pkg_tarball = find_local_package($pkg, curdir())
       or do { warn "[!] Unable to find the built tarball for $pkg\n"; return };
 
     if (execute_pacman_command(1, $pkg_tarball, @pacman_argvs)) {
@@ -856,7 +856,14 @@ sub edit_text_files ($) {
         my %data;
         foreach my $line (@srcinfo) {
             if ($line =~ /^\s*(\w+)\s*=\s*(.*\S)/) {
-                push @{$data{$1}}, $2;
+                my ($key, $value) = ($1, $2);
+
+                # Build the package (again)
+                if ($key eq 'pkgname') {
+                    $already_built{$value} = 0;
+                }
+
+                push @{$data{$key}}, $value;
             }
         }
 
@@ -878,9 +885,9 @@ sub edit_text_files ($) {
     return 1;
 }
 
-sub run_makepkg_command ($) {
-    my ($pkg) = @_;
-    system $lconfig{makepkg_command};
+sub run_makepkg_command ($@) {
+    my ($pkg, @args) = @_;
+    system join(' ', $lconfig{makepkg_command}, @args);
     if ($?) {
         warn "[!] Unable to build '$pkg' - makepkg exited with code: $?\n";
         if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
@@ -898,20 +905,106 @@ sub run_makepkg_command ($) {
     return 1;
 }
 
-sub install_local_tarball ($$) {
-    my ($pkg, $argument) = @_;
+sub install_built_package ($@) {
+    my ($pkg, @args) = @_;
 
-    if (run_makepkg_command($pkg)) {
-        if (not exists $just_installed{$pkg}) {
-            $just_installed{$pkg} = 1;
-            if ($lconfig{noinstall}) {
-                move_built_package($pkg) if $lconfig{movepkg};
-            }
-            elsif (install_local_package($pkg, q{-U}, $argument)) {
-                return 1;
+    # Install the package
+    install_local_package($pkg, q{-U}, @args) || return;
+
+    # Get the list of all built packages
+    chomp(my @packagelist = `makepkg --packagelist`);
+
+    my @packages;
+    foreach my $name (@packagelist) {
+        if ("$name.pkg.tar.gz" =~ /^(.*?)$pkg_suffix_re/o) {
+            my $basename = $1;
+            next if $basename eq $pkg;
+            push @packages, $basename;
+        }
+    }
+
+    @packages = do {
+        my %seen;
+        grep { !$seen{$_}++ } @packages;
+    };
+
+    # If the list contains more than one package, then ask the user
+    # if he wants to install some other packages from this group.
+    if (@packages > 1) {
+
+        if (
+            $term->ask_yn(prompt  => '=>> Do you want to install more packages from this group?',
+                          default => 'n')
+          ) {
+            my @reply = $term->get_reply(
+                                         print_me => "\n=>> Select which packages to install",
+                                         prompt   => 'Install',
+                                         choices  => \@packages,
+                                         default  => \@packages,
+                                         multi    => 1,
+                                        );
+
+            # Install the selected packages
+            foreach my $name (@reply) {
+                $already_built{$name} = 1;
+                install_local_package($name, q{-U}, q{--noconfirm}, @args);
             }
         }
-        return 1;
+    }
+
+    return 1;
+}
+
+sub build_and_install_package ($@) {
+    my ($pkg, @args) = @_;
+
+    # Check to see if the current package was
+    # already built, so we don't build it twice.
+    if ($already_built{$pkg}) {
+
+        $lconfig{noinstall} && return 1;
+        package_is_installed($pkg) && return 1;
+
+        return install_built_package($pkg, @args);
+    }
+
+    #
+    ## Concept for installing packages directly with `makepkg`.
+    ## However, this concept cannot install individual parts of a split package.
+    ## See: https://github.com/trizen/trizen/issues/6
+    #
+#<<<
+    #~ if (not $lconfig{noinstall}) {
+        #~ push @args, '--install';
+    #~ }
+
+    #~ if ($lconfig{noconfirm}) {
+        #~ push @args, '--noconfirm';
+    #~ }
+
+    #~ if ($lconfig{needed}) {
+        #~ push @args, '--needed';
+    #~ }
+
+    #~ if (run_makepkg_command($pkg, @args)) {
+        #~ $already_built{$pkg} = 1;
+        #~ move_built_package($pkg) if $lconfig{movepkg};
+        #~ return 1;
+    #~ }
+#>>>
+
+    # Build the package and install/move it
+    if (run_makepkg_command($pkg)) {
+
+        # Mark the package as built
+        $already_built{$pkg} = 1;
+
+        if ($lconfig{noinstall}) {
+            move_built_package($pkg) if $lconfig{movepkg};
+            return 1;
+        }
+
+        return install_built_package($pkg, @args);
     }
 
     return;
@@ -928,14 +1021,14 @@ sub _is_lib32 ($) {
 sub install_as_dep ($) {
     my ($pkg) = @_;
     say "** Installing the following package as dependency: $pkg" if $lconfig{debug};
-    install_local_tarball($pkg, '--asdep') and return 1;
+    build_and_install_package($pkg, '--asdeps') and return 1;
     return;
 }
 
 sub install_as_explicit ($) {
     my ($pkg) = @_;
     say "** Installing the following package as explicit: $pkg" if $lconfig{debug};
-    install_local_tarball($pkg, '--asexplicit') and return 1;
+    build_and_install_package($pkg, '--asexplicit') and return 1;
     return;
 }
 
@@ -980,7 +1073,10 @@ sub install_package ($) {
         }
     }
 
-    edit_text_files($info) if not $lconfig{noedit};    # edit PKGBUILD and other -T files
+    # Edit PKGBUILD and other -T files
+    if (not $lconfig{noedit}) {
+        edit_text_files($info);
+    }
 
     print "\n";
     show_info($info) or return;
@@ -1359,23 +1455,23 @@ elsif ($lconfig{G}) {    # -G
 }
 elsif ($lconfig{U}) {    # -U
     foreach my $pkg (@argv_packages) {
-        if ($pkg =~ /$pkg_suffix_re/ and -e $pkg) {    # install from current dir
-            execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdep' : (), $pkg);
+        if ($pkg =~ /$pkg_suffix_re/o and -e $pkg) {    # install from current dir
+            execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $pkg);
         }
-        else {                                         # install from cache dir
+        else {                                          # install from cache dir
             foreach my $dir (grep { -d } glob("$lconfig{cache_dir}/*")) {
                 my $tarball = find_local_package($pkg, $dir) or next;
                 say "$c{bold}** Installing:$c{reset} $tarball";
-                execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdep' : (), $tarball);
+                execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $tarball);
             }
         }
     }
 }
-elsif ($lconfig{R}) {                                  # -R
+elsif ($lconfig{R}) {                                   # -R
     @pacman_arguments = ();
     execute_pacman_command(1, @ARGV);
 }
-elsif ($lconfig{Q}) {                                  # -Q
+elsif ($lconfig{Q}) {                                   # -Q
     @pacman_arguments = ();
     execute_pacman_command(0, grep { !/^--/ } @ARGV);
 }
