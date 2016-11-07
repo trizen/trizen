@@ -248,7 +248,7 @@ sub help () {
     -G              : download and extract AUR tarball only
     -R              : remove packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
-    -U              : installs local packages from $lconfig{cache_dir} or .
+    -U              : installs local packages from $lconfig{cache_dir} or `pwd`
 \n$c{bgreen}Other options:$c{reset}
     --quiet         : be quiet
     --really_quiet  : be really quiet
@@ -271,7 +271,7 @@ sub help () {
     --debug         : to see what's going on
     --help          : print this message and exit
     --version       : print version and exit\n
-$c{bred}**$c{reset} Each key config is a valid argument if is preceded by '--'
+$c{bred}**$c{reset} Each config-key is a valid argument when preceded by '--'
 $c{bred}**$c{reset} Configuration file: $config_file
 HELP
     main_quit();
