@@ -21,7 +21,7 @@
 # First creation on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 29 February 2016
+# Latest edit on: 08 November 2016
 # http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
