@@ -45,7 +45,7 @@ use autouse 'File::Copy'       => qw(move);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
-my $VERSION  = '1.09';
+my $VERSION  = '1.10';
 my $execname = 'trizen';
 
 my $AUR_V = "5";    # current version of AurJson
@@ -86,6 +86,7 @@ my %CONFIG = (
               lwp_show_progress  => 0,
               lwp_env_proxy      => 1,
               packages_in_stats  => 5,
+              split_packages     => 1,
               lwp_timeout        => 60,
               build_dir          => tmpdir(),
               use_sudo           => -e '/usr/bin/sudo' ? 1 : 0,
@@ -931,8 +932,9 @@ sub install_built_package ($@) {
     # Install the package
     install_local_package($pkg, q{-U}, @args) || return;
 
-    # Don't ask for other packages in `--noinstall` mode
-    $lconfig{noinstall} && return 1;
+    # Don't ask for split packages in `--noinstall` mode
+    # or when `split_packages` is set to a false value.
+    ($lconfig{noinstall} || !$lconfig{split_packages}) && return 1;
 
     # Get the list of all built packages
     chomp(my @packagelist = `makepkg --packagelist`);
