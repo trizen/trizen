@@ -931,6 +931,9 @@ sub install_built_package ($@) {
     # Install the package
     install_local_package($pkg, q{-U}, @args) || return;
 
+    # Don't ask for other packages in `--noinstall` mode
+    $lconfig{noinstall} && return 1;
+
     # Get the list of all built packages
     chomp(my @packagelist = `makepkg --packagelist`);
 
