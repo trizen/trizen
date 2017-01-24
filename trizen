@@ -502,6 +502,7 @@ EOC
 
 sub execute_pacman_command (@) {
     my $login = shift;
+
     my $pacman_command = join(
         q{ },
         do {
@@ -802,9 +803,10 @@ sub output_file_content ($) {
     my ($file) = @_;
 
     local $/ = undef;
-    open my $fh, '<', $file or do { warn "[!] Unable to open $file for read: $!"; return };
+    open my $fh, '<:utf8', $file or do { warn "[!] Unable to open $file for read: $!"; return };
     say "\n=>> Content of $file:";
-    print <$fh>;
+    eval { print <$fh> };
+    $@ && return;
     close $fh;
 
     return 1;
@@ -1434,7 +1436,7 @@ if ($lconfig{S}) {    # -S
     elsif ($lconfig{p}) {    # -Sp
         foreach my $pkgname (@argv_packages) {
             get_package_tarball($pkgname, $lconfig{cache_dir}) or next;
-            open my $fh, '<', 'PKGBUILD' or do { warn "Unable to open PKGBUILD of $pkgname: $!"; next };
+            open my $fh, '<:utf8', 'PKGBUILD' or do { warn "Unable to open PKGBUILD of $pkgname: $!"; next };
             say "$c{bold}=>> PKGBUILD of $c{cblack}$c{byellow}$pkgname$c{reset}:$c{reset}\n", <$fh>;
             close $fh;
         }
