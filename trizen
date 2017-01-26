@@ -39,7 +39,7 @@ use autouse 'Getopt::Std'      => qw(getopts($;$));
 use autouse 'Text::ParseWords' => qw(quotewords);
 use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
-use autouse 'URI::Escape'      => qw(uri_escape uri_unescape);
+use autouse 'URI::Escape'      => qw(uri_escape_utf8 uri_unescape);
 use autouse 'File::Copy'       => qw(move);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
@@ -225,6 +225,9 @@ $c{bold}    = "\e[1m";                 # bold terminal color
 $c{bred}    = "\e[1;31m";              # bold red
 $c{bgreen}  = "$c{cblack}\e[1;32m";    # bold green on black background
 $c{reset}   = "\e[0m";                 # reset color
+
+require Encode;
+@ARGV = map { Encode::decode_utf8($_) } @ARGV;
 
 if ('--nocolors' ~~ \@ARGV) {
     %c = map { $_ => q{} } keys %c;
@@ -704,7 +707,7 @@ sub extract_tarball ($) {
 
 sub get_rpc_info ($) {
     my ($pkg) = @_;
-    return json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=info&arg=" . uri_escape($pkg)) // return);
+    return json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=info&arg=" . uri_escape_utf8($pkg)) // return);
 }
 
 sub show_info ($) {
@@ -1203,7 +1206,7 @@ sub search_aur_packages (@) {
     }
 
     my @all_results;
-    foreach my $key (map { uri_escape($_) } grep { length() > 1 } @keys) {
+    foreach my $key (map { uri_escape_utf8($_) } grep { length() > 1 } @keys) {
         push @all_results, json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=search&arg=$key") // next);
     }
 
@@ -1252,7 +1255,7 @@ sub update_local_packages () {
     }
     close $pipe_h;
 
-    my $info_request = join('&', map { "arg[]=$_" } map { uri_escape($_) } sort keys %packages);
+    my $info_request = join('&', map { "arg[]=$_" } map { uri_escape_utf8($_) } sort keys %packages);
 
     my $multiinfo = json2perl(
         get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=multiinfo&$info_request")
