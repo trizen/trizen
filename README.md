@@ -27,7 +27,7 @@ Base Options:
     -G              : download and extract AUR tarball only
     -R              : remove packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
-    -U              : installs local packages from /tmp/ or `pwd`
+    -U              : installs local packages from /tmp or `pwd`
 
 Other options:
     --quiet         : be quiet
@@ -53,8 +53,8 @@ Main options:
     --help          : print this message and exit
     --version       : print version and exit
 
-** Each key config is a valid argument if is preceded by '--'
-** Configuration file: /home/swampyx/.config/trizen/trizen.conf
+** Each config-key is a valid argument when preceded by '--'
+
 ```
 
 And a configuration file which can be found in: `~/.config/trizen/trizen.conf`
