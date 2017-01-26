@@ -545,7 +545,7 @@ sub execute_pacman_command (@) {
 
 sub is_available_in_pacman_repo (@) {
     (@_ = grep { defined($_) && /^\w/ } @_) || return;
-    system "$lconfig{pacman_command} -Si @_ &> /dev/null";
+    system "/usr/bin/pacman -Si @_ &> /dev/null";
     return $? ? 0 : 1;
 }
 
@@ -1248,7 +1248,7 @@ sub update_local_packages () {
     }
 
     my %packages;
-    open my $pipe_h, '-|:utf8', "$lconfig{pacman_command} -Qm";
+    open my $pipe_h, '-|:utf8', '/usr/bin/pacman', '-Qm';
     while (defined(my $line = <$pipe_h>)) {
         my ($package, $version) = split(' ', $line);
         $packages{$package} = $version;
