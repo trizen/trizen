@@ -72,32 +72,33 @@ if (not -d $config_dir) {
 $ENV{EDITOR} ||= 'nano';
 
 my %CONFIG = (
-              VERSION            => $version,
-              show_comments      => 0,
-              quiet              => 0,
-              debug              => 0,
-              nocolors           => 0,
-              movepkg            => 0,
-              noedit             => 0,
-              skipinteg          => 0,
-              overwrite          => 1,
-              force              => 0,
-              lwp_show_progress  => 0,
-              lwp_env_proxy      => 1,
-              packages_in_stats  => 5,
-              split_packages     => 1,
-              lwp_timeout        => 60,
-              build_dir          => tmpdir(),
-              use_sudo           => -e '/usr/bin/sudo' ? 1 : 0,
-              su_command         => 'su -c',
-              sudo_command       => 'sudo',
-              makepkg_command    => 'makepkg --syncdeps --force --clean',
-              aur_rpc_base_url   => 'https://aur.archlinux.org/rpc.php',
-              aur_package_id_url => 'https://aur.archlinux.org/packages.php?ID=%s',
-              aur_base_url       => 'https://aur.archlinux.org',
-              movepkg_dir        => '/var/cache/pacman/pkg',
-              pacman_local_dir   => '/var/lib/pacman/local',
-              pacman_command     => 'pacman',
+              VERSION             => $version,
+              show_comments       => 0,
+              quiet               => 0,
+              debug               => 0,
+              nocolors            => 0,
+              movepkg             => 0,
+              noedit              => 0,
+              skipinteg           => 0,
+              overwrite           => 1,
+              force               => 0,
+              lwp_show_progress   => 0,
+              lwp_env_proxy       => 1,
+              lwp_timeout         => 60,
+              ssl_verify_hostname => 0,
+              packages_in_stats   => 5,
+              split_packages      => 1,
+              build_dir           => tmpdir(),
+              use_sudo            => -e '/usr/bin/sudo' ? 1 : 0,
+              su_command          => 'su -c',
+              sudo_command        => 'sudo',
+              makepkg_command     => 'makepkg --syncdeps --force --clean',
+              aur_rpc_base_url    => 'https://aur.archlinux.org/rpc.php',
+              aur_package_id_url  => 'https://aur.archlinux.org/packages.php?ID=%s',
+              aur_base_url        => 'https://aur.archlinux.org',
+              movepkg_dir         => '/var/cache/pacman/pkg',
+              pacman_local_dir    => '/var/lib/pacman/local',
+              pacman_command      => 'pacman',
              );
 
 my %lconfig = (
@@ -132,7 +133,7 @@ our $CONFIG;
 sub dump_configuration ($$) {
     my ($config, $configuration_file) = @_;
 
-    open my $config_fh, '>', $configuration_file or return;
+    open my $config_fh, '>:utf8', $configuration_file or return;
 
     require Data::Dump;
     my $dumped_config = q{our $CONFIG = } . Data::Dump::dump($config);
@@ -435,7 +436,7 @@ my $lwp = LWP::UserAgent->new(
                               env_proxy     => $lconfig{lwp_env_proxy},
                               show_progress => $lconfig{lwp_show_progress},
                               timeout       => $lconfig{lwp_timeout},
-                              ssl_opts      => {verify_hostname => 0},
+                              ssl_opts      => {verify_hostname => $lconfig{ssl_verify_hostname}},
                               agent         => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
                              );
 
@@ -1359,7 +1360,7 @@ sub show_stats {
         ++$num_of_pkgs;
         my ($current_pkg) = $subdir =~ /^(.+?)-[^-]+-[^-]+$/;
 
-        open my $fh, '<', catfile($lconfig{pacman_local_dir}, $subdir, 'desc') or next;
+        open my $fh, '<:utf8', catfile($lconfig{pacman_local_dir}, $subdir, 'desc') or next;
         while (defined(my $line = <$fh>)) {
             given ($line) {
                 when ("%REASON%\n") {
