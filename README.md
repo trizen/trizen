@@ -11,6 +11,7 @@ Main features include:
 * Recursive AUR dependencies support
 * Built-in interaction with 'pacman'
 * Edit support for text files
+* Input/output UTF-8 support
 
 ```
 usage: trizen [option] [pkgname] [pkgname] [...]
@@ -57,4 +58,4 @@ Main options:
 
 ```
 
-And a configuration file which can be found in: `~/.config/trizen/trizen.conf`
+A configuration file is automatically generated at: `~/.config/trizen/trizen.conf`
