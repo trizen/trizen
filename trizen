@@ -44,8 +44,7 @@ use autouse 'File::Copy'       => qw(move);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $pkgname  = q{Trizen's AUR Package Manager};
-my $VERSION  = '1.11';
+my $version  = '1.12';
 my $execname = 'trizen';
 
 my $AUR_V = "5";    # current version of AurJson
@@ -73,7 +72,7 @@ if (not -d $config_dir) {
 $ENV{EDITOR} ||= 'nano';
 
 my %CONFIG = (
-              VERSION            => $VERSION,
+              VERSION            => $version,
               show_comments      => 0,
               quiet              => 0,
               debug              => 0,
@@ -123,7 +122,7 @@ my %lconfig = (
 my $config_header = <<"EOH";
 #!/usr/bin/perl
 
-# $pkgname configuration file
+# $execname configuration file
 # Updated on ${\(scalar localtime)}
 
 EOH
@@ -149,9 +148,9 @@ if (-e $config_file and (-s _) > 1) {
         @CONFIG{@valid_keys}  = @{$CONFIG}{@valid_keys};
         @lconfig{@valid_keys} = @{$CONFIG}{@valid_keys};
 
-        if ($CONFIG{VERSION} != $VERSION) {
+        if ($CONFIG{VERSION} != $version) {
             $lconfig{update_config} = 1;
-            $CONFIG{VERSION}        = $VERSION;
+            $CONFIG{VERSION}        = $version;
         }
     }
     else {
@@ -236,7 +235,7 @@ if ('--nocolors' ~~ \@ARGV) {
 #----------------------- USAGE -----------------------#
 sub help () {
     print <<"HELP";
-\n========================= $c{bgreen}$pkgname$c{reset} =========================
+\n========================= $c{bgreen}Trizen's AUR Package Manager$c{reset} =========================
                                                             by trizenx\@gmail.com
 \n$c{bold}usage:$c{reset} $execname [option] [pkgname] [pkgname] [...]
 \n$c{bgreen}Base Options:$c{reset}
@@ -283,7 +282,7 @@ HELP
 @ARGV or help();
 
 sub version () {
-    say "$pkgname v$VERSION";
+    say "$execname $version";
     main_quit();
 }
 
@@ -430,14 +429,14 @@ require HTTP::Message;
 
 # Initializing module objects
 my $tar  = Archive::Tar->new();
-my $term = Term::ReadLine->new("$pkgname $VERSION");
+my $term = Term::ReadLine->new("$execname $version");
 
 my $lwp = LWP::UserAgent->new(
                               env_proxy     => $lconfig{lwp_env_proxy},
                               show_progress => $lconfig{lwp_show_progress},
                               timeout       => $lconfig{lwp_timeout},
                               ssl_opts      => {verify_hostname => 0},
-                              agent         => "Mozilla/5.0 (CLI; U; gzip; en-US; $pkgname) $execname/$VERSION",
+                              agent         => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
                              );
 
 sub json2perl ($) {
@@ -856,7 +855,7 @@ sub edit_text_files ($) {
 
     # When PKGBUILD is updated, we have to recompute the dependencies
     if ($edited) {
-        my @srcinfo = `makepkg --printsrcinfo`;
+        my @srcinfo = map { Encode::decode_utf8($_) } `makepkg --printsrcinfo`;
 
         if ($?) {
             warn "[!] `makepkg --printsrcinfo` exited with code: $?\n";
@@ -953,7 +952,7 @@ sub install_built_package ($@) {
     ($lconfig{noinstall} || !$lconfig{split_packages}) && return 1;
 
     # Get the list of all built packages
-    chomp(my @packagelist = `makepkg --packagelist`);
+    chomp(my @packagelist = map { Encode::decode_utf8($_) } `makepkg --packagelist`);
 
     my @packages;
     foreach my $name (@packagelist) {
@@ -1248,7 +1247,7 @@ sub update_local_packages () {
     }
 
     my %packages;
-    open my $pipe_h, '-|', "$lconfig{pacman_command} -Qm";
+    open my $pipe_h, '-|:utf8', "$lconfig{pacman_command} -Qm";
     while (defined(my $line = <$pipe_h>)) {
         my ($package, $version) = split(' ', $line);
         $packages{$package} = $version;
@@ -1262,13 +1261,13 @@ sub update_local_packages () {
           // do { warn "** Unable to get info for local packages\n"; return }
     );
 
-    ref $multiinfo->{results} eq 'ARRAY' or return;
+    ref($multiinfo->{results}) eq 'ARRAY' or return;
 
     my $i = 0;
     my %for_update;
     foreach my $hash_ref (@{$multiinfo->{results}}) {
 
-        ref $hash_ref eq 'HASH' or next;
+        ref($hash_ref) eq 'HASH' or next;
 
         my $pkgname = $hash_ref->{Name};
         my $version = $hash_ref->{Version};
@@ -1309,7 +1308,8 @@ sub update_local_packages () {
 
     foreach my $pkgname (@for_update) {
 
-        if (not(`/usr/bin/pacman -Qi \Q$pkgname\E` =~ /^.*?Install.+?Reason.*?:.*?dependency\b/im)) {
+        # Check for `explicitly installed`
+        if (`/usr/bin/pacman -Qie \Q$pkgname\E` =~ /\S/) {
             $lconfig{main_pkg} = $pkgname;
         }
 
