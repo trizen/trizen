@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2010-2016 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
+# Copyright (C) 2010-2017 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,10 +18,10 @@
 
 # Author: Daniel "Trizen" Șuteu
 # License: GPLv3
-# First creation on:  07 July 2010
+# First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 08 November 2016
+# Latest edit on: 26 January 2017
 # http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -45,7 +45,7 @@ use autouse 'File::Copy'       => qw(move);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
 my $pkgname  = q{Trizen's AUR Package Manager};
-my $VERSION  = '1.10';
+my $VERSION  = '1.11';
 my $execname = 'trizen';
 
 my $AUR_V = "5";    # current version of AurJson
@@ -171,9 +171,6 @@ if (not -d $lconfig{cache_dir}) {
 }
 
 my $short_arguments = 'CUNQRSGbcdefghiklmnopqrstuvwy';
-
-my %parens;
-@parens{'<', '(', '[', '{'} = ('>', ')', ']', '}');
 
 # The order matters!
 my @package_suffices = qw (
@@ -426,6 +423,7 @@ require Term::UI;
 require Term::ReadLine;
 require Archive::Tar;
 require LWP::UserAgent;
+require HTTP::Message;
 
 # Initializing module objects
 my $tar  = Archive::Tar->new();
@@ -436,19 +434,32 @@ my $lwp = LWP::UserAgent->new(
                               show_progress => $lconfig{lwp_show_progress},
                               timeout       => $lconfig{lwp_timeout},
                               ssl_opts      => {verify_hostname => 0},
-                              agent         => "Mozilla/5.0 (CLI; $pkgname) $execname/$VERSION",
+                              agent         => "Mozilla/5.0 (CLI; U; gzip; en-US; $pkgname) $execname/$VERSION",
                              );
 
-sub decode_json($) {
+sub json2perl ($) {
     state $x = require JSON;
-    JSON::decode_json($_[0]);
+    JSON::from_json($_[0]);
 }
 
 sub get ($) {
-    my $response = $lwp->get(shift);
+    my ($url) = @_;
+
+    state $accepted_encodings = HTTP::Message::decodable();
+
+    my $response = $lwp->get($url, 'Accept-Encoding' => $accepted_encodings);
+
     if ($response->is_success) {
-        return $response->content;
+        my $content = eval { $response->decoded_content };
+
+        if (not defined $content) {
+            warn "[ERROR]: $@\n";
+            return;
+        }
+
+        return $content;
     }
+
     return;
 }
 
@@ -467,7 +478,7 @@ sub get_comments ($) {
     $id =~ /^\d+\z/ or return;
 
     my $url = sprintf($lconfig{aur_package_id_url}, $id);
-    my $content = get($url) or return;
+    my $content = get($url) // return;
 
     state $x = require HTML::Entities;
 
@@ -625,7 +636,7 @@ sub indent_array (@) {
 
     my $rest = join "\n", @_;
     $rest =~ s/^\s+//gm;
-    $rest =~ s/^/\t\t /gm;
+    $rest =~ s/^/' ' x 17/gem;
 
     return "$first\n$rest";
 }
@@ -693,7 +704,7 @@ sub extract_tarball ($) {
 
 sub get_rpc_info ($) {
     my ($pkg) = @_;
-    return decode_json(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=info&arg=" . uri_escape($pkg)) or return);
+    return json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=info&arg=" . uri_escape($pkg)) // return);
 }
 
 sub show_info ($) {
@@ -1193,7 +1204,7 @@ sub search_aur_packages (@) {
 
     my @all_results;
     foreach my $key (map { uri_escape($_) } grep { length() > 1 } @keys) {
-        push @all_results, decode_json(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=search&arg=$key") or next);
+        push @all_results, json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=search&arg=$key") // next);
     }
 
     my @keys_re = map { qr/\Q$_\E/i } @keys;
@@ -1221,7 +1232,7 @@ sub search_aur_packages (@) {
 
 sub list_aur_maintainer_packages ($) {
     my ($maintainer) = @_;
-    my $results = decode_json(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=msearch&arg=$maintainer") or return);
+    my $results = json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=msearch&arg=$maintainer") // return);
     ref $results->{results} eq 'ARRAY' or return;
     my @maintainers_packages = @{$results->{results}};
     print_aur_results(@maintainers_packages) or return;
@@ -1243,9 +1254,9 @@ sub update_local_packages () {
 
     my $info_request = join('&', map { "arg[]=$_" } map { uri_escape($_) } sort keys %packages);
 
-    my $multiinfo = decode_json(
+    my $multiinfo = json2perl(
         get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=multiinfo&$info_request")
-          or do { warn "** Unable to get info for local packages\n"; return }
+          // do { warn "** Unable to get info for local packages\n"; return }
     );
 
     ref $multiinfo->{results} eq 'ARRAY' or return;
