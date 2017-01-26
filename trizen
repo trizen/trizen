@@ -453,7 +453,7 @@ sub get ($) {
     my $response = $lwp->get($url, 'Accept-Encoding' => $accepted_encodings);
 
     if ($response->is_success) {
-        my $content = eval { $response->decoded_content };
+        my $content = $response->decoded_content;
 
         if (not defined $content) {
             warn "[ERROR]: $@\n";
