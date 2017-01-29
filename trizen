@@ -660,7 +660,7 @@ sub get_package_tarball ($$) {
     my $info = get_rpc_info($pkg);
 
     if (ref($info->{results}) ne 'ARRAY' and !@{$info->{results}}) {
-        warn "[!] Unbale to find $pkg in AUR!\n" if $lconfig{debug};
+        warn "[!] Unable to find $pkg in AUR!\n" if $lconfig{debug};
         return;
     }
 
