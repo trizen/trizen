@@ -726,7 +726,7 @@ sub show_info ($) {
       ["License        : %s\n", indent_array(array_ref_or_string($info->{License}))],
       ["Votes          : %s\n", $info->{NumVotes}],
       ["Popularity     : %s\n", $info->{Popularity}],
-      ["Installed      : %s\n", package_is_installed($info->{Name}) ? 'Yes' : 'No'],
+      ["Installed      : %s\n", package_is_installed($info->{Name}) ? "$c{bgreen}Yes$c{reset}" : 'No'],
       ["Out Of Date    : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
       ["Depends On     : %s\n", indent_array(array_ref_or_string($info->{Depends}))],
       ["Make Deps      : %s\n", indent_array(array_ref_or_string($info->{MakeDepends}))],
@@ -818,7 +818,7 @@ sub output_file_content ($) {
 
     local $/ = undef;
     open my $fh, '<:utf8', $file or do { warn "[!] Unable to open $file for read: $!"; return };
-    say "\n=>> Content of $file:";
+    say "\n$c{bold}=>> Content of $c{bgreen}$file$c{reset}";
     eval { print <$fh> };
     $@ && return;
     close $fh;
@@ -842,7 +842,7 @@ sub edit_text_files ($) {
 
         output_file_content($file) or next;
 
-        if ($term->ask_yn(prompt => "=>> Do you want to edit ${file}?", default => 'n')) {
+        if ($term->ask_yn(prompt => "=>> Do you want to edit $file?", default => 'n')) {
             my $abs_file = rel2abs($file);
             system $ENV{EDITOR}, $abs_file;
             $edited ||= 1;
