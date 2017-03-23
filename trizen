@@ -645,7 +645,7 @@ sub indent_array (@) {
 sub info_for_package($) {
     my ($pkg) = @_;
 
-    my $info = get_rpc_info($pkg);
+    my $info = get_rpc_info($pkg) // return;
 
     if (ref($info->{results}) ne 'ARRAY') {
         warn "[!] Unable to get info for package: $pkg\n" if $lconfig{debug};
