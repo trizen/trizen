@@ -1305,8 +1305,11 @@ sub update_local_packages () {
             say "$c{bgreen}$pkgname$c{reset} has been flagged out of date!" if $hash_ref->{OutOfDate};
         }
 
-        if (versioncmp($packages{$pkgname}, $version) == -1
-            or ($lconfig{devel} and $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs)\z/)) {
+        if (
+            versioncmp($packages{$pkgname}, $version) == -1
+            or (    $lconfig{devel}
+                and $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/)
+          ) {
             $for_update{++$i} = $pkgname;
             $for_update{$pkgname} = $pkgname;
             printf("$c{bblue}%2s$c{reset}. $c{bold}%s$c{reset}: $c{bred}%s$c{reset} --> $c{bgreen}%s$c{reset}\n",
