@@ -44,7 +44,7 @@ use autouse 'File::Copy'       => qw(move);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.13';
+my $version  = '1.14';
 my $execname = 'trizen';
 
 my $AUR_V = "5";    # current version of AurJson
@@ -80,7 +80,6 @@ my %CONFIG = (
               movepkg             => 0,
               noedit              => 0,
               skipinteg           => 0,
-              overwrite           => 1,
               force               => 0,
               lwp_show_progress   => 0,
               lwp_env_proxy       => 1,
@@ -642,7 +641,7 @@ sub indent_array (@) {
     return "$first\n$rest";
 }
 
-sub info_for_package($) {
+sub info_for_package ($) {
     my ($pkg) = @_;
 
     my $info = get_rpc_info($pkg) // return;
