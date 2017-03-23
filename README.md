@@ -25,7 +25,7 @@ Base Options:
     -Su             : upgrades installed packages
     -Sc             : clears the cache directory
     -C              : outputs AUR comments only
-    -G              : download and extract AUR tarball only
+    -G              : clones the package metadata
     -R              : remove packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
     -U              : installs local packages from /tmp or `pwd`

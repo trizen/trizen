@@ -21,7 +21,7 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 26 January 2017
+# Latest edit on: 24 March 2017
 # http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -40,11 +40,11 @@ use autouse 'Text::ParseWords' => qw(quotewords);
 use autouse 'File::Path'       => qw(make_path rmtree);
 use autouse 'File::Basename'   => qw(basename dirname);
 use autouse 'URI::Escape'      => qw(uri_escape_utf8 uri_unescape);
-use autouse 'File::Copy'       => qw(move);
+use autouse 'File::Copy'       => qw(move copy);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.12';
+my $version  = '1.13';
 my $execname = 'trizen';
 
 my $AUR_V = "5";    # current version of AurJson
@@ -248,7 +248,7 @@ sub help () {
     -Su             : upgrades installed packages
     -Sc             : clears the cache directory
     -C              : outputs AUR comments only
-    -G              : download and extract AUR tarball only
+    -G              : clones the package metadata
     -R              : remove packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
     -U              : installs local packages from $lconfig{cache_dir} or `pwd`
@@ -424,12 +424,10 @@ if ($lconfig{h}) {
 # Run-time loaded modules
 require Term::UI;
 require Term::ReadLine;
-require Archive::Tar;
 require LWP::UserAgent;
 require HTTP::Message;
 
 # Initializing module objects
-my $tar  = Archive::Tar->new();
 my $term = Term::ReadLine->new("$execname $version");
 
 my $lwp = LWP::UserAgent->new(
@@ -644,35 +642,80 @@ sub indent_array (@) {
     return "$first\n$rest";
 }
 
-sub get_tgz_package ($$) {
-    my ($url, $output) = @_;
-    if ($lconfig{overwrite} or not -e $output or -z _) {
-        mirror($url, $output) or return;
-    }
-    else {
-        warn "[!] $output already exists. (use --overwrite to replace)\n";
-    }
-    return 1;
-}
+sub info_for_package($) {
+    my ($pkg) = @_;
 
-sub get_package_tarball ($$) {
-    my ($pkg, $path) = @_;
     my $info = get_rpc_info($pkg);
 
-    if (ref($info->{results}) ne 'ARRAY' and !@{$info->{results}}) {
-        warn "[!] Unable to find $pkg in AUR!\n" if $lconfig{debug};
+    if (ref($info->{results}) ne 'ARRAY') {
+        warn "[!] Unable to get info for package: $pkg\n" if $lconfig{debug};
         return;
     }
 
     $info->{resultcount} > 0 or return;
-    $info = {results => $info->{results}[0]};
 
-    my $tgz_file = catfile($path, basename($info->{results}{URLPath}));
-    my $url = "$lconfig{aur_base_url}$info->{results}{URLPath}";
+    if ($info->{resultcount} > 1) {
+        print "$c{bold}** Found $c{reset}$c{bgreen}$info->{resultcount}$c{reset}$c{bold} packages.$c{reset}\n";
+        my @packages = map { $_->{Name} } @{$info->{results}};
+        my %table = (map { $packages[$_] => $_ } 0 .. $#packages);
+        my $reply = $term->get_reply(
+                                     print_me => "\n=>> Select which packages to install",
+                                     prompt   => 'Select',
+                                     choices  => \@packages,
+                                     default  => $packages[0],
+                                    );
+        $info = $info->{results}[$table{$reply}];
+    }
+    else {
+        $info = $info->{results}[0];
+    }
 
-    get_tgz_package($url, $tgz_file) or do { warn "[!] Unable to get the tarball for $pkg: $!"; return };
+    $info;
+}
 
-    my $dir_name = uri_unescape(catdir(dirname($tgz_file), basename($tgz_file, @package_suffices)));
+sub download_package ($$) {
+    my ($pkg, $path) = @_;
+
+    my $info = info_for_package($pkg) // return;
+
+    my $pkg_base = $info->{PackageBase};
+    my $git_url  = "https://aur.archlinux.org/$pkg_base.git";
+    my $dir_name = rel2abs(catdir($path, $pkg_base));
+
+    if (-d $dir_name) {
+        my $pkgbuild_prev = catfile($dir_name, '.PKGBUILD');
+        my $pkgbuild_curr = catfile($dir_name, 'PKGBUILD');
+
+        my $old_pkgbuild_content = do {
+            if (open my $fh, '<', $pkgbuild_curr) {
+                local $/;
+                <$fh>;
+            }
+            else {
+                undef;
+            }
+        };
+
+        system('/usr/bin/git', '-C', $dir_name, 'reset', '--hard', 'HEAD', ($lconfig{_installing} ? () : ('-q'))) && return;
+        system('/usr/bin/git', '-C', $dir_name, 'pull', '--ff', ($lconfig{_installing} ? () : ('-q'))) && return;
+
+        if (    $lconfig{_installing}
+            and defined($old_pkgbuild_content)
+            and open(my $fh, '>', $pkgbuild_prev)) {
+            print {$fh} $old_pkgbuild_content;
+            close $fh;
+
+            chomp(my $diff = `/usr/bin/diff --color=always -w -B -a -d \Q$pkgbuild_prev\E \Q$pkgbuild_curr\E`);
+
+            if ($diff ne '') {
+                say "\n$c{bold}** PKGBUILD diff for$c{reset} $c{bgreen}$info->{Name}$c{reset}";
+                say $diff;
+            }
+        }
+    }
+    else {
+        system('/usr/bin/git', '-C', $path, 'clone', '--depth=1', ($lconfig{_installing} ? () : ('-q')), $git_url) && return;
+    }
 
     if ($lconfig{debug}) {
         say "** Changing directory to: $path";
@@ -680,15 +723,11 @@ sub get_package_tarball ($$) {
 
     chdir($path) or do { warn "[!] Unable to chdir() to $path: $!"; return };
 
-    $info->{_localpath} = rel2abs($dir_name);    # directory that contains the PKGBUILD
-
-    if ($lconfig{overwrite} or not -e "$dir_name/PKGBUILD" or -z _) {
-        extract_tarball($tgz_file) or do { warn "[!] Unable to extract tarball of $pkg: $!"; return };
-    }
-
     if ($lconfig{debug}) {
         say "** Trying to change directory to: $dir_name";
     }
+
+    $info->{_localpath} = $dir_name;    # directory that contains the PKGBUILD
 
     if (-d $dir_name) {
         chdir $dir_name or do { warn "[!] Unable to chdir() to $dir_name: $!"; return };
@@ -698,24 +737,13 @@ sub get_package_tarball ($$) {
     return $info;
 }
 
-sub extract_tarball ($) {
-    my ($tarball) = @_;
-    $tar->read($tarball) or return;
-    $tar->extract() or return;
-    return 1;
-}
-
 sub get_rpc_info ($) {
     my ($pkg) = @_;
     return json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=info&arg=" . uri_escape_utf8($pkg)) // return);
 }
 
 sub show_info ($) {
-    my ($data) = @_;
-
-    ref($data->{results}) eq 'HASH' or return;
-
-    my $info = $data->{results};
+    my ($info) = @_;
 
     say map { sprintf $c{bold} . $_->[0], $c{reset} . $_->[1] }
       ["Name           : %s\n", "$c{bold}$info->{Name}$c{reset}"],
@@ -888,7 +916,7 @@ sub edit_text_files ($) {
                     );
 
         while (my ($key1, $key2) = each %pairs) {
-            $info->{results}{$key1} = $data{$key2};
+            $info->{$key1} = $data{$key2};
         }
     }
 
@@ -1064,10 +1092,11 @@ sub install_as_explicit ($) {
 sub install_package ($) {
     my ($pkg) = @_;
 
+    local $lconfig{_installing} = 1;
     say "** Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
-    my $info;
-    if (ref($info = get_package_tarball($pkg, $lconfig{cache_dir})) eq 'HASH') {
+    my $info = download_package($pkg, $lconfig{cache_dir});
+    if (ref($info) eq 'HASH') {
         say "** Package `$pkg' is found in AUR!" if $lconfig{debug};
     }
     elsif (not $lconfig{aur} and is_available_in_pacman_repo($pkg)) {
@@ -1079,12 +1108,12 @@ sub install_package ($) {
         return;
     }
 
-    ref $info->{results} eq 'HASH' or return;
+    length($info->{Name}) || return;
 
     if (my $version = package_is_installed($pkg)) {
         say "** Package `$pkg' is already installed!" if $lconfig{debug};
         if ($lconfig{needed}) {
-            if (versioncmp($version, $info->{results}{Version}) >= 0) {
+            if (versioncmp($version, $info->{Version}) >= 0) {
                 return 1;    # package is installed and up-to-date
             }
             else {
@@ -1093,8 +1122,8 @@ sub install_package ($) {
         }
     }
 
-    say "\n$c{bold}** Installing:$c{reset}: $c{bgreen}$info->{results}{Name}$c{reset}";
-    say "$c{bold}** AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{results}{ID});
+    say "\n$c{bold}** Installing:$c{reset}: $c{bgreen}$info->{Name}$c{reset}";
+    say "$c{bold}** AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{ID});
 
     # When a package is already built, install it without building it again.
     if ($already_built{$pkg}) {
@@ -1107,7 +1136,7 @@ sub install_package ($) {
     }
 
     if ($lconfig{show_comments}) {
-        foreach my $comment (get_comments($info->{results}{ID})) {
+        foreach my $comment (get_comments($info->{ID})) {
             say $comment;
         }
     }
@@ -1125,10 +1154,10 @@ sub install_package ($) {
         map { strip_version($_) }
 
         # Makedepends
-        (exists($info->{results}{MakeDepends}) ? @{$info->{results}{MakeDepends}} : ()),
+        (exists($info->{MakeDepends}) ? @{$info->{MakeDepends}} : ()),
 
         # Depends
-        (exists($info->{results}{Depends}) ? @{$info->{results}{Depends}} : ()),
+        (exists($info->{Depends}) ? @{$info->{Depends}} : ()),
       ) {
 
         if (exists $ignored_packages{$dep}) {    # next if $dep exists in %ignored_packages
@@ -1236,7 +1265,7 @@ sub search_aur_packages (@) {
 sub list_aur_maintainer_packages ($) {
     my ($maintainer) = @_;
     my $results = json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=msearch&arg=$maintainer") // return);
-    ref $results->{results} eq 'ARRAY' or return;
+    ref($results->{results}) eq 'ARRAY' or return;
     my @maintainers_packages = @{$results->{results}};
     print_aur_results(@maintainers_packages) or return;
     return 1;
@@ -1432,8 +1461,7 @@ if ($lconfig{S}) {    # -S
         foreach my $pkgname (@argv_packages) {
             !$lconfig{aur} && is_available_in_pacman_repo($pkgname)
               ? execute_pacman_command(0, qw(-Si), $pkgname)
-              : (my $info = get_package_tarball($pkgname, $lconfig{cache_dir}));
-            show_info($info);
+              : show_info(info_for_package($pkgname) // next);
         }
     }
     elsif ($lconfig{u}) {    # -Su
@@ -1450,9 +1478,9 @@ if ($lconfig{S}) {    # -S
     }
     elsif ($lconfig{p}) {    # -Sp
         foreach my $pkgname (@argv_packages) {
-            get_package_tarball($pkgname, $lconfig{cache_dir}) or next;
+            download_package($pkgname, $lconfig{cache_dir}) or next;
             open my $fh, '<:utf8', 'PKGBUILD' or do { warn "Unable to open PKGBUILD of $pkgname: $!"; next };
-            say "$c{bold}=>> PKGBUILD of $c{cblack}$c{byellow}$pkgname$c{reset}:$c{reset}\n", <$fh>;
+            say "\n$c{bold}=>> PKGBUILD of: $c{cblack}$c{bgreen}$pkgname$c{reset}$c{reset}\n\n", <$fh>;
             close $fh;
         }
     }
@@ -1475,9 +1503,7 @@ if ($lconfig{S}) {    # -S
 }
 elsif ($lconfig{C}) {    # -C
     foreach my $pkg (@argv_packages) {
-        my $info = get_rpc_info($pkg) or next;
-        ref($info->{results}) eq 'ARRAY' && @{$info->{results}} or next;
-        $info = $info->{results}[0];
+        my $info = info_for_package($pkg) // next;
         say "$c{bold}** AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}$c{reset}\n$c{bold}** URL:$c{reset} ",
           sprintf($lconfig{aur_package_id_url}, $info->{ID}), "\n";
         foreach my $comment (get_comments($info->{ID})) {
@@ -1488,9 +1514,7 @@ elsif ($lconfig{C}) {    # -C
 elsif ($lconfig{G}) {    # -G
     foreach my $pkg (@argv_packages) {
         say "** Getting tarball of: $pkg" if $lconfig{debug};
-        get_package_tarball($pkg, q{.}) or next;
-        chdir q{..};
-        unlink "$pkg.tar.gz" or warn "[!] Unable to delete './$pkg.tar.gz': $!";
+        download_package($pkg, curdir()) or next;
     }
 }
 elsif ($lconfig{U}) {    # -U
