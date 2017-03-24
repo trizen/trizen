@@ -109,7 +109,6 @@ my %lconfig = (
                needed        => 0,
                tarball_only  => 0,
                noconfirm     => 0,
-               install_all   => 0,
                aur           => 0,
                really_quiet  => 0,
                noinstall     => 0,
@@ -1043,6 +1042,7 @@ sub build_and_install_package ($@) {
     my ($pkg, @args) = @_;
 
     if ($lconfig{nobuild}) {
+        $already_installed{$pkg} = 1;
         return 1;
     }
 
@@ -1190,7 +1190,7 @@ sub install_package ($) {
             next;
         }
 
-        if (not $lconfig{install_all} and package_is_installed($dep)) {
+        if ($already_installed{$dep} or package_is_installed($dep)) {
             say "** Skipping package $dep - already installed!" if $lconfig{debug};
         }
         elsif (is_available_in_pacman_repo($dep)) {
