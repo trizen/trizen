@@ -38,13 +38,13 @@ Other options:
     --nocolors      : no text colors
     --aur           : only AUR packages (with -S, -Si, -Su, -Ss)
     --asdep         : installs package as dependency
-    --noinstall     : build package only, don't install it
     --movepkg       : move the built package to the pacman cache directory
-    --needed        : do not reinstall up to date packages
+    --needed        : do not reinstall up-to-date packages
     --noedit        : do not prompt to edit files
     --nopull        : do not `git pull` new changes
     --nobuild       : do not build packages (clone only)
-    --noinfo        : do not display package info during installation
+    --noinstall     : do not install package after building
+    --noinfo        : do not display package info after cloning
     --devel         : update devel packages during -Su
     --show_ood      : show out-of-date flagged packages during -Su
     --noconfirm     : do not ask for any confirmation
@@ -53,7 +53,6 @@ Other options:
     --update_config : update configuration file before exit
     --clone_dir=s   : directory where to clone and build packages
     --movepkg_dir=s : move built packages in this directory (with --movepkg)
-
 
 Main options:
     --debug         : to see what's going on
