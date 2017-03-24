@@ -169,7 +169,8 @@ else {
 $lconfig{clone_dir} = ($CONFIG{clone_dir} //= catdir(tmpdir(), "$execname-$user"));
 
 if (not -d $lconfig{clone_dir}) {
-    make_path($lconfig{clone_dir}) or die "[x] Unable to create dir $lconfig{clone_dir}: $!";
+    make_path($lconfig{clone_dir})
+      or die "[x] Unable to create dir $lconfig{clone_dir}: $!";
 }
 
 my $short_arguments = 'CUNQRSGbcdefghiklmnopqrstuvwy';
@@ -424,6 +425,11 @@ if ($lconfig{h}) {
 }
 
 $lconfig{clone_dir} = rel2abs($lconfig{clone_dir});
+
+if (not -d $lconfig{clone_dir}) {
+    make_path($lconfig{clone_dir})
+      or die "[x] Unable to create dir $lconfig{clone_dir}: $!";
+}
 
 #----------------------- WORK AREA -----------------------#
 
