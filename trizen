@@ -165,7 +165,7 @@ else {
     dump_configuration(\%CONFIG, $config_file) or warn "Can't open $config_file for write: $!";
 }
 
-$lconfig{clone_dir} = ($CONFIG{clone_dir} //= catdir($CONFIG{build_dir} // tmpdir(), "$execname-$user"));
+$lconfig{clone_dir} = ($CONFIG{clone_dir} //= catdir(tmpdir(), "$execname-$user"));
 
 if (not -d $lconfig{clone_dir}) {
     make_path($lconfig{clone_dir}) or die "[x] Unable to create dir $lconfig{clone_dir}: $!";
@@ -1198,7 +1198,7 @@ sub install_package ($) {
         }
         else {
             say "** Trying to install package: $dep" if $lconfig{debug};
-            install_package($dep) or do { warn "[!] Unable to install: $dep\n"; next };
+            install_package($dep) or do { warn "[!] Unable to find package: $dep\n"; next };
         }
     }
 
