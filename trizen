@@ -212,7 +212,7 @@ sub main_quit () {
     if ($lconfig{update_config}) {
         dump_configuration(\%CONFIG, $config_file);
     }
-    exit $?;
+    exit($? >> 8);
 }
 
 #----------------------- COLORS -----------------------#
@@ -534,7 +534,7 @@ sub execute_pacman_command (@) {
     {
         system $lconfig{as_root} ? $pacman_command : $user_pacman_command;
         if ($? and $login) {
-            say "** Exit code: $?" if $lconfig{debug};
+            (say "** Exit code: ", $? >> 8) if $lconfig{debug};
             $term->ask_yn(prompt => "=>> Try again?", default => 'n') and redo;
         }
     }
@@ -832,7 +832,7 @@ sub move_built_package ($) {
               : qq{$lconfig{su_command} 'mv \Q$pkg_tarball\E \Q$lconfig{movepkg_dir}\E'};
 
             if ($?) {
-                warn "[!] Unable to move package `$pkg' into `$lconfig{movepkg_dir}' -- exit code: $?\n";
+                warn "[!] Unable to move package `$pkg' into `$lconfig{movepkg_dir}' -- exit code: ", $? >> 8, "\n";
                 if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
                     move_built_package($pkg);
                 }
@@ -879,7 +879,7 @@ sub edit_text_files ($) {
             $edited ||= 1;
 
             if ($?) {
-                warn "[!] $ENV{EDITOR} exited with code: $?\n";
+                warn "[!] $ENV{EDITOR} exited with code: ", $? >> 8, "\n";
                 return;
             }
         }
@@ -890,7 +890,7 @@ sub edit_text_files ($) {
         my @srcinfo = map { Encode::decode_utf8($_) } `makepkg --printsrcinfo`;
 
         if ($?) {
-            warn "[!] `makepkg --printsrcinfo` exited with code: $?\n";
+            warn "[!] `makepkg --printsrcinfo` exited with code: ", $? >> 8, "\n";
             return;
         }
 
@@ -930,7 +930,7 @@ sub run_makepkg_command ($@) {
     my ($pkg, @args) = @_;
     system join(' ', $lconfig{makepkg_command}, @args);
     if ($?) {
-        warn "[!] Unable to build '$pkg' - makepkg exited with code: $?\n";
+        warn "[!] Unable to build '$pkg' - makepkg exited with code: ", $? >> 8, "\n";
         if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
             install_package($pkg);
         }
