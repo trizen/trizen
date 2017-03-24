@@ -44,7 +44,7 @@ use autouse 'File::Copy'       => qw(move);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.15';
+my $version  = '1.16';
 my $execname = 'trizen';
 
 my $AUR_V = "5";    # current version of AurJson
@@ -79,6 +79,9 @@ my %CONFIG = (
               nocolors            => 0,
               movepkg             => 0,
               noedit              => 0,
+              nobuild             => 0,
+              nopull              => 0,
+              noinfo              => 0,
               skipinteg           => 0,
               force               => 0,
               lwp_show_progress   => 0,
@@ -88,7 +91,6 @@ my %CONFIG = (
               packages_in_stats   => 5,
               git_clone_depth     => 0,
               split_packages      => 1,
-              build_dir           => tmpdir(),
               use_sudo            => ((-x '/usr/bin/sudo') ? 1 : 0),
               su_command          => '/usr/bin/su -c',
               sudo_command        => '/usr/bin/sudo',
@@ -164,10 +166,10 @@ else {
     dump_configuration(\%CONFIG, $config_file) or warn "Can't open $config_file for write: $!";
 }
 
-$lconfig{cache_dir} = catdir($lconfig{build_dir}, "$execname-$user");
+$lconfig{clone_dir} = ($CONFIG{clone_dir} //= catdir($CONFIG{build_dir} // tmpdir(), "$execname-$user"));
 
-if (not -d $lconfig{cache_dir}) {
-    make_path($lconfig{cache_dir}) or die "[x] Unable to create dir $lconfig{cache_dir}: $!";
+if (not -d $lconfig{clone_dir}) {
+    make_path($lconfig{clone_dir}) or die "[x] Unable to create dir $lconfig{clone_dir}: $!";
 }
 
 my $short_arguments = 'CUNQRSGbcdefghiklmnopqrstuvwy';
@@ -248,10 +250,11 @@ sub help () {
     -Su             : upgrades installed packages
     -Sc             : clears the cache directory
     -C              : outputs AUR comments only
-    -G              : clones the package metadata
+    -G              : clones a package in the current directory
+    -Gd             : clones a package with all needed AUR dependencies
     -R              : remove packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
-    -U              : installs local packages from $lconfig{cache_dir} or `pwd`
+    -U              : installs local packages from $lconfig{clone_dir} or `pwd`
 \n$c{bgreen}Other options:$c{reset}
     --quiet         : be quiet
     --really_quiet  : be really quiet
@@ -261,14 +264,18 @@ sub help () {
     --asdep         : installs package as dependency
     --noinstall     : build package only, don't install it
     --movepkg       : move the built package to the pacman cache directory
-    --needed        : don't reinstall up to date packages
+    --needed        : do not reinstall up to date packages
     --noedit        : do not prompt to edit files
+    --nopull        : do not `git pull` new changes
+    --nobuild       : do not build packages (clone only)
+    --noinfo        : do not display package info during installation
     --devel         : update devel packages during -Su
     --show_ood      : show out-of-date flagged packages during -Su
     --noconfirm     : do not ask for any confirmation
     --skipinteg     : when using makepkg, skip the checksum
     --stats         : show some info about the installed packages
     --update_config : update configuration file before exit
+    --clone_dir=s   : directory where to clone and build packages
     --movepkg_dir=s : move built packages in this directory (with --movepkg)
 \n$c{bgreen}Main options:$c{reset}
     --debug         : to see what's going on
@@ -683,7 +690,7 @@ sub download_package ($$) {
     my $dir_name = rel2abs(catdir($path, $pkg_base));
 
     if (-d $dir_name) {
-        my $pkgbuild_prev = catfile($dir_name, '.PKGBUILD');
+        my $pkgbuild_prev = catfile($dir_name, '.git', '.PKGBUILD');
         my $pkgbuild_curr = catfile($dir_name, 'PKGBUILD');
 
         my $old_pkgbuild_content = do {
@@ -696,11 +703,14 @@ sub download_package ($$) {
             }
         };
 
-        system('/usr/bin/git', '-C', $dir_name, 'reset', '--hard', 'HEAD', ($lconfig{_installing} ? () : ('-q'))) && return;
-        system('/usr/bin/git', '-C', $dir_name, 'pull', '--ff', ($lconfig{_installing} ? () : ('-q'))) && return;
+        if (!$lconfig{nopull}) {
+#<<<
+            system('/usr/bin/git', '-C', $dir_name, 'reset', '--hard', 'HEAD', ($lconfig{quiet} ? ('-q') : ())) && return;
+            system('/usr/bin/git', '-C', $dir_name, 'pull', '--ff',            ($lconfig{quiet} ? ('-q') : ())) && return;
+#>>>
+        }
 
-        if (    $lconfig{_installing}
-            and defined($old_pkgbuild_content)
+        if (defined($old_pkgbuild_content)
             and open(my $fh, '>', $pkgbuild_prev)) {
             print {$fh} $old_pkgbuild_content;
             close $fh;
@@ -716,7 +726,7 @@ sub download_package ($$) {
     else {
         system('/usr/bin/git', '-C', $path, 'clone',
                ($lconfig{git_clone_depth} > 0 ? "--depth=$lconfig{git_clone_depth}" : ()),
-               ($lconfig{_installing} ? () : ('-q')), $git_url)
+               ($lconfig{quiet} ? ('-q') : ()), $git_url)
           && return;
     }
 
@@ -813,7 +823,7 @@ sub base_package_name ($) {
 
 sub move_built_package ($) {
     my ($pkg) = @_;
-    my $pkg_tarball = find_local_package($pkg, curdir()) or return;
+    my $pkg_tarball = find_local_package($pkg, rel2abs(curdir())) or return;
 
     if (not -d $lconfig{movepkg_dir}) {
         make_path($lconfig{movepkg_dir}) or warn "[!] Unable to create $lconfig{movepkg_dir}: $!";
@@ -949,7 +959,7 @@ sub run_makepkg_command ($@) {
 sub install_local_package (@) {
     my ($pkg, @pacman_argvs) = @_;
 
-    my $pkg_tarball = find_local_package($pkg, curdir())
+    my $pkg_tarball = find_local_package($pkg, rel2abs(curdir()))
       or do { warn "[!] Unable to find the built tarball for $pkg\n"; return };
 
     if ($lconfig{noinstall}) {
@@ -1030,6 +1040,10 @@ sub install_built_package ($@) {
 sub build_and_install_package ($@) {
     my ($pkg, @args) = @_;
 
+    if ($lconfig{nobuild}) {
+        return 1;
+    }
+
     # Check to see if the current package was
     # already built, so we don't build it twice.
     if ($already_built{$pkg}) {
@@ -1095,10 +1109,9 @@ sub install_as_explicit ($) {
 sub install_package ($) {
     my ($pkg) = @_;
 
-    local $lconfig{_installing} = 1;
     say "** Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
-    my $info = download_package($pkg, $lconfig{cache_dir});
+    my $info = download_package($pkg, $lconfig{clone_dir});
     if (ref($info) eq 'HASH') {
         say "** Package `$pkg' is found in AUR!" if $lconfig{debug};
     }
@@ -1125,12 +1138,12 @@ sub install_package ($) {
         }
     }
 
-    say "\n$c{bold}** Installing:$c{reset}: $c{bgreen}$info->{Name}$c{reset}";
+    say "\n$c{bold}** Package:$c{reset} $c{bgreen}$info->{Name}$c{reset}";
     say "$c{bold}** AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{ID});
 
     # When a package is already built, install it without building it again.
     if ($already_built{$pkg}) {
-        if ($pkg eq $lconfig{main_pkg}) {
+        if (defined($lconfig{main_pkg}) and $pkg eq $lconfig{main_pkg}) {
             return install_built_package($pkg, $lconfig{asdep} ? '--asdeps' : '--asexplicit');
         }
         else {
@@ -1149,8 +1162,10 @@ sub install_package ($) {
         edit_text_files($info);
     }
 
-    print "\n";
-    show_info($info) or return;
+    if (!$lconfig{noinfo}) {
+        print "\n";
+        show_info($info) or return;
+    }
 
     foreach my $dep (
         grep { defined($_) && /^\w/ }
@@ -1188,7 +1203,7 @@ sub install_package ($) {
     chdir($info->{_localpath});
     say "** Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
-    if ($pkg eq $lconfig{main_pkg}) {    # install as explicit
+    if (defined($lconfig{main_pkg}) and $pkg eq $lconfig{main_pkg}) {    # install as explicit
         (
          $lconfig{asdep}
          ? install_as_dep($pkg)
@@ -1196,7 +1211,7 @@ sub install_package ($) {
         )
           and return 1;
     }
-    else {                               # install as dependency
+    else {                                                               # install as dependency
         install_as_dep($pkg) and return 1;
     }
 
@@ -1204,8 +1219,8 @@ sub install_package ($) {
 }
 
 sub clean_cache () {
-    say "** Removing $lconfig{cache_dir}";
-    rmtree($lconfig{cache_dir}) or die "error: $!";
+    say "** Removing $lconfig{clone_dir}";
+    rmtree($lconfig{clone_dir}) or die "error: $!";
     say "** Done!";
     main_quit();
 }
@@ -1346,9 +1361,8 @@ sub update_local_packages () {
     foreach my $pkgname (@for_update) {
 
         # Check for `explicitly installed`
-        if (`/usr/bin/pacman -Qie \Q$pkgname\E` =~ /\S/) {
-            $lconfig{main_pkg} = $pkgname;
-        }
+        (local $lconfig{main_pkg} = $pkgname)
+          if (`/usr/bin/pacman -Qie \Q$pkgname\E` =~ /\S/);
 
         if (install_package($pkgname)) {
             say "** $pkgname has been upgraded!" if $lconfig{debug};
@@ -1495,7 +1509,7 @@ if ($lconfig{S}) {    # -S
     }
     elsif ($lconfig{p}) {    # -Sp
         foreach my $pkg (@argv_packages) {
-            download_package($pkg, $lconfig{cache_dir}) or do {
+            download_package($pkg, $lconfig{clone_dir}) or do {
                 warn "warning: package not found: $pkg\n";
                 $? = 1 << 8;
                 next;
@@ -1511,7 +1525,7 @@ if ($lconfig{S}) {    # -S
     else {                   # -S only
         if (@argv_packages) {
             foreach my $pkg (@argv_packages) {
-                $lconfig{main_pkg} = $pkg;
+                local $lconfig{main_pkg} = $pkg;
                 if (install_package($pkg)) {
                     say "** Package '$pkg' has been successfully installed!" if $lconfig{debug};
                 }
@@ -1537,12 +1551,29 @@ elsif ($lconfig{C}) {    # -C
     }
 }
 elsif ($lconfig{G}) {    # -G
-    foreach my $pkg (@argv_packages) {
-        say "** Getting tarball of: $pkg" if $lconfig{debug};
-        if (!download_package($pkg, curdir())) {
-            warn "warning: package not found: $pkg\n";
-            $? = 1 << 8;
-            next;
+    if ($lconfig{d}) {
+        foreach my $pkg (@argv_packages) {
+            local $lconfig{clone_dir} = rel2abs(curdir());
+            local $lconfig{main_pkg}  = $pkg;
+            local $lconfig{nobuild}   = 1;
+            local $lconfig{noconfirm} = 1;
+            local $lconfig{noedit}    = 1;
+            local $lconfig{noinfo}    = 1;
+            if (!install_package($pkg)) {
+                warn "warning: package not found: $pkg\n";
+                $? = 1 << 8;
+                next;
+            }
+        }
+    }
+    else {
+        foreach my $pkg (@argv_packages) {
+            say "** Getting tarball of: $pkg" if $lconfig{debug};
+            if (!download_package($pkg, rel2abs(curdir()))) {
+                warn "warning: package not found: $pkg\n";
+                $? = 1 << 8;
+                next;
+            }
         }
     }
 }
@@ -1553,7 +1584,7 @@ elsif ($lconfig{U}) {    # -U
         }
         else {                                          # install from cache dir
             my %seen;
-            foreach my $dir (grep { -d } glob("$lconfig{cache_dir}/*")) {
+            foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
                 my $tarball = find_local_package($pkg, $dir) or do {
                     $seen{$pkg} //= warn "warning: local package not found: $pkg\n";
                     $? = 2 << 8;

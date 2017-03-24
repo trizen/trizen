@@ -25,7 +25,8 @@ Base Options:
     -Su             : upgrades installed packages
     -Sc             : clears the cache directory
     -C              : outputs AUR comments only
-    -G              : clones the package metadata
+    -G              : clones a package in the current directory
+    -Gd             : clones a package with all needed AUR dependencies
     -R              : remove packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
     -U              : installs local packages from /tmp or `pwd`
@@ -39,15 +40,20 @@ Other options:
     --asdep         : installs package as dependency
     --noinstall     : build package only, don't install it
     --movepkg       : move the built package to the pacman cache directory
-    --needed        : don't reinstall up to date packages
+    --needed        : do not reinstall up to date packages
     --noedit        : do not prompt to edit files
+    --nopull        : do not `git pull` new changes
+    --nobuild       : do not build packages (clone only)
+    --noinfo        : do not display package info during installation
     --devel         : update devel packages during -Su
     --show_ood      : show out-of-date flagged packages during -Su
-    --noconfirm     : do not prompt for any confirmation
+    --noconfirm     : do not ask for any confirmation
     --skipinteg     : when using makepkg, skip the checksum
     --stats         : show some info about the installed packages
     --update_config : update configuration file before exit
+    --clone_dir=s   : directory where to clone and build packages
     --movepkg_dir=s : move built packages in this directory (with --movepkg)
+
 
 Main options:
     --debug         : to see what's going on
