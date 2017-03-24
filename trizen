@@ -408,6 +408,7 @@ if ($lconfig{quiet}) {
 if ($lconfig{really_quiet}) {
     close STDOUT;
     close STDERR;
+    $lconfig{quiet} = 1;
 }
 
 if ($lconfig{nocolors}) {
