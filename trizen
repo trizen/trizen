@@ -89,16 +89,16 @@ my %CONFIG = (
               git_clone_depth     => 0,
               split_packages      => 1,
               build_dir           => tmpdir(),
-              use_sudo            => -e '/usr/bin/sudo' ? 1 : 0,
-              su_command          => 'su -c',
-              sudo_command        => 'sudo',
-              makepkg_command     => 'makepkg --syncdeps --force --clean',
+              use_sudo            => ((-x '/usr/bin/sudo') ? 1 : 0),
+              su_command          => '/usr/bin/su -c',
+              sudo_command        => '/usr/bin/sudo',
+              makepkg_command     => '/usr/bin/makepkg --syncdeps --force --clean',
               aur_rpc_base_url    => 'https://aur.archlinux.org/rpc.php',
               aur_package_id_url  => 'https://aur.archlinux.org/packages.php?ID=%s',
               aur_base_url        => 'https://aur.archlinux.org',
               movepkg_dir         => '/var/cache/pacman/pkg',
               pacman_local_dir    => '/var/lib/pacman/local',
-              pacman_command      => 'pacman',
+              pacman_command      => '/usr/bin/pacman',
              );
 
 my %lconfig = (
