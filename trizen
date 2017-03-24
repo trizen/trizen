@@ -65,7 +65,8 @@ my $arch = substr(`uname -m`, 0, -1);
 binmode(STDOUT, ':utf8');
 
 if (not -d $config_dir) {
-    make_path($config_dir) or warn "[!] Unable to create dir $config_dir: $!";
+    make_path($config_dir)
+      or warn "[!] Unable to create dir $config_dir: $!";
 }
 
 #----------------------- GLOBAL VARIABLES -----------------------#
@@ -548,7 +549,9 @@ sub execute_pacman_command (@) {
 sub is_available_in_pacman_repo (@) {
     (@_ = grep { defined($_) && /^\w/ } @_) || return;
     system "/usr/bin/pacman -Sp @_ &> /dev/null";
-    return $? ? 0 : 1;
+    my $exit_code = $?;
+    $? = 0;
+    return $exit_code ? 0 : 1;
 }
 
 sub package_is_installed ($) {
@@ -1113,16 +1116,15 @@ sub install_package ($) {
     if (ref($info) eq 'HASH') {
         say "** Package `$pkg' is found in AUR!" if $lconfig{debug};
     }
-    elsif (not $lconfig{aur} and is_available_in_pacman_repo($pkg)) {
+    elsif (not($lconfig{aur}) and is_available_in_pacman_repo($pkg)) {
         execute_pacman_command(1, qw(-S), $pkg) and return 1;
         return;
     }
     else {
-        warn "[!] Unable to find package: $pkg\n" if $lconfig{debug};
+        warn "[!] Package not found: $pkg\n";
+        $? = 1 << 8;
         return;
     }
-
-    length($info->{Name}) || return;
 
     if (my $version = package_is_installed($pkg)) {
         say "** Package `$pkg' is already installed!" if $lconfig{debug};
@@ -1189,7 +1191,7 @@ sub install_package ($) {
         }
         else {
             say "** Trying to install package: $dep" if $lconfig{debug};
-            install_package($dep) or do { warn "[!] Unable to find package: $dep\n"; next };
+            install_package($dep) or do { warn "[!] Dependency not found: $dep\n"; next };
         }
     }
 
@@ -1473,14 +1475,17 @@ my @argv_packages = get_non_arguments_from_array(@left_over_arguments);
 if ($lconfig{S}) {    # -S
     if ($lconfig{i}) {    # -Si
         foreach my $pkg (@argv_packages) {
-            !$lconfig{aur} && is_available_in_pacman_repo($pkg)
-              ? execute_pacman_command(0, qw(-Si), $pkg)
-              : show_info(
-                info_for_package($pkg) // do {
-                    warn "warning: package not found: $pkg\n";
+            if (!$lconfig{aur} && is_available_in_pacman_repo($pkg)) {
+                execute_pacman_command(0, qw(-Si), $pkg);
+            }
+            else {
+                my $info = info_for_package($pkg) // do {
+                    warn "[!] Package not found: $pkg\n";
+                    $? = 1 << 8;
                     next;
-                  }
-              );
+                };
+                show_info($info);
+            }
         }
     }
     elsif ($lconfig{u}) {    # -Su
@@ -1494,7 +1499,7 @@ if ($lconfig{S}) {    # -S
             say "=>> ${maintainer}'s packages:" if $lconfig{debug};
             list_aur_maintainer_packages($maintainer)
               or do {
-                warn "warning: maintainer not found: $maintainer\n";
+                warn "[!] Maintainer not found: $maintainer\n";
                 $? = 1 << 8;
                 next;
               };
@@ -1503,7 +1508,7 @@ if ($lconfig{S}) {    # -S
     elsif ($lconfig{p}) {    # -Sp
         foreach my $pkg (@argv_packages) {
             download_package($pkg, $lconfig{clone_dir}) or do {
-                warn "warning: package not found: $pkg\n";
+                warn "[!] Package not found: $pkg\n";
                 $? = 1 << 8;
                 next;
             };
@@ -1523,7 +1528,7 @@ if ($lconfig{S}) {    # -S
                     say "** Package '$pkg' has been successfully installed!" if $lconfig{debug};
                 }
                 else {
-                    warn "[!] Unable to install $pkg\n" if $lconfig{debug};
+                    warn "[!] Unable to install package: $pkg\n" if $lconfig{debug};
                 }
             }
         }
@@ -1532,7 +1537,7 @@ if ($lconfig{S}) {    # -S
 elsif ($lconfig{C}) {    # -C
     foreach my $pkg (@argv_packages) {
         my $info = info_for_package($pkg) // do {
-            warn "warning: package not found: $pkg\n";
+            warn "[!] Package not found: $pkg\n";
             $? = 1 << 8;
             next;
         };
@@ -1553,7 +1558,7 @@ elsif ($lconfig{G}) {    # -G
             local $lconfig{noedit}    = 1;
             local $lconfig{noinfo}    = 1;
             if (!install_package($pkg)) {
-                warn "warning: package not found: $pkg\n";
+                warn "[!] Package not found: $pkg\n";
                 $? = 1 << 8;
                 next;
             }
@@ -1563,7 +1568,7 @@ elsif ($lconfig{G}) {    # -G
         foreach my $pkg (@argv_packages) {
             say "** Getting tarball of: $pkg" if $lconfig{debug};
             if (!download_package($pkg, rel2abs(curdir()))) {
-                warn "warning: package not found: $pkg\n";
+                warn "[!] Package not found: $pkg\n";
                 $? = 1 << 8;
                 next;
             }
@@ -1579,7 +1584,7 @@ elsif ($lconfig{U}) {    # -U
             my %seen;
             foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
                 my $tarball = find_local_package($pkg, $dir) or do {
-                    $seen{$pkg} //= warn "warning: local package not found: $pkg\n";
+                    $seen{$pkg} //= warn "[!] Local package not found: $pkg\n";
                     $? = 2 << 8;
                     next;
                 };
