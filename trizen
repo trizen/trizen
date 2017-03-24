@@ -44,7 +44,7 @@ use autouse 'File::Copy'       => qw(move);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.14';
+my $version  = '1.15';
 my $execname = 'trizen';
 
 my $AUR_V = "5";    # current version of AurJson
@@ -86,6 +86,7 @@ my %CONFIG = (
               lwp_timeout         => 60,
               ssl_verify_hostname => 0,
               packages_in_stats   => 5,
+              git_clone_depth     => 0,
               split_packages      => 1,
               build_dir           => tmpdir(),
               use_sudo            => -e '/usr/bin/sudo' ? 1 : 0,
@@ -713,7 +714,10 @@ sub download_package ($$) {
         }
     }
     else {
-        system('/usr/bin/git', '-C', $path, 'clone', '--depth=1', ($lconfig{_installing} ? () : ('-q')), $git_url) && return;
+        system('/usr/bin/git', '-C', $path, 'clone',
+               ($lconfig{git_clone_depth} > 0 ? "--depth=$lconfig{git_clone_depth}" : ()),
+               ($lconfig{_installing} ? () : ('-q')), $git_url)
+          && return;
     }
 
     if ($lconfig{debug}) {
@@ -845,7 +849,7 @@ sub output_file_content ($) {
 
     local $/ = undef;
     open my $fh, '<:utf8', $file or do { warn "[!] Unable to open $file for read: $!"; return };
-    say "\n$c{bold}=>> Content of $c{bgreen}$file$c{reset}";
+    say "\n$c{bold}=>> Content of$c{reset} $c{bgreen}$file$c{reset}";
     eval { print <$fh> };
     $@ && return;
     close $fh;
