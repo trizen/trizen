@@ -194,10 +194,6 @@ my @package_suffices = qw (
   .zip
   );
 
-# Skip these packages
-my %ignored_packages;
-@ignored_packages{qw{ sh svn java-environment }} = ();
-
 my %already_built;        # will keep track of built packages
 my %already_installed;    # will keep track of installed packages
 
@@ -551,7 +547,7 @@ sub execute_pacman_command (@) {
 
 sub is_available_in_pacman_repo (@) {
     (@_ = grep { defined($_) && /^\w/ } @_) || return;
-    system "/usr/bin/pacman -Si @_ &> /dev/null";
+    system "/usr/bin/pacman -Sp @_ &> /dev/null";
     return $? ? 0 : 1;
 }
 
@@ -1179,11 +1175,6 @@ sub install_package ($) {
         # Depends
         (exists($info->{Depends}) ? @{$info->{Depends}} : ()),
       ) {
-
-        if (exists $ignored_packages{$dep}) {    # next if $dep exists in %ignored_packages
-            say "** Ignored package: $dep" if $lconfig{debug};
-            next;
-        }
 
         if (_is_lib32($dep)) {
             say "** Ignoring lib32-* package arch '$arch': $dep" if $lconfig{debug};
