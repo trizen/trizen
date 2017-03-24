@@ -27,7 +27,7 @@
 eval 'exec perl -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
 
-use 5.010;
+use 5.014;
 use strict;
 use warnings;
 
