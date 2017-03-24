@@ -44,7 +44,7 @@ use autouse 'File::Copy'       => qw(move);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.17';
+my $version  = '1.18';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -92,6 +92,7 @@ my %CONFIG = (
               packages_in_stats   => 5,
               git_clone_depth     => 0,
               split_packages      => 1,
+              recompute_deps      => 1,
               use_sudo            => ((-x '/usr/bin/sudo') ? 1 : 0),
               su_command          => '/usr/bin/su -c',
               sudo_command        => '/usr/bin/sudo',
@@ -1174,7 +1175,7 @@ sub install_package ($) {
         edit_text_files($info);
     }
 
-    if (!$lconfig{nobuild}) {
+    if ($lconfig{recompute_deps}) {
         recompute_dependencies($info);
     }
 
@@ -1571,12 +1572,13 @@ elsif ($lconfig{C}) {    # -C
 elsif ($lconfig{G}) {    # -G
     if ($lconfig{d}) {
         foreach my $pkg (@argv_packages) {
-            local $lconfig{clone_dir} = rel2abs(curdir());
-            local $lconfig{main_pkg}  = $pkg;
-            local $lconfig{nobuild}   = 1;
-            local $lconfig{noconfirm} = 1;
-            local $lconfig{noedit}    = 1;
-            local $lconfig{noinfo}    = 1;
+            local $lconfig{clone_dir}      = rel2abs(curdir());
+            local $lconfig{main_pkg}       = $pkg;
+            local $lconfig{nobuild}        = 1;
+            local $lconfig{noconfirm}      = 1;
+            local $lconfig{noedit}         = 1;
+            local $lconfig{noinfo}         = 1;
+            local $lconfig{recompute_deps} = 0;
             if (!install_package($pkg)) {
                 warn "[!] Package not found: $pkg\n";
                 $? = 1 << 8;
