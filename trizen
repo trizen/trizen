@@ -867,6 +867,47 @@ sub output_file_content ($) {
     return 1;
 }
 
+sub recompute_dependencies ($) {
+    my ($info) = @_;
+
+    my @srcinfo = map { Encode::decode_utf8($_) } `makepkg --printsrcinfo`;
+
+    if ($?) {
+        warn "[!] `makepkg --printsrcinfo` exited with code: ", $? >> 8, "\n";
+        return;
+    }
+
+    my %data;
+    foreach my $line (@srcinfo) {
+        if ($line =~ /^\s*(\w+)\s*=\s*(.*\S)/) {
+            my ($key, $value) = ($1, $2);
+
+            # Build the package (again)
+            if ($key eq 'pkgname') {
+                $already_built{$value} = 0;
+            }
+
+            push @{$data{$key}}, $value;
+        }
+    }
+
+    my %pairs = (
+                 Depends      => 'depends',
+                 License      => 'license',
+                 MakeDepends  => 'makedepends',
+                 OptDepends   => 'optdepends',
+                 Provides     => 'provides',
+                 Conflicts    => 'conflicts',
+                 CheckDepends => 'checkdepends',
+                );
+
+    while (my ($key1, $key2) = each %pairs) {
+        $info->{$key1} = $data{$key2};
+    }
+
+    return 1;
+}
+
 sub edit_text_files ($) {
     my ($info) = @_;
 
@@ -892,44 +933,6 @@ sub edit_text_files ($) {
                 warn "[!] $ENV{EDITOR} exited with code: ", $? >> 8, "\n";
                 return;
             }
-        }
-    }
-
-    # When PKGBUILD is updated, we have to recompute the dependencies
-    if ($edited) {
-        my @srcinfo = map { Encode::decode_utf8($_) } `makepkg --printsrcinfo`;
-
-        if ($?) {
-            warn "[!] `makepkg --printsrcinfo` exited with code: ", $? >> 8, "\n";
-            return;
-        }
-
-        my %data;
-        foreach my $line (@srcinfo) {
-            if ($line =~ /^\s*(\w+)\s*=\s*(.*\S)/) {
-                my ($key, $value) = ($1, $2);
-
-                # Build the package (again)
-                if ($key eq 'pkgname') {
-                    $already_built{$value} = 0;
-                }
-
-                push @{$data{$key}}, $value;
-            }
-        }
-
-        my %pairs = (
-                     Depends      => 'depends',
-                     License      => 'license',
-                     MakeDepends  => 'makedepends',
-                     OptDepends   => 'optdepends',
-                     Provides     => 'provides',
-                     Conflicts    => 'conflicts',
-                     CheckDepends => 'checkdepends',
-                    );
-
-        while (my ($key1, $key2) = each %pairs) {
-            $info->{$key1} = $data{$key2};
         }
     }
 
@@ -1161,6 +1164,8 @@ sub install_package ($) {
     if (not $lconfig{noedit}) {
         edit_text_files($info);
     }
+
+    recompute_dependencies($info);
 
     if (!$lconfig{noinfo}) {
         print "\n";
