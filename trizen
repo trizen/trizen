@@ -265,7 +265,7 @@ sub help () {
     --noedit        : do not prompt to edit files
     --devel         : update devel packages during -Su
     --show_ood      : show out-of-date flagged packages during -Su
-    --noconfirm     : do not prompt for any confirmation
+    --noconfirm     : do not ask for any confirmation
     --skipinteg     : when using makepkg, skip the checksum
     --stats         : show some info about the installed packages
     --update_config : update configuration file before exit
@@ -1261,6 +1261,7 @@ sub search_aur_packages (@) {
             push @matched_results, $result;
         }
     }
+    $? = 0 if @matched_results;
     print_aur_results(@matched_results) or return;
     return 1;
 }
@@ -1269,7 +1270,7 @@ sub list_aur_maintainer_packages ($) {
     my ($maintainer) = @_;
     my $results = json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=msearch&arg=$maintainer") // return);
     ref($results->{results}) eq 'ARRAY' or return;
-    my @maintainers_packages = @{$results->{results}};
+    (my @maintainers_packages = @{$results->{results}}) || return;
     print_aur_results(@maintainers_packages) or return;
     return 1;
 }
@@ -1464,10 +1465,15 @@ my @argv_packages = get_non_arguments_from_array(@left_over_arguments);
 
 if ($lconfig{S}) {    # -S
     if ($lconfig{i}) {    # -Si
-        foreach my $pkgname (@argv_packages) {
-            !$lconfig{aur} && is_available_in_pacman_repo($pkgname)
-              ? execute_pacman_command(0, qw(-Si), $pkgname)
-              : show_info(info_for_package($pkgname) // next);
+        foreach my $pkg (@argv_packages) {
+            !$lconfig{aur} && is_available_in_pacman_repo($pkg)
+              ? execute_pacman_command(0, qw(-Si), $pkg)
+              : show_info(
+                info_for_package($pkg) // do {
+                    warn "warning: package not found: $pkg\n";
+                    next;
+                  }
+              );
         }
     }
     elsif ($lconfig{u}) {    # -Su
@@ -1479,14 +1485,23 @@ if ($lconfig{S}) {    # -S
     elsif ($lconfig{m}) {    # -Sm
         foreach my $maintainer (@argv_packages) {
             say "=>> ${maintainer}'s packages:" if $lconfig{debug};
-            list_aur_maintainer_packages($maintainer) or do { say "None." if $lconfig{debug} };
+            list_aur_maintainer_packages($maintainer)
+              or do {
+                warn "warning: maintainer not found: $maintainer\n";
+                $? = 1 << 8;
+                next;
+              };
         }
     }
     elsif ($lconfig{p}) {    # -Sp
-        foreach my $pkgname (@argv_packages) {
-            download_package($pkgname, $lconfig{cache_dir}) or next;
-            open my $fh, '<:utf8', 'PKGBUILD' or do { warn "Unable to open PKGBUILD of $pkgname: $!"; next };
-            say "\n$c{bold}=>> PKGBUILD of: $c{cblack}$c{bgreen}$pkgname$c{reset}$c{reset}\n\n", <$fh>;
+        foreach my $pkg (@argv_packages) {
+            download_package($pkg, $lconfig{cache_dir}) or do {
+                warn "warning: package not found: $pkg\n";
+                $? = 1 << 8;
+                next;
+            };
+            open my $fh, '<:utf8', 'PKGBUILD' or do { warn "Unable to open PKGBUILD of $pkg: $!\n"; $? = 2; next };
+            say "\n$c{bold}=>> PKGBUILD of: $c{cblack}$c{bgreen}$pkg$c{reset}$c{reset}\n\n", <$fh>;
             close $fh;
         }
     }
@@ -1509,7 +1524,11 @@ if ($lconfig{S}) {    # -S
 }
 elsif ($lconfig{C}) {    # -C
     foreach my $pkg (@argv_packages) {
-        my $info = info_for_package($pkg) // next;
+        my $info = info_for_package($pkg) // do {
+            warn "warning: package not found: $pkg\n";
+            $? = 1 << 8;
+            next;
+        };
         say "$c{bold}** AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}$c{reset}\n$c{bold}** URL:$c{reset} ",
           sprintf($lconfig{aur_package_id_url}, $info->{ID}), "\n";
         foreach my $comment (get_comments($info->{ID})) {
@@ -1520,7 +1539,11 @@ elsif ($lconfig{C}) {    # -C
 elsif ($lconfig{G}) {    # -G
     foreach my $pkg (@argv_packages) {
         say "** Getting tarball of: $pkg" if $lconfig{debug};
-        download_package($pkg, curdir()) or next;
+        if (!download_package($pkg, curdir())) {
+            warn "warning: package not found: $pkg\n";
+            $? = 1 << 8;
+            next;
+        }
     }
 }
 elsif ($lconfig{U}) {    # -U
@@ -1529,19 +1552,24 @@ elsif ($lconfig{U}) {    # -U
             execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $pkg);
         }
         else {                                          # install from cache dir
+            my %seen;
             foreach my $dir (grep { -d } glob("$lconfig{cache_dir}/*")) {
-                my $tarball = find_local_package($pkg, $dir) or next;
+                my $tarball = find_local_package($pkg, $dir) or do {
+                    $seen{$pkg} //= warn "warning: local package not found: $pkg\n";
+                    $? = 2 << 8;
+                    next;
+                };
                 say "$c{bold}** Installing:$c{reset} $tarball";
                 execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $tarball);
             }
         }
     }
 }
-elsif ($lconfig{R}) {                                   # -R
+elsif ($lconfig{R}) {    # -R
     @pacman_arguments = ();
     execute_pacman_command(1, @ARGV);
 }
-elsif ($lconfig{Q}) {                                   # -Q
+elsif ($lconfig{Q}) {    # -Q
     @pacman_arguments = ();
     execute_pacman_command(0, grep { !/^--/ } @ARGV);
 }
