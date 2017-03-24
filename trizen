@@ -49,6 +49,10 @@ my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
 
+my $aur_base_url       = 'https://aur.archlinux.org';
+my $aur_rpc_base_url   = "$aur_base_url/rpc.php";
+my $aur_package_id_url = "$aur_base_url/packages.php?ID=%s";
+
 # Configuration dir/file
 my $config_dir = (
                     $ENV{XDG_CONFIG_HOME}
@@ -97,9 +101,6 @@ my %CONFIG = (
               su_command          => '/usr/bin/su -c',
               sudo_command        => '/usr/bin/sudo',
               makepkg_command     => '/usr/bin/makepkg --syncdeps --force --clean',
-              aur_rpc_base_url    => 'https://aur.archlinux.org/rpc.php',
-              aur_package_id_url  => 'https://aur.archlinux.org/packages.php?ID=%s',
-              aur_base_url        => 'https://aur.archlinux.org',
               movepkg_dir         => '/var/cache/pacman/pkg',
               pacman_local_dir    => '/var/lib/pacman/local',
               pacman_command      => '/usr/bin/pacman',
@@ -494,7 +495,7 @@ sub get_comments ($) {
     $id // return;
     $id =~ /^\d+\z/ or return;
 
-    my $url = sprintf($lconfig{aur_package_id_url}, $id);
+    my $url = sprintf($aur_package_id_url, $id);
     my $content = get($url) // return;
 
     state $x = require HTML::Entities;
@@ -697,7 +698,7 @@ sub download_package ($$) {
     my $info = info_for_package($pkg) // return;
 
     my $pkg_base = $info->{PackageBase};
-    my $git_url  = "https://aur.archlinux.org/$pkg_base.git";
+    my $git_url  = "$aur_base_url/$pkg_base.git";
     my $dir_name = rel2abs(catdir($path, $pkg_base));
 
     if (-d $dir_name) {
@@ -763,7 +764,7 @@ sub download_package ($$) {
 
 sub get_rpc_info ($) {
     my ($pkg) = @_;
-    return json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=info&arg=" . uri_escape_utf8($pkg)) // return);
+    return json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=info&arg=" . uri_escape_utf8($pkg)) // return);
 }
 
 sub show_info ($) {
@@ -774,7 +775,7 @@ sub show_info ($) {
       ["Version        : %s\n", $info->{Version} // 'Unknown'],
       ["Maintainer     : %s\n", $info->{Maintainer} // "$c{bred}None$c{reset}"],
       ["URL            : %s\n", $info->{URL}],
-      ["AUR URL        : %s\n", sprintf($lconfig{aur_package_id_url}, $info->{ID})],
+      ["AUR URL        : %s\n", sprintf($aur_package_id_url, $info->{ID})],
       ["License        : %s\n", indent_array(array_ref_or_string($info->{License}))],
       ["Votes          : %s\n", $info->{NumVotes}],
       ["Popularity     : %s\n", $info->{Popularity}],
@@ -1155,7 +1156,7 @@ sub install_package ($) {
     }
 
     say "\n$c{bold}\[*] Package:$c{reset} $c{bgreen}$info->{Name}$c{reset}";
-    say "$c{bold}\[*] AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{ID});
+    say "$c{bold}\[*] AUR URL:$c{reset} ", sprintf($aur_package_id_url, $info->{ID});
 
     # When a package is already built, install it without building it again.
     if ($already_built{$pkg}) {
@@ -1269,7 +1270,7 @@ sub search_aur_packages (@) {
 
     my @all_results;
     foreach my $key (map { uri_escape_utf8($_) } grep { length() > 1 } @keys) {
-        push @all_results, json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=search&arg=$key") // next);
+        push @all_results, json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=search&arg=$key") // next);
     }
 
     my @keys_re = map { qr/\Q$_\E/i } @keys;
@@ -1298,7 +1299,7 @@ sub search_aur_packages (@) {
 
 sub list_aur_maintainer_packages ($) {
     my ($maintainer) = @_;
-    my $results = json2perl(get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=msearch&arg=$maintainer") // return);
+    my $results = json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=msearch&arg=$maintainer") // return);
     ref($results->{results}) eq 'ARRAY' or return;
     (my @maintainers_packages = @{$results->{results}}) || return;
     print_aur_results(@maintainers_packages) or return;
@@ -1321,7 +1322,7 @@ sub update_local_packages () {
     my $info_request = join('&', map { "arg[]=$_" } map { uri_escape_utf8($_) } sort keys %packages);
 
     my $multiinfo = json2perl(
-        get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=multiinfo&$info_request") // do {
+        get("$aur_rpc_base_url?v=$AUR_V&type=multiinfo&$info_request") // do {
             warn "[!] Unable to get info for local packages\n";
             $? = 1 << 8;
             return;
@@ -1566,7 +1567,7 @@ elsif ($lconfig{C}) {    # -C
             next;
         };
         say "$c{bold}\[*] AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}$c{reset}\n$c{bold}\[*] URL:$c{reset} ",
-          sprintf($lconfig{aur_package_id_url}, $info->{ID}), "\n";
+          sprintf($aur_package_id_url, $info->{ID}), "\n";
         foreach my $comment (get_comments($info->{ID})) {
             say $comment;
         }
