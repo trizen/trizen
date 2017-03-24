@@ -33,7 +33,7 @@ Base Options:
 
 Other options:
     --quiet         : be quiet
-    --really_quiet  : be really quiet
+    --really-quiet  : be really quiet
     --force         : set --force argument for pacman
     --nocolors      : no text colors
     --aur           : only AUR packages (with -S, -Si, -Su, -Ss)
@@ -46,13 +46,13 @@ Other options:
     --noinstall     : do not install package after building
     --noinfo        : do not display package info after cloning
     --devel         : update devel packages during -Su
-    --show_ood      : show out-of-date flagged packages during -Su
+    --show-ood      : show out-of-date flagged packages during -Su
     --noconfirm     : do not ask for any confirmation
     --skipinteg     : when using makepkg, skip the checksum
     --stats         : show some info about the installed packages
-    --update_config : update configuration file before exit
-    --clone_dir=s   : directory where to clone and build packages
-    --movepkg_dir=s : move built packages in this directory (with --movepkg)
+    --update-config : update configuration file before exit
+    --clone-dir=s   : directory where to clone and build packages
+    --movepkg-dir=s : move built packages in this directory (with --movepkg)
 
 Main options:
     --debug         : to see what's going on
