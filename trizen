@@ -162,8 +162,8 @@ if (-e $config_file and (-s _) > 1) {
     }
 }
 else {
-    say "** Saving configuration file" if $lconfig{debug};
-    dump_configuration(\%CONFIG, $config_file) or warn "Can't open $config_file for write: $!";
+    say "[*] Saving configuration file" if $lconfig{debug};
+    dump_configuration(\%CONFIG, $config_file) or warn "[!] Cannot open $config_file for write: $!";
 }
 
 $lconfig{clone_dir} = ($CONFIG{clone_dir} //= catdir(tmpdir(), "$execname-$user"));
@@ -277,8 +277,8 @@ sub help () {
     --debug         : to see what's going on
     --help          : print this message and exit
     --version       : print version and exit\n
-$c{bred}**$c{reset} Each config-key is a valid argument when preceded by '--'
-$c{bred}**$c{reset} Configuration file: $config_file
+$c{bred}\[*]$c{reset} Each config-key is a valid argument when preceded by '--'
+$c{bred}\[*]$c{reset} Configuration file: $config_file
 HELP
     main_quit();
 }
@@ -310,7 +310,7 @@ my @left_over_arguments;
         given ($arg) {
             when (/^--\w/) {
                 if (exists $lconfig{substr $arg, 2}) {
-                    say "** Valid long argument: $_" if $lconfig{debug};
+                    say "[*] Valid long argument: $_" if $lconfig{debug};
                     push @long_arguments, $arg;
                 }
                 else {
@@ -536,11 +536,11 @@ sub execute_pacman_command (@) {
           : qq{$lconfig{su_command} "$pacman_command"}
       : $pacman_command;
 
-    say "** Pacman command: $pacman_command" if $lconfig{debug};
+    say "[*] Pacman command: $pacman_command" if $lconfig{debug};
     {
         system $lconfig{as_root} ? $pacman_command : $user_pacman_command;
         if ($? and $login) {
-            (say "** Exit code: ", $? >> 8) if $lconfig{debug};
+            (say "[*] Exit code: ", $? >> 8) if $lconfig{debug};
             $term->ask_yn(prompt => "=>> Try again?", default => 'n') and redo;
         }
     }
@@ -663,7 +663,7 @@ sub info_for_package ($) {
     $info->{resultcount} > 0 or return;
 
     if ($info->{resultcount} > 1) {
-        print "$c{bold}** Found $c{reset}$c{bgreen}$info->{resultcount}$c{reset}$c{bold} packages.$c{reset}\n";
+        print "$c{bold}\[*] Found $c{reset}$c{bgreen}$info->{resultcount}$c{reset}$c{bold} packages.$c{reset}\n";
         my @packages = map { $_->{Name} } @{$info->{results}};
         my %table = (map { $packages[$_] => $_ } 0 .. $#packages);
         my $reply = $term->get_reply(
@@ -719,7 +719,7 @@ sub download_package ($$) {
             chomp(my $diff = `/usr/bin/diff --color=always -w -B -a -d \Q$pkgbuild_prev\E \Q$pkgbuild_curr\E`);
 
             if ($diff ne '') {
-                say "\n$c{bold}** PKGBUILD diff for$c{reset} $c{bgreen}$info->{Name}$c{reset}";
+                say "\n$c{bold}\[*] PKGBUILD diff for$c{reset} $c{bgreen}$info->{Name}$c{reset}";
                 say $diff;
             }
         }
@@ -732,20 +732,20 @@ sub download_package ($$) {
     }
 
     if ($lconfig{debug}) {
-        say "** Changing directory to: $path";
+        say "[*] Changing directory to: $path";
     }
 
     chdir($path) or do { warn "[!] Unable to chdir() to $path: $!"; return };
 
     if ($lconfig{debug}) {
-        say "** Trying to change directory to: $dir_name";
+        say "[*] Trying to change directory to: $dir_name";
     }
 
     $info->{_localpath} = $dir_name;    # directory that contains the PKGBUILD
 
     if (-d $dir_name) {
         chdir $dir_name or do { warn "[!] Unable to chdir() to $dir_name: $!"; return };
-        say "** Changed directory successfully to: $dir_name" if $lconfig{debug};
+        say "[*] Changed directory successfully to: $dir_name" if $lconfig{debug};
     }
 
     return $info;
@@ -831,12 +831,12 @@ sub move_built_package ($) {
     }
     if (-d $lconfig{movepkg_dir}) {
         if (-w _) {
-            say "** Moving $pkg_tarball into $lconfig{movepkg_dir}" if $lconfig{debug};
+            say "[*] Moving $pkg_tarball into $lconfig{movepkg_dir}" if $lconfig{debug};
             move($pkg_tarball, catfile($lconfig{movepkg_dir}, basename($pkg_tarball)))
               or warn "[!] Unable to move $pkg into $lconfig{movepkg_dir}: $!";
         }
         else {
-            say "** Moving `${pkg_tarball}' into `$lconfig{movepkg_dir}'";
+            say "[*] Moving `${pkg_tarball}' into `$lconfig{movepkg_dir}'";
 
             system $lconfig{use_sudo}
               ? "$lconfig{sudo_command} mv '${pkg_tarball}' '$lconfig{movepkg_dir}'"
@@ -849,7 +849,7 @@ sub move_built_package ($) {
                 }
             }
             else {
-                say "** Package `$pkg' has been successfully moved into `$lconfig{movepkg_dir}'.";
+                say "[*] Package `$pkg' has been successfully moved into `$lconfig{movepkg_dir}'.";
             }
         }
     }
@@ -870,6 +870,8 @@ sub output_file_content ($) {
 
 sub recompute_dependencies ($) {
     my ($info) = @_;
+
+    say "[*] Recomputing dependencies..." if $lconfig{debug};
 
     my @srcinfo = map { Encode::decode_utf8($_) } `makepkg --printsrcinfo`;
 
@@ -1099,14 +1101,14 @@ sub _is_lib32 ($) {
 
 sub install_as_dep ($) {
     my ($pkg) = @_;
-    say "** Installing the following package as dependency: $pkg" if $lconfig{debug};
+    say "[*] Installing the following package as dependency: $pkg" if $lconfig{debug};
     build_and_install_package($pkg, '--asdeps') and return 1;
     return;
 }
 
 sub install_as_explicit ($) {
     my ($pkg) = @_;
-    say "** Installing the following package as explicit: $pkg" if $lconfig{debug};
+    say "[*] Installing the following package as explicit: $pkg" if $lconfig{debug};
     build_and_install_package($pkg, '--asexplicit') and return 1;
     return;
 }
@@ -1114,11 +1116,11 @@ sub install_as_explicit ($) {
 sub install_package ($) {
     my ($pkg) = @_;
 
-    say "** Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
+    say "[*] Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
     my $info = download_package($pkg, $lconfig{clone_dir});
     if (ref($info) eq 'HASH') {
-        say "** Package `$pkg' is found in AUR!" if $lconfig{debug};
+        say "[*] Package `$pkg' is found in AUR!" if $lconfig{debug};
     }
     elsif (not($lconfig{aur}) and is_available_in_pacman_repo($pkg)) {
         execute_pacman_command(1, qw(-S), $pkg) and return 1;
@@ -1131,19 +1133,19 @@ sub install_package ($) {
     }
 
     if (my $version = package_is_installed($pkg)) {
-        say "** Package `$pkg' is already installed!" if $lconfig{debug};
+        say "[*] Package `$pkg' is already installed!" if $lconfig{debug};
         if ($lconfig{needed}) {
             if (versioncmp($version, $info->{Version}) >= 0) {
                 return 1;    # package is installed and up-to-date
             }
             else {
-                say "** Package `$pkg' is NOT up-to-date!" if $lconfig{debug};
+                say "[*] Package `$pkg' is NOT up-to-date!" if $lconfig{debug};
             }
         }
     }
 
-    say "\n$c{bold}** Package:$c{reset} $c{bgreen}$info->{Name}$c{reset}";
-    say "$c{bold}** AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{ID});
+    say "\n$c{bold}\[*] Package:$c{reset} $c{bgreen}$info->{Name}$c{reset}";
+    say "$c{bold}\[*] AUR URL:$c{reset} ", sprintf($lconfig{aur_package_id_url}, $info->{ID});
 
     # When a package is already built, install it without building it again.
     if ($already_built{$pkg}) {
@@ -1166,9 +1168,11 @@ sub install_package ($) {
         edit_text_files($info);
     }
 
-    recompute_dependencies($info);
+    if (!$lconfig{nobuild}) {
+        recompute_dependencies($info);
+    }
 
-    if (!$lconfig{noinfo}) {
+    if (not $lconfig{noinfo}) {
         print "\n";
         show_info($info) or return;
     }
@@ -1185,24 +1189,24 @@ sub install_package ($) {
       ) {
 
         if (_is_lib32($dep)) {
-            say "** Ignoring lib32-* package arch '$arch': $dep" if $lconfig{debug};
+            say "[*] Ignoring lib32-* package arch '$arch': $dep" if $lconfig{debug};
             next;
         }
 
         if ($already_installed{$dep} or package_is_installed($dep)) {
-            say "** Skipping package $dep - already installed!" if $lconfig{debug};
+            say "[*] Skipping package $dep - already installed!" if $lconfig{debug};
         }
         elsif (is_available_in_pacman_repo($dep)) {
-            say "** Package $dep is available in pacman's repository!" if $lconfig{debug};
+            say "[*] Package $dep is available in pacman's repository!" if $lconfig{debug};
         }
         else {
-            say "** Trying to install package: $dep" if $lconfig{debug};
+            say "[*] Trying to install package: $dep" if $lconfig{debug};
             install_package($dep) or do { warn "[!] Dependency not found: $dep\n"; next };
         }
     }
 
     chdir($info->{_localpath});
-    say "** Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
+    say "[*] Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
     if (defined($lconfig{main_pkg}) and $pkg eq $lconfig{main_pkg}) {    # install as explicit
         (
@@ -1220,9 +1224,9 @@ sub install_package ($) {
 }
 
 sub clean_cache () {
-    say "** Removing $lconfig{clone_dir}";
+    say "[*] Removing $lconfig{clone_dir}";
     rmtree($lconfig{clone_dir}) or die "error: $!";
-    say "** Done!";
+    say "[*] Done!";
     main_quit();
 }
 
@@ -1307,8 +1311,11 @@ sub update_local_packages () {
     my $info_request = join('&', map { "arg[]=$_" } map { uri_escape_utf8($_) } sort keys %packages);
 
     my $multiinfo = json2perl(
-        get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=multiinfo&$info_request")
-          // do { warn "** Unable to get info for local packages\n"; return }
+        get("$lconfig{aur_rpc_base_url}?v=$AUR_V&type=multiinfo&$info_request") // do {
+            warn "[!] Unable to get info for local packages\n";
+            $? = 1 << 8;
+            return;
+          }
     );
 
     ref($multiinfo->{results}) eq 'ARRAY' or return;
@@ -1356,7 +1363,7 @@ sub update_local_packages () {
         }
     }
     else {
-        say "$c{bold}** No AUR updates found!$c{reset}";
+        say "$c{bold}\[*] No AUR updates found!$c{reset}";
     }
 
     foreach my $pkgname (@for_update) {
@@ -1366,10 +1373,10 @@ sub update_local_packages () {
           if (`/usr/bin/pacman -Qie \Q$pkgname\E` =~ /\S/);
 
         if (install_package($pkgname)) {
-            say "** $pkgname has been upgraded!" if $lconfig{debug};
+            say "[*] $pkgname has been upgraded!" if $lconfig{debug};
         }
         else {
-            warn "$c{bold}$pkgname$c{reset} has *NOT* been upgraded!\n";
+            warn "[!] $c{bold}$pkgname$c{reset} has *NOT* been upgraded!\n";
         }
     }
 
@@ -1518,7 +1525,8 @@ if ($lconfig{S}) {    # -S
                 $? = 1 << 8;
                 next;
             };
-            open my $fh, '<:utf8', 'PKGBUILD' or do { warn "Unable to open PKGBUILD of $pkg: $!\n"; $? = 2; next };
+            open my $fh, '<:utf8', 'PKGBUILD'
+              or do { warn "[!] Cannot open PKGBUILD of package $pkg: $!\n"; $? = 2 << 8; next };
             say "\n$c{bold}=>> PKGBUILD of: $c{cblack}$c{bgreen}$pkg$c{reset}$c{reset}\n\n", <$fh>;
             close $fh;
         }
@@ -1531,10 +1539,10 @@ if ($lconfig{S}) {    # -S
             foreach my $pkg (@argv_packages) {
                 local $lconfig{main_pkg} = $pkg;
                 if (install_package($pkg)) {
-                    say "** Package '$pkg' has been successfully installed!" if $lconfig{debug};
+                    say "[*] Package '$pkg' has been successfully installed!" if $lconfig{debug};
                 }
                 else {
-                    warn "[!] Unable to install package: $pkg\n" if $lconfig{debug};
+                    warn "[!] Cannot install package: $pkg\n" if $lconfig{debug};
                 }
             }
         }
@@ -1547,7 +1555,7 @@ elsif ($lconfig{C}) {    # -C
             $? = 1 << 8;
             next;
         };
-        say "$c{bold}** AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}$c{reset}\n$c{bold}** URL:$c{reset} ",
+        say "$c{bold}\[*] AUR comments for $c{bgreen}$pkg$c{reset}$c{bold}$c{reset}\n$c{bold}\[*] URL:$c{reset} ",
           sprintf($lconfig{aur_package_id_url}, $info->{ID}), "\n";
         foreach my $comment (get_comments($info->{ID})) {
             say $comment;
@@ -1572,7 +1580,7 @@ elsif ($lconfig{G}) {    # -G
     }
     else {
         foreach my $pkg (@argv_packages) {
-            say "** Getting tarball of: $pkg" if $lconfig{debug};
+            say "[*] Getting tarball of: $pkg" if $lconfig{debug};
             if (!download_package($pkg, rel2abs(curdir()))) {
                 warn "[!] Package not found: $pkg\n";
                 $? = 1 << 8;
@@ -1594,7 +1602,7 @@ elsif ($lconfig{U}) {    # -U
                     $? = 2 << 8;
                     next;
                 };
-                say "$c{bold}** Installing:$c{reset} $tarball";
+                say "$c{bold}\[*] Installing:$c{reset} $tarball";
                 execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $tarball);
             }
         }
