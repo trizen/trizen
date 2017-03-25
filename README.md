@@ -16,7 +16,7 @@ Main features include:
 ```
 usage: trizen [option] [pkgname] [pkgname] [...]
 
-Base Options:
+Base options:
     -S              : installs package
     -Ss             : searches for package
     -Si             : outputs info for package
@@ -35,7 +35,6 @@ Base Options:
 Other options:
     --quiet         : be quiet
     --really-quiet  : be really quiet
-    --force         : set --force argument for pacman
     --nocolors      : no text colors
     --aur           : only AUR packages (with -S, -Si, -Su, -Ss)
     --asdep         : installs package as dependency
@@ -49,7 +48,8 @@ Other options:
     --devel         : update devel packages during -Su
     --show-ood      : show out-of-date flagged packages during -Su
     --noconfirm     : do not ask for any confirmation
-    --skipinteg     : when using makepkg, skip the checksum
+    --force         : pass the --force option to pacman
+    --skipinteg     : pass the --skipinteg option to makepkg
     --stats         : show some info about the installed packages
     --update-config : update configuration file before exit
     --clone-dir=s   : directory where to clone and build packages

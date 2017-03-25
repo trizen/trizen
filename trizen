@@ -240,7 +240,7 @@ sub help () {
 \n========================= $c{bgreen}Trizen's AUR Package Manager$c{reset} =========================
                                                             by trizenx\@gmail.com
 \n$c{bold}usage:$c{reset} $execname [option] [pkgname] [pkgname] [...]
-\n$c{bgreen}Base Options:$c{reset}
+\n$c{bgreen}Base options:$c{reset}
     -S              : installs package
     -Ss             : searches for package
     -Si             : outputs info for package
@@ -258,7 +258,6 @@ sub help () {
 \n$c{bgreen}Other options:$c{reset}
     --quiet         : be quiet
     --really-quiet  : be really quiet
-    --force         : set --force argument for pacman
     --nocolors      : no text colors
     --aur           : only AUR packages (with -S, -Si, -Su, -Ss)
     --asdep         : installs package as dependency
@@ -272,7 +271,8 @@ sub help () {
     --devel         : update devel packages during -Su
     --show-ood      : show out-of-date flagged packages during -Su
     --noconfirm     : do not ask for any confirmation
-    --skipinteg     : when using makepkg, skip the checksum
+    --force         : pass the --force option to pacman
+    --skipinteg     : pass the --skipinteg option to makepkg
     --stats         : show some info about the installed packages
     --update-config : update configuration file before exit
     --clone-dir=s   : directory where to clone and build packages
@@ -281,7 +281,7 @@ sub help () {
     --debug         : to see what's going on
     --help          : print this message and exit
     --version       : print version and exit\n
-$c{bred}\[*]$c{reset} Each config-key is a valid argument when preceded by '--'
+$c{bred}\[*]$c{reset} Each config-key is a valid option when preceded with '--'
 $c{bred}\[*]$c{reset} Configuration file: $config_file
 HELP
     main_quit();
@@ -330,12 +330,12 @@ my @left_over_arguments;
                             $lconfig{$argument} = $value;
                         }
                         else {
-                            warn "[!] Invalid argument <<$arg>>\n";
+                            warn "[!] Invalid option <<$arg>>\n";
                             continue;
                         }
                     }
                     else {
-                        warn "[!] Invalid argument <<$arg>>\n";
+                        warn "[!] Invalid option <<$arg>>\n";
                         continue;
                     }
                 }
