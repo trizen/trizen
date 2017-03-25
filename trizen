@@ -1514,8 +1514,9 @@ if ($lconfig{S}) {    # -S
         }
     }
     elsif ($lconfig{l}) {    # -Sl
+        my $curdir = rel2abs(curdir());
         foreach my $pkg (@argv_packages) {
-            local $lconfig{clone_dir} = rel2abs(curdir());
+            local $lconfig{clone_dir} = $curdir;
             local $lconfig{main_pkg}  = $pkg;
             local $lconfig{nopull}    = 1;
             if (!install_package($pkg)) {
@@ -1588,8 +1589,9 @@ elsif ($lconfig{C}) {    # -C
 }
 elsif ($lconfig{G}) {    # -G
     if ($lconfig{d}) {
+        my $curdir = rel2abs(curdir());
         foreach my $pkg (@argv_packages) {
-            local $lconfig{clone_dir}      = rel2abs(curdir());
+            local $lconfig{clone_dir}      = $curdir;
             local $lconfig{main_pkg}       = $pkg;
             local $lconfig{nobuild}        = 1;
             local $lconfig{noconfirm}      = 1;
