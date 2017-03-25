@@ -22,6 +22,7 @@ Base Options:
     -Si             : outputs info for package
     -Sm             : outputs the packages maintained by [...]
     -Sp             : outputs PKGBUILD only
+    -Sl             : builds and installs package from `pwd`
     -Su             : upgrades installed packages
     -Sc             : clears the cache directory
     -C              : outputs AUR comments only

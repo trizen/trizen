@@ -246,6 +246,7 @@ sub help () {
     -Si             : outputs info for package
     -Sm             : outputs the packages maintained by [...]
     -Sp             : outputs PKGBUILD only
+    -Sl             : builds and installs package from `pwd`
     -Su             : upgrades installed packages
     -Sc             : clears the cache directory
     -C              : outputs AUR comments only
@@ -1509,6 +1510,18 @@ if ($lconfig{S}) {    # -S
                     next;
                 };
                 show_info($info);
+            }
+        }
+    }
+    elsif ($lconfig{l}) {    # -Sl
+        foreach my $pkg (@argv_packages) {
+            local $lconfig{clone_dir} = rel2abs(curdir());
+            local $lconfig{main_pkg}  = $pkg;
+            local $lconfig{nopull}    = 1;
+            if (!install_package($pkg)) {
+                warn "[!] Package not found: $pkg\n";
+                $? = 1 << 8;
+                next;
             }
         }
     }
