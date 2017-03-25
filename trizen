@@ -240,7 +240,7 @@ sub help () {
 \n========================= $c{bgreen}Trizen's AUR Package Manager$c{reset} =========================
                                                             by trizenx\@gmail.com
 \n$c{bold}usage:$c{reset} $execname [option] [pkgname] [pkgname] [...]
-\n$c{bgreen}Base options:$c{reset}
+\n$c{bgreen}Main options:$c{reset}
     -S              : installs package
     -Ss             : searches for package
     -Si             : outputs info for package

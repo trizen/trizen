@@ -16,7 +16,7 @@ Main features include:
 ```
 usage: trizen [option] [pkgname] [pkgname] [...]
 
-Base options:
+Main options:
     -S              : installs package
     -Ss             : searches for package
     -Si             : outputs info for package
