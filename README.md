@@ -55,8 +55,8 @@ Other options:
     --clone-dir=s   : directory where to clone and build packages
     --movepkg-dir=s : move built packages in this directory (with --movepkg)
 
-Main options:
-    --debug         : to see what's going on
+Meta options:
+    --debug         : activate verbose mode
     --help          : print this message and exit
     --version       : print version and exit
 
