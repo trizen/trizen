@@ -265,7 +265,7 @@ sub help () {
     --needed        : do not reinstall up-to-date packages
     --noedit        : do not prompt to edit files
     --nopull        : do not `git pull` new changes
-    --nobuild       : do not build packages (clone only)
+    --nobuild       : do not build packages (implies --noedit)
     --noinstall     : do not install package after building
     --noinfo        : do not display package info after cloning
     --devel         : update devel packages during -Su
@@ -428,6 +428,11 @@ if ($lconfig{movepkg}) {
 
 if ($lconfig{h}) {
     help();
+}
+
+if ($lconfig{nobuild}) {
+    $lconfig{noedit}         = 1;
+    $lconfig{recompute_deps} = 0;
 }
 
 $lconfig{clone_dir} = rel2abs($lconfig{clone_dir});
@@ -978,7 +983,11 @@ sub install_local_package (@) {
     my ($pkg, @pacman_argvs) = @_;
 
     my $pkg_tarball = find_local_package($pkg, rel2abs(curdir()))
-      or do { warn "[!] Unable to find the built tarball for $pkg\n"; return };
+      or do {
+        warn "[!] Unable to find a built tarball for $pkg\n";
+        $? = 2 << 8;
+        return;
+      };
 
     if ($lconfig{noinstall}) {
         if ($lconfig{movepkg}) {
@@ -1029,9 +1038,9 @@ sub install_built_package ($@) {
         grep { !$seen{$_}++ } @packages;
     };
 
-    # If the list contains more than one package, then ask the user
+    # If the list contains more built packages, then ask the user
     # if he wants to install some other packages from this group.
-    if (@packages > 1) {
+    if (@packages) {
 
         if (
             $term->ask_yn(prompt  => '=>> Do you want to install more packages from this group?',
@@ -1059,8 +1068,12 @@ sub build_and_install_package ($@) {
     my ($pkg, @args) = @_;
 
     if ($lconfig{nobuild}) {
-        $already_installed{$pkg} = 1;
-        return 1;
+        if ($lconfig{noinstall}) {
+            $already_installed{$pkg} = 1;
+            return 1;
+        }
+        $already_built{$pkg} = 1;
+        return install_built_package($pkg, @args);
     }
 
     # Check to see if the current package was
@@ -1594,10 +1607,12 @@ elsif ($lconfig{G}) {    # -G
             local $lconfig{clone_dir}      = $curdir;
             local $lconfig{main_pkg}       = $pkg;
             local $lconfig{nobuild}        = 1;
+            local $lconfig{noinstall}      = 1;
             local $lconfig{noconfirm}      = 1;
             local $lconfig{noedit}         = 1;
             local $lconfig{noinfo}         = 1;
             local $lconfig{recompute_deps} = 0;
+
             if (!install_package($pkg)) {
                 warn "[!] Package not found: $pkg\n";
                 $? = 1 << 8;

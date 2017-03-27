@@ -42,7 +42,7 @@ Other options:
     --needed        : do not reinstall up-to-date packages
     --noedit        : do not prompt to edit files
     --nopull        : do not `git pull` new changes
-    --nobuild       : do not build packages (clone only)
+    --nobuild       : do not build packages (implies --noedit)
     --noinstall     : do not install package after building
     --noinfo        : do not display package info after cloning
     --devel         : update devel packages during -Su
