@@ -737,7 +737,7 @@ sub download_package ($$) {
 
             if ($diff ne '') {
                 say "\n$c{bold}\[*] PKGBUILD diff for$c{reset} $c{bgreen}$info->{Name}$c{reset}";
-                say $diff;
+                say Encode::decode_utf8($diff);
             }
         }
     }
