@@ -1249,7 +1249,8 @@ sub install_package ($) {
 }
 
 sub clean_cache () {
-    say "[*] Removing $lconfig{clone_dir}";
+    $term->ask_yn(prompt => "[*] Remove directory $c{bold}$lconfig{clone_dir}$c{reset}?", default => 'n') || return;
+    say "[*] Removing $c{bold}$lconfig{clone_dir}$c{reset}...";
     rmtree($lconfig{clone_dir}) or die "error: $!";
     say "[*] Done!";
     main_quit();
