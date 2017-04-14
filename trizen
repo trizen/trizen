@@ -1248,8 +1248,10 @@ sub install_package ($) {
     return;
 }
 
-sub clean_cache () {
-    $term->ask_yn(prompt => "[*] Remove directory $c{bold}$lconfig{clone_dir}$c{reset}?", default => 'n') || return;
+sub clear_cache () {
+    if ($lconfig{clone_dir} !~ m{^/tmp/}) {
+        $term->ask_yn(prompt => "[*] Remove directory $c{bold}$lconfig{clone_dir}$c{reset}?", default => 'n') || return;
+    }
     say "[*] Removing $c{bold}$lconfig{clone_dir}$c{reset}...";
     rmtree($lconfig{clone_dir}) or die "error: $!";
     say "[*] Done!";
@@ -1571,7 +1573,7 @@ if ($lconfig{S}) {    # -S
         }
     }
     elsif ($lconfig{c}) {    # -Sc
-        clean_cache();
+        clear_cache();
     }
     else {                   # -S only
         if (@argv_packages) {
