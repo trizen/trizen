@@ -890,7 +890,7 @@ sub recompute_dependencies ($) {
 
     say "[*] Recomputing dependencies..." if $lconfig{debug};
 
-    my @srcinfo = map { Encode::decode_utf8($_) } `makepkg --printsrcinfo`;
+    my @srcinfo = map { Encode::decode_utf8($_) } `/usr/bin/makepkg --printsrcinfo`;
 
     if ($?) {
         warn "[!] `makepkg --printsrcinfo` exited with code: ", $? >> 8, "\n";
@@ -1021,7 +1021,7 @@ sub install_built_package ($@) {
     ($lconfig{noinstall} || !$lconfig{split_packages}) && return 1;
 
     # Get the list of all built packages
-    chomp(my @packagelist = map { Encode::decode_utf8($_) } `makepkg --packagelist`);
+    chomp(my @packagelist = map { Encode::decode_utf8($_) } `/usr/bin/makepkg --packagelist`);
 
     my @packages;
     foreach my $name (@packagelist) {
@@ -1041,6 +1041,9 @@ sub install_built_package ($@) {
     # If the list contains more built packages, then ask the user
     # if he wants to install some other packages from this group.
     if (@packages) {
+
+        say "\n=> This group contains ", scalar(@packages), " more packages:\n";
+        say join("\n", map { "\t$_" } @packages), "\n";
 
         if (
             $term->ask_yn(prompt  => '=>> Do you want to install more packages from this group?',
