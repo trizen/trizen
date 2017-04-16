@@ -1643,24 +1643,19 @@ elsif ($lconfig{U}) {    # -U
             execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $pkg);
         }
         else {                                          # install from cache dir
-            my %seen;
             foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
-                my $tarball = find_local_package($pkg, $dir) or do {
-                    $seen{$pkg} //= warn "[!] Local package not found: $pkg\n";
-                    $? = 2 << 8;
-                    next;
-                };
+                my $tarball = find_local_package($pkg, $dir) || next;
                 say "$c{bold}\[*] Installing:$c{reset} $tarball";
                 execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $tarball);
             }
         }
     }
 }
-elsif ($lconfig{R}) {    # -R
+elsif ($lconfig{R}) {                                   # -R
     @pacman_arguments = ();
     execute_pacman_command(1, @ARGV);
 }
-elsif ($lconfig{Q}) {    # -Q
+elsif ($lconfig{Q}) {                                   # -Q
     @pacman_arguments = ();
     execute_pacman_command(0, grep { !/^--/ } @ARGV);
 }
