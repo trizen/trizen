@@ -200,6 +200,7 @@ my @package_suffices = qw (
 
 my %already_built;        # will keep track of built packages
 my %already_installed;    # will keep track of installed packages
+my %seen_package;         # will keep track of seen packages
 
 my $pkg_suffices = join('|', map { quotemeta } @package_suffices);
 my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/o;
@@ -653,6 +654,14 @@ sub strip_version ($) {
     my ($version) = @_;
     $version =~ s/\s*[<=>]=?.+//sg;
     return strip_space($version);
+}
+
+sub parse_package_name_and_version ($) {
+    my ($pkgname) = @_;
+    my $name = $pkgname;
+    $name =~ s/\s*[<=>]=?\s*(.*\S)//s;
+    my $version = $1;
+    return ($name, $version);
 }
 
 sub indent_array (@) {
@@ -1144,6 +1153,14 @@ sub install_as_explicit ($) {
 sub install_package ($) {
     my ($pkg) = @_;
 
+    # Avoid circular dependencies
+    if ($seen_package{$pkg}) {
+        return 1;
+    }
+
+    # Mark as seen
+    $seen_package{$pkg} = 1;
+
     say "[*] Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
     my $info = download_package($pkg, $lconfig{clone_dir});
@@ -1205,9 +1222,8 @@ sub install_package ($) {
         show_info($info) or return;
     }
 
-    foreach my $dep (
+    foreach my $pkgname (
         grep { defined($_) && /^\w/ }
-        map { strip_version($_) }
 
         # Makedepends
         (exists($info->{MakeDepends}) ? @{$info->{MakeDepends}} : ()),
@@ -1216,35 +1232,45 @@ sub install_package ($) {
         (exists($info->{Depends}) ? @{$info->{Depends}} : ()),
       ) {
 
-        if (_is_lib32($dep)) {
-            say "[*] Ignoring lib32-* package arch '$arch': $dep" if $lconfig{debug};
+        my ($name, $version) = parse_package_name_and_version($pkgname);
+
+        if (_is_lib32($name)) {
+            say "[*] Ignoring lib32-* package arch '$arch': $name" if $lconfig{debug};
             next;
         }
 
-        if ($already_installed{$dep} or package_is_installed($dep)) {
-            say "[*] Skipping package $dep - already installed!" if $lconfig{debug};
+        my $local_version = package_is_installed($name);
+
+        if (
+            $already_installed{$name}
+            or (
+                  defined($local_version)
+                ? defined($version)
+                    ? (versioncmp($version, $local_version) <= 0)
+                    : 1
+                : 0
+               )
+          ) {
+            say "[*] Skipping package $name - already installed!" if $lconfig{debug};
         }
-        elsif (is_available_in_pacman_repo($dep)) {
-            say "[*] Package $dep is available in pacman's repository!" if $lconfig{debug};
+        elsif (is_available_in_pacman_repo($name)) {
+            say "[*] Package $name is available in pacman's repository!" if $lconfig{debug};
         }
         else {
-            say "[*] Trying to install package: $dep" if $lconfig{debug};
-            install_package($dep) or do { warn "[!] Dependency not found: $dep\n"; next };
+            say "[*] Trying to install package: $name" if $lconfig{debug};
+            install_package($name) or do { warn "[!] Dependency not found: $name\n"; next };
         }
     }
 
     chdir($info->{_localpath});
     say "[*] Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
-    if (defined($lconfig{main_pkg}) and $pkg eq $lconfig{main_pkg}) {    # install as explicit
-        (
-         $lconfig{asdep}
-         ? install_as_dep($pkg)
-         : install_as_explicit($pkg)
-        )
-          and return 1;
+    if (    not $lconfig{asdep}
+        and defined($lconfig{main_pkg})
+        and $pkg eq $lconfig{main_pkg}) {    # install as explicit
+        install_as_explicit($pkg) and return 1;
     }
-    else {                                                               # install as dependency
+    else {                                   # install as dependency
         install_as_dep($pkg) and return 1;
     }
 
