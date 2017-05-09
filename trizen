@@ -974,6 +974,7 @@ sub run_makepkg_command ($@) {
     if ($?) {
         warn "[!] Unable to build '$pkg' - makepkg exited with code: ", $? >> 8, "\n";
         if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
+            delete $seen_package{$pkg};
             install_package($pkg);
         }
         else {
@@ -1159,7 +1160,7 @@ sub install_package ($) {
     }
 
     # Mark as seen
-    $seen_package{$pkg} = 1;
+    local $seen_package{$pkg} = 1;
 
     say "[*] Current dir is: ", rel2abs(curdir()) if $lconfig{debug};
 
