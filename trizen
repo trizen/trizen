@@ -1274,7 +1274,7 @@ sub install_package ($) {
             }
         }
 
-        if ($already_installed{$name} or ((defined($local_version) and defined($version)) ? $is_up_to_date : 1)) {
+        if ($already_installed{$name} or (defined($local_version) ? defined($version) ? $is_up_to_date : 1 : 0)) {
             say "[*] Skipping package $name - already installed!" if $lconfig{debug};
         }
         elsif (is_available_in_pacman_repo($name)) {
