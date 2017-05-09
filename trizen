@@ -658,10 +658,12 @@ sub strip_version ($) {
 
 sub parse_package_name_and_version ($) {
     my ($pkgname) = @_;
-    my $name = $pkgname;
-    $name =~ s/\s*[<=>]=?\s*(.*\S)//s;
-    my $version = $1;
-    return ($name, $version);
+
+    if ($pkgname =~ /^(.*?)([<=>]=?)(.*)/) {
+        return ($1, $2, $3);
+    }
+
+    return ($pkgname, undef, undef);
 }
 
 sub indent_array (@) {
@@ -1233,7 +1235,7 @@ sub install_package ($) {
         (exists($info->{Depends}) ? @{$info->{Depends}} : ()),
       ) {
 
-        my ($name, $version) = parse_package_name_and_version($pkgname);
+        my ($name, $cmp, $version) = parse_package_name_and_version($pkgname);
 
         if (_is_lib32($name)) {
             say "[*] Ignoring lib32-* package arch '$arch': $name" if $lconfig{debug};
@@ -1242,16 +1244,36 @@ sub install_package ($) {
 
         my $local_version = package_is_installed($name);
 
-        if (
-            $already_installed{$name}
-            or (
-                  defined($local_version)
-                ? defined($version)
-                    ? (versioncmp($version, $local_version) <= 0)
-                    : 1
-                : 0
-               )
-          ) {
+        my $is_up_to_date = 0;
+        if (defined($local_version) and defined($version)) {
+            if ($cmp eq '<') {
+                if (versioncmp($local_version, $version) < 0) {
+                    $is_up_to_date = 1;
+                }
+            }
+            elsif ($cmp eq '<=') {
+                if (versioncmp($local_version, $version) <= 0) {
+                    $is_up_to_date = 1;
+                }
+            }
+            elsif ($cmp eq '>') {
+                if (versioncmp($local_version, $version) > 0) {
+                    $is_up_to_date = 1;
+                }
+            }
+            elsif ($cmp eq '>=') {
+                if (versioncmp($local_version, $version) >= 0) {
+                    $is_up_to_date = 1;
+                }
+            }
+            elsif ($cmp eq '=' or $cmp eq '==') {
+                if (versioncmp($local_version, $version) == 0) {
+                    $is_up_to_date = 1;
+                }
+            }
+        }
+
+        if ($already_installed{$name} or (defined($local_version) and defined($version) and $is_up_to_date)) {
             say "[*] Skipping package $name - already installed!" if $lconfig{debug};
         }
         elsif (is_available_in_pacman_repo($name)) {
