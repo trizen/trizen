@@ -1072,7 +1072,7 @@ sub install_built_package ($@) {
 
             # Install the selected packages
             foreach my $name (@reply) {
-                install_local_package($name, q{-U}, q{--noconfirm}, @args);
+                install_local_package($name, q{-U}, @args);
             }
         }
     }
