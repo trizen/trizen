@@ -1708,7 +1708,7 @@ elsif ($lconfig{R}) {                                   # -R
 }
 elsif ($lconfig{Q}) {                                   # -Q
     @pacman_arguments = ();
-    execute_pacman_command(0, grep { !/^--/ } @left_over_arguments);
+    execute_pacman_command(0, @left_over_arguments);
 }
 
 main_quit();
