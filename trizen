@@ -183,6 +183,7 @@ my @package_suffices = qw (
   .tar.Z
   .tar.bz2
   .tar.gz
+  .tar.lrz
   .tar.lz
   .tar.lzma
   .tar.lzo
