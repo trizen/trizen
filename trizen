@@ -104,6 +104,7 @@ my %CONFIG = (
               movepkg_dir         => '/var/cache/pacman/pkg',
               pacman_local_dir    => '/var/lib/pacman/local',
               pacman_command      => '/usr/bin/pacman',
+              clone_dir           => undef,
              );
 
 my %lconfig = (
@@ -177,7 +178,6 @@ if (not -d $lconfig{clone_dir}) {
 
 my $short_arguments = 'CUNQRSGbcdefghiklmnopqrstuvwy';
 
-# The order matters!
 my @package_suffices = qw (
   .tar.7z
   .tar.Z
