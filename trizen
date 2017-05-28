@@ -1704,11 +1704,11 @@ elsif ($lconfig{U}) {    # -U
 }
 elsif ($lconfig{R}) {                                   # -R
     @pacman_arguments = ();
-    execute_pacman_command(1, @ARGV);
+    execute_pacman_command(1, @left_over_arguments);
 }
 elsif ($lconfig{Q}) {                                   # -Q
     @pacman_arguments = ();
-    execute_pacman_command(0, grep { !/^--/ } @ARGV);
+    execute_pacman_command(0, grep { !/^--/ } @left_over_arguments);
 }
 
 main_quit();
