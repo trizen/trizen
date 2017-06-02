@@ -1359,7 +1359,8 @@ sub print_aur_results (\@) {
                 ? localtime($result->{LastModified}) =~ /^\w+ (\w+)\s+(\d+)\s+.+? (\d+)$/ && " [$2 $1 $3]"
                 : q{}
               ),
-              ($result->{Description} // 'No description available...')
+              ($result->{Description} // 'No description available...'),
+            ;
 #>>>
         }
     }
