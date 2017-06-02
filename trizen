@@ -109,6 +109,7 @@ my %CONFIG = (
               aur_results_votes            => 1,
               aur_results_popularity       => 1,
               aur_results_last_modified    => 1,
+              aur_results_show_installed   => 1,
              );
 
 my %lconfig = (
@@ -1323,17 +1324,29 @@ sub print_aur_results (\@) {
             say $result->{Name};
         }
         else {
+            # Compare installed version with AUR version
+            my $is_installed_string; # String printed out by printf
+            if (($CONFIG{aur_results_show_installed}) && (my $installed_version = package_is_installed($result->{Name})))
+            {
+                $is_installed_string = (
+                                        ($installed_version eq $result->{Version})
+                                        ? " [installed]"
+                                        : " [installed: $installed_version]"
+                                       )
+            }
+
             # Apply aur_results_format_as_pacman config option
             my $result_string = (
                                  $CONFIG{aur_results_format_as_pacman}
-                                 ? "aur/%s %s%s%s%s%s%s\n    %s\n"
-                                 : "$c{bold}%s$c{reset} %s%s%s$c{bold}%s$c{reset}%s%s - %s\n"
+                                 ? "aur/%s %s%s%s%s%s%s%s\n    %s\n"
+                                 : "$c{bold}%s$c{reset} %s%s%s%s$c{bold}%s$c{reset}%s%s - %s\n"
                                 );
 
             # Print formatted output
             printf $result_string,
               $result->{Name},
               $result->{Version},
+              ($is_installed_string ? "$is_installed_string" : q{}),
               ($result->{OutOfDate}            ? " [$c{bred}out-of-date$c{reset}]" : q{}),
               ($result->{Maintainer}           ? q{}                               : " [$c{bred}UNMAINTAINED$c{reset}]"),
               ($CONFIG{aur_results_votes}      ? " [$result->{NumVotes}+]"         : q{}),
