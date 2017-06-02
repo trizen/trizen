@@ -21,7 +21,7 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 24 March 2017
+# Latest edit on: 02 June 2017
 # http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -44,7 +44,7 @@ use autouse 'File::Copy'       => qw(move);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.19';
+my $version  = '1.20';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -1325,38 +1325,42 @@ sub print_aur_results (\@) {
         }
         else {
             # Compare installed version with AUR version
-            my $is_installed_string; # String printed out by printf
-            if (($CONFIG{aur_results_show_installed}) && (my $installed_version = package_is_installed($result->{Name})))
-            {
-                $is_installed_string = (
-                                        ($installed_version eq $result->{Version})
-                                        ? " [installed]"
-                                        : " [installed: $installed_version]"
-                                       )
-            }
+            my $is_installed_string = $lconfig{aur_results_show_installed}
+              ? do {
+                my $installed_version = package_is_installed($result->{Name});
+
+                defined($installed_version)
+                  ? versioncmp($installed_version, $result->{Version}) >= 0
+                      ? " [$c{bold}installed$c{reset}]"
+                      : " [$c{bold}installed$c{reset}: $c{bred}$installed_version$c{reset}]"
+                  : q{};
+              }
+              : q{};
 
             # Apply aur_results_format_as_pacman config option
             my $result_string = (
-                                 $CONFIG{aur_results_format_as_pacman}
-                                 ? "aur/%s %s%s%s%s%s%s%s\n    %s\n"
-                                 : "$c{bold}%s$c{reset} %s%s%s%s$c{bold}%s$c{reset}%s%s - %s\n"
+                                 $lconfig{aur_results_format_as_pacman}
+                                 ? "$c{byellow}aur$c{reset}/$c{bold}%s$c{reset} %s%s%s%s%s%s%s\n    %s\n"
+                                 : "$c{bold}%s$c{reset} %s%s%s%s%s%s%s - %s\n"
                                 );
 
             # Print formatted output
+#<<<
             printf $result_string,
               $result->{Name},
               $result->{Version},
-              ($is_installed_string ? "$is_installed_string" : q{}),
-              ($result->{OutOfDate}            ? " [$c{bred}out-of-date$c{reset}]" : q{}),
-              ($result->{Maintainer}           ? q{}                               : " [$c{bred}UNMAINTAINED$c{reset}]"),
-              ($CONFIG{aur_results_votes}      ? " [$result->{NumVotes}+]"         : q{}),
-              ($CONFIG{aur_results_popularity} ? " [$result->{Popularity}]"        : q{}),
+              $is_installed_string,
+              ($result->{OutOfDate}             ? " [$c{bred}out-of-date$c{reset}]"          : q{}),
+              ($result->{Maintainer}            ? q{}                                        : " [$c{bred}UNMAINTAINED$c{reset}]"),
+              ($lconfig{aur_results_votes}      ? " [$c{bold}$result->{NumVotes}+$c{reset}]" : q{}),
+              ($lconfig{aur_results_popularity} ? " [$result->{Popularity}]"                 : q{}),
               (
-                $CONFIG{aur_results_last_modified}
+                $lconfig{aur_results_last_modified}
                 ? localtime($result->{LastModified}) =~ /^\w+ (\w+)\s+(\d+)\s+.+? (\d+)$/ && " [$2 $1 $3]"
                 : q{}
               ),
-              ($result->{Description} // 'No description available...');
+              ($result->{Description} // 'No description available...')
+#>>>
         }
     }
     return 1;
