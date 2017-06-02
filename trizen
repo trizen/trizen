@@ -44,7 +44,7 @@ use autouse 'File::Copy'       => qw(move);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.20';
+my $version  = '1.21';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -105,6 +105,7 @@ my %CONFIG = (
               pacman_local_dir             => '/var/lib/pacman/local',
               pacman_command               => '/usr/bin/pacman',
               clone_dir                    => undef,
+              show_build_files_content     => 1,
               aur_results_format_as_pacman => 1,
               aur_results_votes            => 1,
               aur_results_popularity       => 1,
@@ -959,7 +960,9 @@ sub edit_text_files ($) {
           if ((-s $file) > 50 * 1024 or not -T _)
           and not $file ~~ ['PKGBUILD', qr/(?:^|\.)install\z/];    # ignore files larger than 50 KB
 
-        output_file_content($file) or next;
+        if ($lconfig{show_build_files_content}) {
+            output_file_content($file);
+        }
 
         if ($term->ask_yn(prompt => "=>> Do you want to edit $file?", default => 'n')) {
             my $abs_file = rel2abs($file);
