@@ -44,7 +44,7 @@ use autouse 'File::Copy'       => qw(move);
 
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.21';
+my $version  = '1.22';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -77,40 +77,39 @@ if (not -d $config_dir) {
 $ENV{EDITOR} ||= 'nano';
 
 my %CONFIG = (
-              VERSION                      => $version,
-              show_comments                => 0,
-              quiet                        => 0,
-              debug                        => 0,
-              nocolors                     => 0,
-              movepkg                      => 0,
-              noedit                       => 0,
-              nobuild                      => 0,
-              nopull                       => 0,
-              noinfo                       => 0,
-              skipinteg                    => 0,
-              force                        => 0,
-              lwp_show_progress            => 0,
-              lwp_env_proxy                => 1,
-              lwp_timeout                  => 60,
-              ssl_verify_hostname          => 0,
-              packages_in_stats            => 5,
-              git_clone_depth              => 0,
-              split_packages               => 1,
-              recompute_deps               => 1,
-              use_sudo                     => ((-x '/usr/bin/sudo') ? 1 : 0),
-              su_command                   => '/usr/bin/su -c',
-              sudo_command                 => '/usr/bin/sudo',
-              makepkg_command              => '/usr/bin/makepkg --syncdeps --force --clean',
-              movepkg_dir                  => '/var/cache/pacman/pkg',
-              pacman_local_dir             => '/var/lib/pacman/local',
-              pacman_command               => '/usr/bin/pacman',
-              clone_dir                    => undef,
-              show_build_files_content     => 1,
-              aur_results_format_as_pacman => 1,
-              aur_results_votes            => 1,
-              aur_results_popularity       => 1,
-              aur_results_last_modified    => 1,
-              aur_results_show_installed   => 1,
+              VERSION                    => $version,
+              show_comments              => 0,
+              quiet                      => 0,
+              debug                      => 0,
+              nocolors                   => 0,
+              movepkg                    => 0,
+              noedit                     => 0,
+              nobuild                    => 0,
+              nopull                     => 0,
+              noinfo                     => 0,
+              skipinteg                  => 0,
+              force                      => 0,
+              lwp_show_progress          => 0,
+              lwp_env_proxy              => 1,
+              lwp_timeout                => 60,
+              ssl_verify_hostname        => 0,
+              packages_in_stats          => 5,
+              git_clone_depth            => 0,
+              split_packages             => 1,
+              recompute_deps             => 1,
+              use_sudo                   => ((-x '/usr/bin/sudo') ? 1 : 0),
+              su_command                 => '/usr/bin/su -c',
+              sudo_command               => '/usr/bin/sudo',
+              makepkg_command            => '/usr/bin/makepkg --syncdeps --force --clean',
+              movepkg_dir                => '/var/cache/pacman/pkg',
+              pacman_local_dir           => '/var/lib/pacman/local',
+              pacman_command             => '/usr/bin/pacman',
+              clone_dir                  => undef,
+              show_build_files_content   => 1,
+              aur_results_votes          => 1,
+              aur_results_popularity     => 1,
+              aur_results_last_modified  => 1,
+              aur_results_show_installed => 1,
              );
 
 my %lconfig = (
@@ -228,7 +227,7 @@ sub main_quit () {
 my %c;
 $c{cblack}  = "\e[40m";                # background black
 $c{byellow} = "\e[1;33m";              # bold yellow
-$c{bpurle}  = "\e[1;35m";              # bold purple
+$c{bpurple} = "\e[1;35m";              # bold purple
 $c{bblue}   = "\e[1;34m";              # bold blue
 $c{bold}    = "\e[1m";                 # bold terminal color
 $c{bred}    = "\e[1;31m";              # bold red
@@ -1340,15 +1339,11 @@ sub print_aur_results (\@) {
               }
               : q{};
 
-            # Apply aur_results_format_as_pacman config option
-            my $result_string = (
-                                 $lconfig{aur_results_format_as_pacman}
-                                 ? "$c{byellow}aur$c{reset}/$c{bold}%s$c{reset} %s%s%s%s%s%s%s\n    %s\n"
-                                 : "$c{bold}%s$c{reset} %s%s%s%s%s%s%s - %s\n"
-                                );
+            # Formatting string
+            my $result_string = "$c{bpurple}aur$c{reset}/$c{bold}%s$c{reset} %s%s%s%s%s%s%s\n    %s\n";
 
-            # Print formatted output
 #<<<
+            # Print formatted output
             printf $result_string,
               $result->{Name},
               $result->{Version},
