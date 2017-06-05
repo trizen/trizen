@@ -134,6 +134,7 @@ my %lconfig = (
     upgrade       => 0,                         # -U
     get           => 0,
     with_deps     => 0,
+    maintainer    => 0,
     really_quiet  => 0,
     noinstall     => 0,
     update_config => 0,
@@ -1665,7 +1666,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     elsif ($lconfig{s} or $lconfig{search}) {        # -Ss
         search_aur_packages(@argv_packages);
     }
-    elsif ($lconfig{m}) {                            # -Sm
+    elsif ($lconfig{m} or $lconfig{maintainer}) {    # -Sm
         foreach my $maintainer (@argv_packages) {
             say "=>> ${maintainer}'s packages:" if $lconfig{debug};
             list_aur_maintainer_packages($maintainer)
