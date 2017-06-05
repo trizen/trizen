@@ -25,12 +25,12 @@ Main options:
     -Sl             : builds and installs package from `pwd`
     -Su             : upgrades installed packages
     -Sc             : clears the cache directory
-    -C              : outputs AUR comments only
+    -C              : shows AUR comments for package
     -G              : clones a package in the current directory
     -Gd             : clones a package with all needed AUR dependencies
-    -R              : remove packages (see pacman -Rh)
+    -R              : removes packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
-    -U              : installs local packages from /tmp or `pwd`
+    -U              : installs local packages from `--clone-dir` or `pwd`
 
 Other options:
     --quiet         : be quiet
