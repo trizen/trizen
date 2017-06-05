@@ -485,7 +485,7 @@ my $lwp = LWP::UserAgent->new(
                              );
 
 sub json2perl ($) {
-    state $x = require JSON;
+    require JSON;
     JSON::from_json($_[0]);
 }
 
@@ -527,7 +527,7 @@ sub get_comments ($) {
     my $url = sprintf($aur_package_id_url, $id);
     my $content = get($url) // return;
 
-    state $x = require HTML::Entities;
+    require HTML::Entities;
 
     my @comments;
     while (
@@ -1231,6 +1231,7 @@ sub install_package ($) {
     }
 
     if ($lconfig{show_comments}) {
+        print "\n";
         foreach my $comment (get_comments($info->{ID})) {
             say $comment;
         }
@@ -1598,7 +1599,7 @@ $c{bold}** Oldest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{
 $c{bold}** Newest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{installed}{new}}]}$c{reset}\n
 STATS
 
-    state $x = require List::Util;
+    require List::Util;
     print "$c{bold}** Unneeded packages:$c{byellow}";
     while (my ($key, $value) = each %reason_deps) {
         next if exists $dependencies{$key};
