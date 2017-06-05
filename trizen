@@ -21,7 +21,7 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 02 June 2017
+# Latest edit on: 05 June 2017
 # http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -1596,6 +1596,18 @@ STATS
     main_quit();
 }
 
+sub _parse_pkgname {
+    my ($pkgref) = @_;
+
+    # Strip `aur/` from `aur/<pkgname>`
+    if ($$pkgref =~ m{^aur/(.+)}) {
+        $$pkgref = $1;
+        return 1;
+    }
+
+    return;
+}
+
 # MAIN
 
 my @argv_packages = get_non_arguments_from_array(@left_over_arguments);
@@ -1603,6 +1615,9 @@ my @argv_packages = get_non_arguments_from_array(@left_over_arguments);
 if ($lconfig{S}) {    # -S
     if ($lconfig{i}) {    # -Si
         foreach my $pkg (@argv_packages) {
+
+            local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
+
             if (!$lconfig{aur} && is_available_in_pacman_repo($pkg)) {
                 execute_pacman_command(0, qw(-Si), $pkg);
             }
@@ -1648,6 +1663,9 @@ if ($lconfig{S}) {    # -S
     }
     elsif ($lconfig{p}) {    # -Sp
         foreach my $pkg (@argv_packages) {
+
+            local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
+
             download_package($pkg, $lconfig{clone_dir}) or do {
                 warn "[!] Package not found: $pkg\n";
                 $? = 1 << 8;
@@ -1665,6 +1683,7 @@ if ($lconfig{S}) {    # -S
     else {                   # -S only
         if (@argv_packages) {
             foreach my $pkg (@argv_packages) {
+                local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
                 local $lconfig{main_pkg} = $pkg;
                 if (install_package($pkg)) {
                     say "[*] Package '$pkg' has been successfully installed!" if $lconfig{debug};
@@ -1678,6 +1697,7 @@ if ($lconfig{S}) {    # -S
 }
 elsif ($lconfig{C}) {    # -C
     foreach my $pkg (@argv_packages) {
+        local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
         my $info = info_for_package($pkg) // do {
             warn "[!] Package not found: $pkg\n";
             $? = 1 << 8;
@@ -1694,6 +1714,7 @@ elsif ($lconfig{G}) {    # -G
     if ($lconfig{d}) {
         my $curdir = rel2abs(curdir());
         foreach my $pkg (@argv_packages) {
+            local $lconfig{aur}            = 1 if _parse_pkgname(\$pkg);
             local $lconfig{clone_dir}      = $curdir;
             local $lconfig{main_pkg}       = $pkg;
             local $lconfig{nobuild}        = 1;
@@ -1712,6 +1733,7 @@ elsif ($lconfig{G}) {    # -G
     }
     else {
         foreach my $pkg (@argv_packages) {
+            local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
             say "[*] Getting tarball of: $pkg" if $lconfig{debug};
             if (!download_package($pkg, rel2abs(curdir()))) {
                 warn "[!] Package not found: $pkg\n";
