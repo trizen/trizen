@@ -113,21 +113,36 @@ my %CONFIG = (
              );
 
 my %lconfig = (
-               %CONFIG,
-               devel         => 0,
-               needed        => 0,
-               tarball_only  => 0,
-               noconfirm     => 0,
-               aur           => 0,
-               really_quiet  => 0,
-               noinstall     => 0,
-               update_config => 0,
-               show_ood      => 0,
-               asdep         => 0,
-               as_root       => $user eq 'root' ? 1 : 0,
-               stats         => \&show_stats,
-               help          => \&help,
-               version       => \&version,
+    %CONFIG,
+    devel         => 0,
+    needed        => 0,
+    noconfirm     => 0,
+    aur           => 0,
+    search        => 0,
+    info          => 0,
+    clean         => 0,
+    local         => 0,
+    pkgbuild      => 0,
+    sysupgrade    => 0,
+    comments      => 0,
+    database      => 0,                         # -D
+    files         => 0,                         # -F
+    query         => 0,                         # -Q
+    remove        => 0,                         # -R
+    sync          => 0,                         # -S
+    deptest       => 0,                         # -T
+    upgrade       => 0,                         # -U
+    get           => 0,
+    with_deps     => 0,
+    really_quiet  => 0,
+    noinstall     => 0,
+    update_config => 0,
+    show_ood      => 0,
+    asdep         => 0,
+    as_root       => $user eq 'root' ? 1 : 0,
+    stats         => \&show_stats,
+    help          => \&help,
+    version       => \&version,
               );
 
 my $config_header = <<"EOH";
@@ -181,7 +196,7 @@ if (not -d $lconfig{clone_dir}) {
       or die "[x] Unable to create dir $lconfig{clone_dir}: $!";
 }
 
-my $short_arguments = 'CUNQRSGbcdefghiklmnopqrstuvwy';
+my $short_arguments = 'TDFCUNQRSGbcdefghiklmnopqrstuvwy';
 
 my @package_suffices = qw (
   .tar.7z
@@ -256,10 +271,10 @@ sub help () {
     -Sl             : builds and installs package from `pwd`
     -Su             : upgrades installed packages
     -Sc             : clears the cache directory
-    -C              : outputs AUR comments only
+    -C              : shows AUR comments for package
     -G              : clones a package in the current directory
     -Gd             : clones a package with all needed AUR dependencies
-    -R              : remove packages (see pacman -Rh)
+    -R              : removes packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
     -U              : installs local packages from $lconfig{clone_dir} or `pwd`
 \n$c{bgreen}Other options:$c{reset}
@@ -337,12 +352,12 @@ my @left_over_arguments;
                             $lconfig{$argument} = $value;
                         }
                         else {
-                            warn "[!] Invalid option <<$arg>>\n";
+                            ##warn "[!] Invalid option <<$arg>>\n";
                             continue;
                         }
                     }
                     else {
-                        warn "[!] Invalid option <<$arg>>\n";
+                        ##warn "[!] Invalid option <<$arg>>\n";
                         continue;
                     }
                 }
@@ -543,7 +558,7 @@ EOC
 }
 
 sub execute_pacman_command (@) {
-    my $login = shift;
+    my $needs_root = shift;
 
     my $pacman_command = join(
         q{ },
@@ -554,7 +569,7 @@ sub execute_pacman_command (@) {
     );
 
     my $user_pacman_command =
-        $login
+        $needs_root
       ? $lconfig{use_sudo}
           ? "$lconfig{sudo_command} $pacman_command"
           : qq{$lconfig{su_command} "$pacman_command"}
@@ -563,7 +578,7 @@ sub execute_pacman_command (@) {
     say "[*] Pacman command: $pacman_command" if $lconfig{debug};
     {
         system $lconfig{as_root} ? $pacman_command : $user_pacman_command;
-        if ($? and $login) {
+        if ($? and $needs_root) {
             (say "[*] Exit code: ", $? >> 8) if $lconfig{debug};
             $term->ask_yn(prompt => "=>> Try again?", default => 'n') and redo;
         }
@@ -1180,7 +1195,7 @@ sub install_package ($) {
         say "[*] Package `$pkg' is found in AUR!" if $lconfig{debug};
     }
     elsif (not($lconfig{aur}) and is_available_in_pacman_repo($pkg)) {
-        execute_pacman_command(1, qw(-S), $pkg) and return 1;
+        execute_pacman_command(1, qw(-S), (grep { /^--./ } @left_over_arguments), $pkg) and return 1;
         return;
     }
     else {
@@ -1612,8 +1627,8 @@ sub _parse_pkgname {
 
 my @argv_packages = get_non_arguments_from_array(@left_over_arguments);
 
-if ($lconfig{S}) {    # -S
-    if ($lconfig{i}) {    # -Si
+if ($lconfig{S} or $lconfig{sync}) {    # -S
+    if ($lconfig{i} or $lconfig{info}) {    # -Si
         foreach my $pkg (@argv_packages) {
 
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
@@ -1631,7 +1646,7 @@ if ($lconfig{S}) {    # -S
             }
         }
     }
-    elsif ($lconfig{l}) {    # -Sl
+    elsif ($lconfig{l} or $lconfig{local}) {    # -Sl
         my $curdir = rel2abs(curdir());
         foreach my $pkg (@argv_packages) {
             local $lconfig{clone_dir} = $curdir;
@@ -1644,13 +1659,13 @@ if ($lconfig{S}) {    # -S
             }
         }
     }
-    elsif ($lconfig{u}) {    # -Su
+    elsif ($lconfig{u} or $lconfig{sysupgrade}) {    # -Su
         update_local_packages();
     }
-    elsif ($lconfig{s}) {    # -Ss
+    elsif ($lconfig{s} or $lconfig{search}) {        # -Ss
         search_aur_packages(@argv_packages);
     }
-    elsif ($lconfig{m}) {    # -Sm
+    elsif ($lconfig{m}) {                            # -Sm
         foreach my $maintainer (@argv_packages) {
             say "=>> ${maintainer}'s packages:" if $lconfig{debug};
             list_aur_maintainer_packages($maintainer)
@@ -1661,7 +1676,7 @@ if ($lconfig{S}) {    # -S
               };
         }
     }
-    elsif ($lconfig{p}) {    # -Sp
+    elsif ($lconfig{p} or $lconfig{pkgbuild}) {      # -Sp
         foreach my $pkg (@argv_packages) {
 
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
@@ -1677,10 +1692,10 @@ if ($lconfig{S}) {    # -S
             close $fh;
         }
     }
-    elsif ($lconfig{c}) {    # -Sc
+    elsif ($lconfig{c} or $lconfig{clean}) {    # -Sc
         clear_cache();
     }
-    else {                   # -S only
+    else {                                      # -S only
         if (@argv_packages) {
             foreach my $pkg (@argv_packages) {
                 local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
@@ -1695,7 +1710,7 @@ if ($lconfig{S}) {    # -S
         }
     }
 }
-elsif ($lconfig{C}) {    # -C
+elsif ($lconfig{C} or $lconfig{comments}) {    # -C
     foreach my $pkg (@argv_packages) {
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
         my $info = info_for_package($pkg) // do {
@@ -1710,8 +1725,8 @@ elsif ($lconfig{C}) {    # -C
         }
     }
 }
-elsif ($lconfig{G}) {    # -G
-    if ($lconfig{d}) {
+elsif ($lconfig{G} or $lconfig{get}) {    # -G
+    if ($lconfig{d} or $lconfig{with_deps}) {
         my $curdir = rel2abs(curdir());
         foreach my $pkg (@argv_packages) {
             local $lconfig{aur}            = 1 if _parse_pkgname(\$pkg);
@@ -1743,7 +1758,7 @@ elsif ($lconfig{G}) {    # -G
         }
     }
 }
-elsif ($lconfig{U}) {    # -U
+elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
     foreach my $pkg (@argv_packages) {
         if ($pkg =~ /$pkg_suffix_re/o and -e $pkg) {    # install from current dir
             execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $pkg);
@@ -1757,11 +1772,29 @@ elsif ($lconfig{U}) {    # -U
         }
     }
 }
-elsif ($lconfig{R}) {                                   # -R
+elsif ($lconfig{R} or $lconfig{remove}) {               # -R
     @pacman_arguments = ();
     execute_pacman_command(1, @left_over_arguments);
 }
-elsif ($lconfig{Q}) {                                   # -Q
+elsif ($lconfig{D} or $lconfig{database}) {             # -D
+    @pacman_arguments = ();
+    push(@left_over_arguments, '--asdeps') if $lconfig{asdep};
+    execute_pacman_command(1, @left_over_arguments);
+}
+elsif ($lconfig{F} or $lconfig{files}) {                # -F
+    @pacman_arguments = ();
+    push(@left_over_arguments, '--quiet')  if $lconfig{quiet};
+    push(@left_over_arguments, '--search') if $lconfig{search};
+    execute_pacman_command(0, @left_over_arguments);
+}
+elsif ($lconfig{Q} or $lconfig{query}) {                # -Q
+    @pacman_arguments = ();
+    push(@left_over_arguments, '--search') if $lconfig{search};
+    push(@left_over_arguments, '--info')   if $lconfig{info};
+    push(@left_over_arguments, '--quiet')  if $lconfig{quiet};
+    execute_pacman_command(0, @left_over_arguments);
+}
+elsif ($lconfig{T} or $lconfig{deptest}) {              # -T
     @pacman_arguments = ();
     execute_pacman_command(0, @left_over_arguments);
 }
