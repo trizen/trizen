@@ -34,14 +34,13 @@ use warnings;
 no if $] >= 5.018, warnings => 'experimental::smartmatch';
 no if $] >= 5.018, warnings => 'deprecated';
 
-# Autouse
-use autouse 'Getopt::Std'      => qw(getopts($;$));
-use autouse 'Text::ParseWords' => qw(quotewords);
-use autouse 'File::Path'       => qw(make_path rmtree);
-use autouse 'File::Basename'   => qw(basename dirname);
-use autouse 'URI::Escape'      => qw(uri_escape_utf8 uri_unescape);
-use autouse 'File::Copy'       => qw(move);
+use Getopt::Std qw(getopts);
+use Text::ParseWords qw(quotewords);
+use URI::Escape qw(uri_escape_utf8 uri_unescape);
 
+use File::Copy qw(move);
+use File::Path qw(make_path rmtree);
+use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
 my $version  = '1.22';
