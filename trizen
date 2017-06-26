@@ -1483,7 +1483,8 @@ sub update_local_packages () {
 
     my @for_update;
     if (keys %for_update) {
-        given ($term->readline("\n=>> Choose packages for upgrade (default: all)\n>$c{reset} ")) {
+        given ($lconfig{noconfirm} ? 'all' : $term->readline("\n=>> Choose packages for upgrade (default: all)\n>$c{reset} "))
+        {
             when (['all', q{}]) {
                 @for_update =
                   sort map { $for_update{$_} } grep { /^[0-9]{1,2}\z/ && $_ > 0 && $_ <= $i } keys %for_update;
