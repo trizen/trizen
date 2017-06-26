@@ -76,39 +76,40 @@ if (not -d $config_dir) {
 $ENV{EDITOR} ||= 'nano';
 
 my %CONFIG = (
-              VERSION                    => $version,
-              show_comments              => 0,
-              quiet                      => 0,
-              debug                      => 0,
-              nocolors                   => 0,
-              movepkg                    => 0,
-              noedit                     => 0,
-              nobuild                    => 0,
-              nopull                     => 0,
-              noinfo                     => 0,
-              skipinteg                  => 0,
-              force                      => 0,
-              lwp_show_progress          => 0,
-              lwp_env_proxy              => 1,
-              lwp_timeout                => 60,
-              ssl_verify_hostname        => 0,
-              packages_in_stats          => 5,
-              git_clone_depth            => 0,
-              split_packages             => 1,
-              recompute_deps             => 1,
-              use_sudo                   => ((-x '/usr/bin/sudo') ? 1 : 0),
-              su_command                 => '/usr/bin/su -c',
-              sudo_command               => '/usr/bin/sudo',
-              makepkg_command            => '/usr/bin/makepkg --syncdeps --force --clean',
-              movepkg_dir                => '/var/cache/pacman/pkg',
-              pacman_local_dir           => '/var/lib/pacman/local',
-              pacman_command             => '/usr/bin/pacman',
-              clone_dir                  => undef,
-              show_build_files_content   => 1,
-              aur_results_votes          => 1,
-              aur_results_popularity     => 1,
-              aur_results_last_modified  => 1,
-              aur_results_show_installed => 1,
+              VERSION                      => $version,
+              show_comments                => 0,
+              quiet                        => 0,
+              debug                        => 0,
+              nocolors                     => 0,
+              movepkg                      => 0,
+              noedit                       => 0,
+              nobuild                      => 0,
+              nopull                       => 0,
+              noinfo                       => 0,
+              skipinteg                    => 0,
+              force                        => 0,
+              lwp_show_progress            => 0,
+              lwp_env_proxy                => 1,
+              lwp_timeout                  => 60,
+              ssl_verify_hostname          => 0,
+              packages_in_stats            => 5,
+              git_clone_depth              => 0,
+              split_packages               => 1,
+              recompute_deps               => 1,
+              use_sudo                     => ((-x '/usr/bin/sudo') ? 1 : 0),
+              su_command                   => '/usr/bin/su -c',
+              sudo_command                 => '/usr/bin/sudo',
+              makepkg_command              => '/usr/bin/makepkg --syncdeps --force --clean',
+              movepkg_dir                  => '/var/cache/pacman/pkg',
+              pacman_local_dir             => '/var/lib/pacman/local',
+              pacman_command               => '/usr/bin/pacman',
+              clone_dir                    => undef,
+              show_build_files_content     => 1,
+              aur_results_votes            => 1,
+              aur_results_popularity       => 1,
+              aur_results_last_modified    => 1,
+              aur_results_show_installed   => 1,
+              install_built_with_noconfirm => 0,
              );
 
 my %lconfig = (
@@ -1050,7 +1051,7 @@ sub install_built_package ($@) {
     my ($pkg, @args) = @_;
 
     # Install the package
-    install_local_package($pkg, q{-U}, @args) || return;
+    install_local_package($pkg, q{-U}, @args, $lconfig{install_built_with_noconfirm} ? '--noconfirm' : q{}) || return;
 
     # Don't ask for split packages in `--noinstall` mode
     # or when `split_packages` is set to a false value.
