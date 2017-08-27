@@ -21,7 +21,7 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 26 June 2017
+# Latest edit on: 27 August 2017
 # http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -43,7 +43,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.23';
+my $version  = '1.24';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -99,7 +99,8 @@ my %CONFIG = (
               use_sudo                     => ((-x '/usr/bin/sudo') ? 1 : 0),
               su_command                   => '/usr/bin/su -c',
               sudo_command                 => '/usr/bin/sudo',
-              sudo_autorepeat              => 1,
+              sudo_autorepeat              => 0,
+              sudo_autorepeat_at_runtime   => 0,
               sudo_autorepeat_interval     => 180,
               makepkg_command              => '/usr/bin/makepkg --syncdeps --force --clean',
               movepkg_dir                  => '/var/cache/pacman/pkg',
@@ -240,7 +241,7 @@ sub main_quit () {
     if ($lconfig{update_config}) {
         dump_configuration(\%CONFIG, $config_file);
     }
-    $sudo_autorepeat_pid and kill 'TERM', $sudo_autorepeat_pid;
+    kill('TERM', $sudo_autorepeat_pid) if $sudo_autorepeat_pid;
     exit($? >> 8);
 }
 
@@ -477,6 +478,12 @@ if (not -d $lconfig{clone_dir}) {
       or die "[x] Unable to create dir $lconfig{clone_dir}: $!";
 }
 
+if (    $lconfig{sudo_autorepeat_at_runtime}
+    and $lconfig{use_sudo}
+    and !$lconfig{as_root}) {
+    start_sudo_autorepeat();
+}
+
 #----------------------- WORK AREA -----------------------#
 
 # Run-time loaded modules
@@ -502,13 +509,15 @@ sub json2perl ($) {
 }
 
 sub start_sudo_autorepeat {
-    if ($lconfig{sudo_autorepeat} and !$sudo_autorepeat_pid) {
+    if (!$sudo_autorepeat_pid) {
+
         system($lconfig{sudo_command}, '-v');
+
         my $parent_pid = $$;
         $sudo_autorepeat_pid = fork;
 
         # Child process
-        unless ($sudo_autorepeat_pid) {
+        if ($sudo_autorepeat_pid == 0) {
             while ($parent_pid == getppid) {
                 system($lconfig{sudo_command}, '-v');
                 sleep $lconfig{sudo_autorepeat_interval};
@@ -597,6 +606,13 @@ sub execute_pacman_command (@) {
             grep { !$seen{$_}++ } map { quotemeta } $lconfig{pacman_command}, @pacman_arguments, @_;
           }
     );
+
+    if (    $needs_root
+        and $lconfig{sudo_autorepeat}
+        and $lconfig{use_sudo}
+        and !$lconfig{as_root}) {
+        start_sudo_autorepeat();
+    }
 
     my $user_pacman_command =
         $needs_root
@@ -1695,7 +1711,6 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         }
     }
     elsif ($lconfig{u} or $lconfig{sysupgrade}) {    # -Su
-        start_sudo_autorepeat unless ($lconfig{as_root});
         update_local_packages();
     }
     elsif ($lconfig{s} or $lconfig{search}) {        # -Ss
@@ -1733,7 +1748,6 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
     else {                                      # -S only
         if (@argv_packages) {
-            start_sudo_autorepeat unless ($lconfig{as_root});
             foreach my $pkg (@argv_packages) {
                 local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
                 local $lconfig{main_pkg} = $pkg;
