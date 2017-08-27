@@ -21,7 +21,7 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 22 July 2017
+# Latest edit on: 26 June 2017
 # http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -43,7 +43,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.22';
+my $version  = '1.23';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -76,39 +76,42 @@ if (not -d $config_dir) {
 $ENV{EDITOR} ||= 'nano';
 
 my %CONFIG = (
-              VERSION                    => $version,
-              show_comments              => 0,
-              quiet                      => 0,
-              debug                      => 0,
-              nocolors                   => 0,
-              movepkg                    => 0,
-              noedit                     => 0,
-              nobuild                    => 0,
-              nopull                     => 0,
-              noinfo                     => 0,
-              skipinteg                  => 0,
-              force                      => 0,
-              lwp_show_progress          => 0,
-              lwp_env_proxy              => 1,
-              lwp_timeout                => 60,
-              ssl_verify_hostname        => 0,
-              packages_in_stats          => 5,
-              git_clone_depth            => 0,
-              split_packages             => 1,
-              recompute_deps             => 1,
-              use_sudo                   => ((-x '/usr/bin/sudo') ? 1 : 0),
-              su_command                 => '/usr/bin/su -c',
-              sudo_command               => '/usr/bin/sudo',
-              makepkg_command            => '/usr/bin/makepkg --syncdeps --force --clean',
-              movepkg_dir                => '/var/cache/pacman/pkg',
-              pacman_local_dir           => '/var/lib/pacman/local',
-              pacman_command             => '/usr/bin/pacman',
-              clone_dir                  => undef,
-              show_build_files_content   => 1,
-              aur_results_votes          => 1,
-              aur_results_popularity     => 1,
-              aur_results_last_modified  => 1,
-              aur_results_show_installed => 1,
+              VERSION                      => $version,
+              show_comments                => 0,
+              quiet                        => 0,
+              debug                        => 0,
+              nocolors                     => 0,
+              movepkg                      => 0,
+              noedit                       => 0,
+              nobuild                      => 0,
+              nopull                       => 0,
+              noinfo                       => 0,
+              skipinteg                    => 0,
+              force                        => 0,
+              lwp_show_progress            => 0,
+              lwp_env_proxy                => 1,
+              lwp_timeout                  => 60,
+              ssl_verify_hostname          => 0,
+              packages_in_stats            => 5,
+              git_clone_depth              => 0,
+              split_packages               => 1,
+              recompute_deps               => 1,
+              use_sudo                     => ((-x '/usr/bin/sudo') ? 1 : 0),
+              su_command                   => '/usr/bin/su -c',
+              sudo_command                 => '/usr/bin/sudo',
+              sudo_autorepeat              => 1,
+              sudo_autorepeat_interval     => 180,
+              makepkg_command              => '/usr/bin/makepkg --syncdeps --force --clean',
+              movepkg_dir                  => '/var/cache/pacman/pkg',
+              pacman_local_dir             => '/var/lib/pacman/local',
+              pacman_command               => '/usr/bin/pacman',
+              clone_dir                    => undef,
+              show_build_files_content     => 1,
+              aur_results_votes            => 1,
+              aur_results_popularity       => 1,
+              aur_results_last_modified    => 1,
+              aur_results_show_installed   => 1,
+              install_built_with_noconfirm => 0,
              );
 
 my %lconfig = (
@@ -230,11 +233,14 @@ my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/o;
 sub install_package ($);
 sub move_built_package($);
 
+my $sudo_autorepeat_pid;
+
 # Main quit
 sub main_quit () {
     if ($lconfig{update_config}) {
         dump_configuration(\%CONFIG, $config_file);
     }
+    $sudo_autorepeat_pid and kill 'TERM', $sudo_autorepeat_pid;
     exit($? >> 8);
 }
 
@@ -493,6 +499,23 @@ my $lwp = LWP::UserAgent->new(
 sub json2perl ($) {
     require JSON;
     JSON::from_json($_[0]);
+}
+
+sub start_sudo_autorepeat {
+    if ($lconfig{sudo_autorepeat} and !$sudo_autorepeat_pid) {
+        system($lconfig{sudo_command}, '-v');
+        my $parent_pid = $$;
+        $sudo_autorepeat_pid = fork;
+
+        # Child process
+        unless ($sudo_autorepeat_pid) {
+            while ($parent_pid == getppid) {
+                system($lconfig{sudo_command}, '-v');
+                sleep $lconfig{sudo_autorepeat_interval};
+            }
+            exit;
+        }
+    }
 }
 
 sub get ($) {
@@ -1057,7 +1080,7 @@ sub install_built_package ($@) {
     my ($pkg, @args) = @_;
 
     # Install the package
-    install_local_package($pkg, q{-U}, @args) || return;
+    install_local_package($pkg, q{-U}, @args, $lconfig{install_built_with_noconfirm} ? '--noconfirm' : q{}) || return;
 
     # Don't ask for split packages in `--noinstall` mode
     # or when `split_packages` is set to a false value.
@@ -1493,7 +1516,8 @@ sub update_local_packages () {
 
     my @for_update;
     if (keys %for_update) {
-        given ($term->readline("\n=>> Choose packages for upgrade (default: all)\n>$c{reset} ")) {
+        given ($lconfig{noconfirm} ? 'all' : $term->readline("\n=>> Choose packages for upgrade (default: all)\n>$c{reset} "))
+        {
             when (['all', q{}]) {
                 @for_update =
                   sort map { $for_update{$_} } grep { /^[0-9]{1,2}\z/ && $_ > 0 && $_ <= $i } keys %for_update;
@@ -1671,6 +1695,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         }
     }
     elsif ($lconfig{u} or $lconfig{sysupgrade}) {    # -Su
+        start_sudo_autorepeat unless ($lconfig{as_root});
         update_local_packages();
     }
     elsif ($lconfig{s} or $lconfig{search}) {        # -Ss
@@ -1708,6 +1733,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
     else {                                      # -S only
         if (@argv_packages) {
+            start_sudo_autorepeat unless ($lconfig{as_root});
             foreach my $pkg (@argv_packages) {
                 local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
                 local $lconfig{main_pkg} = $pkg;
