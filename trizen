@@ -1490,10 +1490,13 @@ sub update_local_packages () {
     }
     close $pipe_h;
 
-    my $info_request = join('&', map { "arg[]=$_" } map { uri_escape_utf8($_) } sort keys %packages);
-
-    # TODO: partially fix the "too long URL" issue by getting info only for a random subset of packages,
-    #       such that the total length of the URL is not greater than the URL limit (also find out what this limit is).
+    # Get info only for a random subset of 150 packages to avoid the "Request-URI too large" error.
+    my $info_request = join(
+        '&' => map { "arg[]=$_" } map { uri_escape_utf8($_) } do {
+            my @subset = keys %packages;
+            sort splice(@subset, 0, 150);
+          }
+    );
 
     my $multiinfo = json2perl(
         get("$aur_rpc_base_url?v=$AUR_V&type=multiinfo&$info_request") // do {
