@@ -1838,13 +1838,25 @@ elsif ($lconfig{R} or $lconfig{remove}) {               # -R
 elsif ($lconfig{D} or $lconfig{database}) {             # -D
     @pacman_arguments = ();
     push(@left_over_arguments, '--asdeps') if $lconfig{asdep};
-    execute_pacman_command(1, @left_over_arguments);
+
+    if ($lconfig{k} or '--check' ~~ @left_over_arguments) {
+        execute_pacman_command(0, @left_over_arguments);
+    }
+    else {
+        execute_pacman_command(1, @left_over_arguments);
+    }
 }
 elsif ($lconfig{F} or $lconfig{files}) {                # -F
     @pacman_arguments = ();
     push(@left_over_arguments, '--quiet')  if $lconfig{quiet};
     push(@left_over_arguments, '--search') if $lconfig{search};
-    execute_pacman_command(0, @left_over_arguments);
+
+    if ($lconfig{y} or '--refresh' ~~ @left_over_arguments) {
+        execute_pacman_command(1, @left_over_arguments);
+    }
+    else {
+        execute_pacman_command(0, @left_over_arguments);
+    }
 }
 elsif ($lconfig{Q} or $lconfig{query}) {                # -Q
     @pacman_arguments = ();
