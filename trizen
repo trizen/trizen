@@ -407,7 +407,6 @@ my @pacman_arguments;
 # Makepkg
 if ($lconfig{as_root}) {
     warn "$c{bred}\[!] You are running '${execname}' as root!$c{reset}\n" if $lconfig{S};
-    $lconfig{makepkg_command} .= ' --asroot';
 }
 
 if ($lconfig{skipinteg}) {
