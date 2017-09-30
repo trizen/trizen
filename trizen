@@ -1091,8 +1091,12 @@ sub install_local_package (@) {
 sub install_built_package ($@) {
     my ($pkg, @args) = @_;
 
+    if ($lconfig{install_built_with_noconfirm}) {
+        push @args, '--noconfirm';
+    }
+
     # Install the package
-    install_local_package($pkg, q{-U}, @args, $lconfig{install_built_with_noconfirm} ? '--noconfirm' : q{}) || return;
+    install_local_package($pkg, q{-U}, @args) || return;
 
     # Don't ask for split packages in `--noinstall` mode
     # or when `split_packages` is set to a false value.
