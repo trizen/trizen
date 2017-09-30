@@ -21,7 +21,7 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 27 August 2017
+# Latest edit on: 30 September 2017
 # http://github.com/trizen/trizen
 
 eval 'exec perl -S $0 ${1+"$@"}'
@@ -418,10 +418,6 @@ if ($lconfig{needed}) {
     push @pacman_arguments, '--needed';
 }
 
-if ($lconfig{quiet} or $lconfig{q}) {
-    push @pacman_arguments, '--quiet';
-}
-
 if ($lconfig{force}) {
     push @pacman_arguments, '--force';
 }
@@ -444,14 +440,14 @@ if ($lconfig{debug}) {
     $lconfig{lwp_show_progress} = 1;
 }
 
-if ($lconfig{quiet}) {
-    close STDERR;
+if ($lconfig{really_quiet}) {
+    $SIG{__WARN__} = sub { };
+    open STDERR, '>', undef;
+    $lconfig{quiet} = 1;
 }
 
-if ($lconfig{really_quiet}) {
-    close STDOUT;
-    close STDERR;
-    $lconfig{quiet} = 1;
+if ($lconfig{quiet}) {
+    open STDOUT, '>', undef;
 }
 
 if ($lconfig{nocolors}) {
