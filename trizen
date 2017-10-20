@@ -21,8 +21,11 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 30 September 2017
+# Latest edit on: 20 October 2017
 # http://github.com/trizen/trizen
+
+# Contributor(s):
+#   notramo - https://github.com/notramo
 
 eval 'exec perl -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
@@ -886,16 +889,14 @@ sub find_local_package ($$) {
     while (defined(my $file = readdir $dir_h)) {
         if ($file =~ m{^\Q$pkg\E$pkg_suffix_re}) {
 
-            # When exists more than one packages built,
-            # get the newest version available
+            # When there exists more than one built packages, get the latest one built
             if (defined $newest_package) {
-                my ($new_version) = $file =~ /($pkg_suffix_re)/o;
-                my ($old_version) = $newest_package =~ /($pkg_suffix_re)/o;
-                $newest_package = "$dir/$file" if versioncmp($old_version, $new_version) == -1;
+                if ((-M "$dir/$file") < (-M $newest_package)) {
+                    $newest_package = "$dir/$file";
+                }
             }
 
-            # When $newest_package is undefined,
-            # assign the first package found
+            # When $newest_package is undefined, assign the first package found
             else {
                 $newest_package = "$dir/$file";
             }
