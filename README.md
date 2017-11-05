@@ -14,15 +14,16 @@ Main features include:
 * Input/output UTF-8 support
 
 # Screenshots
-* Search results
+
+#### Search results
 
 ![trizen -Ss youtube](https://user-images.githubusercontent.com/614513/32417050-f5e5a310-c25b-11e7-8598-056431ce9a1d.png)
 
-* Package info
+#### Package info
 
 ![trizen -Si sidef](https://user-images.githubusercontent.com/614513/32417040-d137a68a-c25b-11e7-89f3-362b084b8873.png)
 
-* All options
+#### Options
 
 ![trizen -h](https://user-images.githubusercontent.com/614513/32417044-dc3d6d6c-c25b-11e7-9ef4-ce9e3aa90a34.png)
 
