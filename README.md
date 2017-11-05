@@ -27,7 +27,7 @@ Main features include:
 
 ![trizen -h](https://user-images.githubusercontent.com/614513/32417044-dc3d6d6c-c25b-11e7-9ef4-ce9e3aa90a34.png)
 
-# USAGE
+# Usage
 
 ```
 usage: trizen [option] [pkgname] [pkgname] [...]
