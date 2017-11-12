@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2010-2017 Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>.
+# Copyright (C) 2010-2017 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 20 October 2017
+# Latest edit on: 12 November 2017
 # http://github.com/trizen/trizen
 
 # Contributor(s):
@@ -46,7 +46,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.24';
+my $version  = '1.25';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -273,7 +273,6 @@ sub help () {
     print <<"HELP";
 
 ========================= $c{bbgreen}Trizen's AUR Package Manager$c{reset} =========================
-                                                            by trizenx\@gmail.com
 
 $c{bold}usage:$c{reset} $execname [option] [pkgname] [pkgname] [...]
 
@@ -657,12 +656,24 @@ sub package_is_installed ($) {
 }
 
 sub versioncmp ($$) {
+    my ($v1, $v2) = @_;
+
+    # Support for `epoch`
+    my ($e1) = $v1 =~ s/^([0-9]+)://;
+    my ($e2) = $v2 =~ s/^([0-9]+)://;
+
+    $e1 ||= 0;
+    $e2 ||= 0;
+
+    if ($e1 != $e2) {
+        return ($e1 <=> $e2);
+    }
 
     # Code from Sort::Versions
     # http://search.cpan.org/~edavis/Sort-Versions-1.5/Versions.pm
 
-    my (@A) = $_[0] =~ /([-.]|\d+|[^-.\d]+)/g;
-    my (@B) = $_[1] =~ /([-.]|\d+|[^-.\d]+)/g;
+    my (@A) = $v1 =~ /([-.]|\d+|[^-.\d]+)/g;
+    my (@B) = $v2 =~ /([-.]|\d+|[^-.\d]+)/g;
 
     my ($A, $B);
     while (@A and @B) {

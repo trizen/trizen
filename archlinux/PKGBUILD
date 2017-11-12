@@ -1,8 +1,9 @@
-# Maintainer: Trizen <echo dHJpemVueEBnbWFpbC5jb20K | base64 -d>
+# Maintainer: Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>
 
 pkgname=trizen
-pkgver=234.a3f8166
+pkgver=1.24
 pkgrel=1
+epoch=1
 pkgdesc="Trizen's AUR Package Manager: A lightweight wrapper for AUR."
 arch=('any')
 url="https://github.com/trizen/trizen"
@@ -25,15 +26,10 @@ optdepends=(
             'perl-term-readline-gnu: for better STDIN support'
            )
 
-source=('git://github.com/trizen/trizen.git')
-md5sums=('SKIP')
-
-pkgver() {
-  cd $pkgname
-  echo $(git rev-list --count master).$(git rev-parse --short master)
-}
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/trizen/${pkgname}/archive/${pkgver}.tar.gz")
+sha256sums=('72a94eab33855a61c0338d42767d4cc5759c78079263e93b87328aa9be3b14ef')
 
 package() {
-  cd $pkgname
+  cd "$pkgname-$pkgver"
   install -m 755 -D $pkgname "$pkgdir/usr/bin/$pkgname"
 }
