@@ -21,7 +21,7 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 12 November 2017
+# Latest edit on: 15 November 2017
 # http://github.com/trizen/trizen
 
 # Contributor(s):
@@ -30,9 +30,11 @@
 eval 'exec perl -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
 
-use 5.014;
+use 5.020;
 use strict;
 use warnings;
+
+use experimental qw(signatures);
 
 no if $] >= 5.018, warnings => 'experimental::smartmatch';
 no if $] >= 5.018, warnings => 'deprecated';
@@ -162,8 +164,7 @@ EOH
 
 our $CONFIG;
 
-sub dump_configuration ($$) {
-    my ($config, $configuration_file) = @_;
+sub dump_configuration ($config, $configuration_file) {
 
     open my $config_fh, '>:utf8', $configuration_file or return;
 
@@ -233,10 +234,6 @@ my %seen_package;         # will keep track of seen packages
 my $pkg_suffices = join('|', map { quotemeta } @package_suffices);
 my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/o;
 
-# Subroutine prototypes
-sub install_package ($);
-sub move_built_package($);
-
 my $sudo_autorepeat_pid;
 
 # Main quit
@@ -269,7 +266,7 @@ if ('--nocolors' ~~ \@ARGV) {
 }
 
 #----------------------- USAGE -----------------------#
-sub help () {
+sub help {
     print <<"HELP";
 
 ========================= $c{bbgreen}Trizen's AUR Package Manager$c{reset} =========================
@@ -328,15 +325,15 @@ HELP
 
 @ARGV or help();
 
-sub version () {
+sub version {
     say "$execname $version";
     main_quit();
 }
 
 #----------------------- PARSING ARGUMENTS -----------------------#
-sub parse_long_arguments (@) {
+sub parse_long_arguments (@args) {
     Getopt::Long::GetOptionsFromArray(
-        \@_,
+        \@args,
         \%lconfig,
         map {
                 (defined($lconfig{$_}) and $lconfig{$_} =~ /^[01]\z/) ? "$_!"
@@ -501,12 +498,12 @@ my $lwp = LWP::UserAgent->new(
                               agent         => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
                              );
 
-sub json2perl ($) {
+sub json2perl ($json) {
     require JSON;
-    JSON::from_json($_[0]);
+    JSON::from_json($json);
 }
 
-sub start_sudo_autorepeat {
+sub start_sudo_autorepeat () {
     if (!$sudo_autorepeat_pid) {
 
         system($lconfig{sudo_command}, '-v');
@@ -525,8 +522,7 @@ sub start_sudo_autorepeat {
     }
 }
 
-sub get ($) {
-    my ($url) = @_;
+sub get ($url) {
 
     state $accepted_encodings = HTTP::Message::decodable();
 
@@ -546,16 +542,15 @@ sub get ($) {
     return;
 }
 
-sub mirror ($$) {
-    return $lwp->mirror(@_);
+sub mirror ($url, $filename) {
+    return $lwp->mirror($url, $filename);
 }
 
-sub get_non_arguments_from_array (@) {
-    return grep { chr ord ne '-' } @_;
+sub get_non_arguments_from_array (@arr) {
+    return grep { substr($_, 0, 1) ne '-' } @arr;
 }
 
-sub get_comments ($) {
-    my ($id) = @_;
+sub get_comments ($id) {
 
     $id // return;
     $id =~ /^\d+\z/ or return;
@@ -594,14 +589,13 @@ EOC
     return @comments;
 }
 
-sub execute_pacman_command (@) {
-    my $needs_root = shift;
+sub execute_pacman_command ($needs_root, @cmd) {
 
     my $pacman_command = join(
         q{ },
         do {
             my %seen;
-            grep { !$seen{$_}++ } map { quotemeta } $lconfig{pacman_command}, @pacman_arguments, @_;
+            grep { !$seen{$_}++ } map { quotemeta } $lconfig{pacman_command}, @pacman_arguments, @cmd;
           }
     );
 
@@ -630,17 +624,16 @@ sub execute_pacman_command (@) {
     return $? ? 0 : 1;
 }
 
-sub is_available_in_pacman_repo (@) {
-    (@_ = grep { defined($_) && /^\w/ } @_) || return;
-    system "/usr/bin/pacman -Sp @_ &> /dev/null";
+sub is_available_in_pacman_repo ($pkgname) {
+    $pkgname =~ /^\w/ or return 0;
+    system "/usr/bin/pacman -Sp \Q$pkgname\E &> /dev/null";
     my $exit_code = $?;
     $? = 0;
     return $exit_code ? 0 : 1;
 }
 
-sub package_is_installed ($) {
-    my ($pkg) = @_;
-    my $regex = qr{^\Q$pkg\E-([^-]+-\d+)\z};
+sub package_is_installed ($pkgname) {
+    my $regex = qr{^\Q$pkgname\E-([^-]+-\d+)\z};
 
     opendir(my $dir_h, $lconfig{pacman_local_dir}) or return;
 
@@ -655,8 +648,7 @@ sub package_is_installed ($) {
     return;
 }
 
-sub versioncmp ($$) {
-    my ($v1, $v2) = @_;
+sub versioncmp ($v1, $v2) {
 
     # Support for `epoch`
     my ($e1) = $v1 =~ s/^([0-9]+)://;
@@ -715,26 +707,24 @@ sub versioncmp ($$) {
     return @A <=> @B;
 }
 
-sub array_ref_or_string (@) {
-    my ($data) = @_;
-    return ref $data eq 'ARRAY' ? grep { defined($_) && $_ ne q{} } @{$data} : $data // 'None';
+sub array_ref_or_string ($data) {
+    ref($data) eq 'ARRAY'
+        ? (grep { defined($_) and $_ ne '' } @$data)
+        : ($data // 'None');
 }
 
-sub strip_space ($) {
-    my ($string) = @_;
-    $string // return q{};
+sub strip_space ($string) {
+    $string // return '';
     $string =~ s/^\s+//;
     return unpack 'A*', $string;
 }
 
-sub strip_version ($) {
-    my ($version) = @_;
+sub strip_version ($version) {
     $version =~ s/\s*[<=>]=?.+//sg;
     return strip_space($version);
 }
 
-sub parse_package_name_and_version ($) {
-    my ($pkgname) = @_;
+sub parse_package_name_and_version ($pkgname) {
 
     if ($pkgname =~ /^(.*?)([<=>]=?)(.*)/) {
         return ($1, $2, $3);
@@ -743,25 +733,24 @@ sub parse_package_name_and_version ($) {
     return ($pkgname, undef, undef);
 }
 
-sub indent_array (@) {
-    my $first = strip_space(shift);
+sub indent_array (@elems) {
+    my $first = strip_space(shift(@elems));
 
-    @_ or return $first;
+    @elems or return $first;
 
-    my $rest = join "\n", @_;
+    my $rest = join("\n", @elems);
     $rest =~ s/^\s+//gm;
     $rest =~ s/^/' ' x 17/gem;
 
     return "$first\n$rest";
 }
 
-sub info_for_package ($) {
-    my ($pkg) = @_;
+sub info_for_package ($pkgname) {
 
-    my $info = get_rpc_info($pkg) // return;
+    my $info = get_rpc_info($pkgname) // return;
 
     if (ref($info->{results}) ne 'ARRAY') {
-        warn "[!] Unable to get info for package: $pkg\n" if $lconfig{debug};
+        warn "[!] Unable to get info for package: $pkgname\n" if $lconfig{debug};
         return;
     }
 
@@ -783,13 +772,12 @@ sub info_for_package ($) {
         $info = $info->{results}[0];
     }
 
-    $info;
+    return $info;
 }
 
-sub download_package ($$) {
-    my ($pkg, $path) = @_;
+sub download_package ($pkgname, $path) {
 
-    my $info = info_for_package($pkg) // return;
+    my $info = info_for_package($pkgname) // return;
 
     my $pkg_base = $info->{PackageBase};
     my $git_url  = "$aur_base_url/$pkg_base.git";
@@ -856,13 +844,11 @@ sub download_package ($$) {
     return $info;
 }
 
-sub get_rpc_info ($) {
-    my ($pkg) = @_;
-    return json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=info&arg=" . uri_escape_utf8($pkg)) // return);
+sub get_rpc_info ($pkgname) {
+    json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=info&arg=" . uri_escape_utf8($pkgname)) // return);
 }
 
-sub show_info ($) {
-    my ($info) = @_;
+sub show_info ($info) {
 
     say map { sprintf $c{bold} . $_->[0], $c{reset} . $_->[1] }
       ["Name           : %s\n", "$c{bold}$info->{Name}$c{reset}"],
@@ -889,8 +875,7 @@ sub show_info ($) {
     return 1;
 }
 
-sub find_local_package ($$) {
-    my ($pkg, $dir) = @_;
+sub find_local_package ($pkgname, $dir) {
 
     my $newest_package;
 
@@ -898,7 +883,7 @@ sub find_local_package ($$) {
       or do { warn "[!] Unable to open dir $dir: $!"; return };
 
     while (defined(my $file = readdir $dir_h)) {
-        if ($file =~ m{^\Q$pkg\E$pkg_suffix_re}) {
+        if ($file =~ m{^\Q$pkgname\E$pkg_suffix_re}) {
 
             # When there exists more than one built packages, get the latest one built
             if (defined $newest_package) {
@@ -919,14 +904,7 @@ sub find_local_package ($$) {
     return;
 }
 
-sub base_package_name ($) {
-    my $pkg = basename(shift);
-    $pkg =~ s/$pkg_suffix_re//o;
-    return $pkg;
-}
-
-sub move_built_package ($) {
-    my ($pkg) = @_;
+sub move_built_package ($pkg) {
     my $pkg_tarball = find_local_package($pkg, rel2abs(curdir())) or return;
 
     if (not -d $lconfig{movepkg_dir}) {
@@ -958,8 +936,7 @@ sub move_built_package ($) {
     }
 }
 
-sub output_file_content ($) {
-    my ($file) = @_;
+sub output_file_content ($file) {
 
     local $/ = undef;
     open my $fh, '<:utf8', $file or do { warn "[!] Unable to open $file for read: $!"; return };
@@ -971,8 +948,7 @@ sub output_file_content ($) {
     return 1;
 }
 
-sub recompute_dependencies ($) {
-    my ($info) = @_;
+sub recompute_dependencies ($info) {
 
     say "[*] Recomputing dependencies..." if $lconfig{debug};
 
@@ -1014,8 +990,7 @@ sub recompute_dependencies ($) {
     return 1;
 }
 
-sub edit_text_files ($) {
-    my ($info) = @_;
+sub edit_text_files ($info) {
 
     my $edited = 0;
     foreach my $file (sort grep { -f and not -z _ } glob('*')) {
@@ -1047,9 +1022,10 @@ sub edit_text_files ($) {
     return 1;
 }
 
-sub run_makepkg_command ($@) {
-    my ($pkg, @args) = @_;
+sub run_makepkg_command ($pkg, @args) {
+
     system join(' ', $lconfig{makepkg_command}, @args);
+
     if ($?) {
         warn "[!] Unable to build '$pkg' - makepkg exited with code: ", $? >> 8, "\n";
         if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
@@ -1066,6 +1042,7 @@ sub run_makepkg_command ($@) {
             }
         }
     }
+
     return 1;
 }
 
@@ -1100,8 +1077,7 @@ sub install_local_package (@) {
     return;
 }
 
-sub install_built_package ($@) {
-    my ($pkg, @args) = @_;
+sub install_built_package ($pkg, @args) {
 
     if ($lconfig{install_built_with_noconfirm}) {
         push @args, '--noconfirm';
@@ -1161,8 +1137,7 @@ sub install_built_package ($@) {
     return 1;
 }
 
-sub build_and_install_package ($@) {
-    my ($pkg, @args) = @_;
+sub build_and_install_package ($pkg, @args) {
 
     if ($lconfig{nobuild}) {
         if ($lconfig{noinstall}) {
@@ -1213,30 +1188,26 @@ sub build_and_install_package ($@) {
     return;
 }
 
-sub _is_lib32 ($) {
-    my ($pkg) = @_;
+sub _is_lib32 ($pkg) {
     if ($arch ne 'x86_64') {
         return 1 if $pkg =~ /^lib32-\w/;
     }
     return;
 }
 
-sub install_as_dep ($) {
-    my ($pkg) = @_;
+sub install_as_dep ($pkg) {
     say "[*] Installing the following package as dependency: $pkg" if $lconfig{debug};
     build_and_install_package($pkg, '--asdeps') and return 1;
     return;
 }
 
-sub install_as_explicit ($) {
-    my ($pkg) = @_;
+sub install_as_explicit ($pkg) {
     say "[*] Installing the following package as explicit: $pkg" if $lconfig{debug};
     build_and_install_package($pkg, '--asexplicit') and return 1;
     return;
 }
 
-sub install_package ($) {
-    my ($pkg) = @_;
+sub install_package ($pkg) {
 
     # Avoid circular dependencies
     if ($seen_package{$pkg}) {
@@ -1393,9 +1364,9 @@ sub clear_cache () {
     main_quit();
 }
 
-sub print_aur_results (\@) {
-    my ($array_ref) = @_;
-    foreach my $result (sort { $a->{Name} cmp $b->{Name} } @{$array_ref}) {
+sub print_aur_results (@results) {
+
+    foreach my $result (sort { $a->{Name} cmp $b->{Name} } @results) {
 
         if ($lconfig{quiet}) {
             say $result->{Name};
@@ -1440,22 +1411,22 @@ sub print_aur_results (\@) {
         ;
 #>>>
     }
+
     return 1;
 }
 
-sub search_aur_packages (@) {
-    my (@keys) = @_;
+sub search_aur_packages (@keywords) {
 
     if (not $lconfig{aur}) {
-        execute_pacman_command(0, qw(-Ss), @keys);
+        execute_pacman_command(0, qw(-Ss), @keywords);
     }
 
     my @all_results;
-    foreach my $key (map { uri_escape_utf8($_) } grep { length() > 1 } @keys) {
+    foreach my $key (map { uri_escape_utf8($_) } grep { length() > 1 } @keywords) {
         push @all_results, json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=search&arg=$key") // next);
     }
 
-    my @keys_re = map { qr/\Q$_\E/i } @keys;
+    my @keys_re = map { qr/\Q$_\E/i } @keywords;
     my %seen;
 
     my @matched_results;
@@ -1474,21 +1445,21 @@ sub search_aur_packages (@) {
             push @matched_results, $result;
         }
     }
+
     $? = 0 if @matched_results;
-    print_aur_results(@matched_results) or return;
-    return 1;
+    print_aur_results(@matched_results);
 }
 
-sub list_aur_maintainer_packages ($) {
-    my ($maintainer) = @_;
+sub list_aur_maintainer_packages ($maintainer) {
     my $results = json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=msearch&arg=$maintainer") // return);
     ref($results->{results}) eq 'ARRAY' or return;
-    (my @maintainers_packages = @{$results->{results}}) || return;
-    print_aur_results(@maintainers_packages) or return;
-    return 1;
+    my @maintainers_packages = @{$results->{results}};
+    @maintainers_packages || return;
+    print_aur_results(@maintainers_packages);
 }
 
 sub update_local_packages () {
+
     if (not $lconfig{aur}) {
         execute_pacman_command(1, qw(-Syu));
     }
@@ -1590,8 +1561,7 @@ sub show_stats {
     my ($total_size, $num_of_pkgs, %dependencies, %reason_deps);
 
     my %packages;
-    my $append_package = sub {
-        my ($date, $pkg, $key) = @_;
+    my $append_package = sub ($date, $pkg, $key) {
 
         $packages{$key}{new} //= [[q{}, 0]];
         $packages{$key}{old} //= [[q{}, 'inf']];
@@ -1606,8 +1576,8 @@ sub show_stats {
             @{$packages{$key}{new}} = sort { $b->[1] <=> $a->[1] } @{$packages{$key}{new}};
             pop @{$packages{$key}{new}} if @{$packages{$key}{new}} > $lconfig{packages_in_stats};
         }
-        return 1;
 
+        return 1;
     };
 
     while (defined(my $subdir = readdir $dir_h)) {
@@ -1667,12 +1637,12 @@ $c{bold}** Oldest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{
 $c{bold}** Newest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{installed}{new}}]}$c{reset}\n
 STATS
 
-    require List::Util;
+    use List::Util qw(first);
     print "$c{bold}** Unneeded packages:$c{byellow}";
     while (my ($key, $value) = each %reason_deps) {
         next if exists $dependencies{$key};
         if (ref $value eq 'ARRAY') {
-            next if List::Util::first(sub { exists $dependencies{$_} }, @{$value});
+            next if first { exists($dependencies{$_}) } @$value;
         }
         print qq{ $key};
     }
@@ -1681,8 +1651,7 @@ STATS
     main_quit();
 }
 
-sub _parse_pkgname {
-    my ($pkgref) = @_;
+sub _parse_pkgname ($pkgref) {
 
     # Strip `aur/` from `aur/<pkgname>`
     if ($$pkgref =~ m{^aur/(.+)}) {
