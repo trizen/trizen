@@ -12,7 +12,7 @@ license=('GPL3');
 depends=(
          'git'
          'diffutils'
-         'perl>=5.14.0'
+         'perl>=5.20.0'
          'perl-libwww'
          'perl-term-ui'
          'pacman'

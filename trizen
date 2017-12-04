@@ -21,7 +21,7 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 15 November 2017
+# Latest edit on: 04 December 2017
 # http://github.com/trizen/trizen
 
 # Contributor(s):
@@ -48,7 +48,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.25';
+my $version  = '1.26';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -1520,9 +1520,15 @@ sub update_local_packages () {
         }
     }
 
+    # When piped in interactive mode, just return.
+    # e.g.: trizen -Su --aur | wc -l
+    if (not $lconfig{noconfirm} and not -t STDOUT) {
+        return 1;
+    }
+
     my @for_update;
     if (keys %for_update) {
-        given ($lconfig{noconfirm} ? 'all' : $term->readline("\n=>> Choose packages for upgrade (default: all)\n>$c{reset} "))
+        given ($lconfig{noconfirm} ? 'all' : $term->readline("\n=>> Select packages for upgrade (default: all)\n>$c{reset} "))
         {
             when (['all', q{}]) {
                 @for_update =
