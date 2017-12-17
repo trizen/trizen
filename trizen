@@ -566,8 +566,10 @@ sub get_comments ($id) {
             <h4\b.*?>\s*
                 (\S(?-s:.*?))\ commented\ on\ (\d\d\d\d-\d\d-\d\d\ \d\d:\d\d)
          \s*</h4>\s*
-        <div\s+class="article-content">\s*
-            <p>\s*(.*?)\s*</p>\s*
+        <div\b.*?class="article-content">\s*
+            <div>\s*
+                <p>\s*(.*?)\s*</p>\s*
+            </div>\s*
         </div>
         }gsix
       ) {
