@@ -704,6 +704,7 @@ sub versioncmp ($v1, $v2) {
             return $A cmp $B if $A cmp $B;
         }
     }
+
     return @A <=> @B;
 }
 
@@ -992,7 +993,6 @@ sub recompute_dependencies ($info) {
 
 sub edit_text_files ($info) {
 
-    my $edited = 0;
     foreach my $file (sort grep { -f and not -z _ } glob('*')) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
@@ -1008,9 +1008,8 @@ sub edit_text_files ($info) {
         }
 
         if ($term->ask_yn(prompt => "=>> Do you want to edit $file?", default => 'n')) {
-            my $abs_file = rel2abs($file);
-            system $ENV{EDITOR}, $abs_file;
-            $edited ||= 1;
+
+            system $ENV{EDITOR}, rel2abs($file);
 
             if ($?) {
                 warn "[!] $ENV{EDITOR} exited with code: ", $? >> 8, "\n";
