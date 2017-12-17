@@ -21,11 +21,12 @@
 # First created on:  07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 04 December 2017
+# Latest edit on: 18 December 2017
 # http://github.com/trizen/trizen
 
 # Contributor(s):
 #   notramo - https://github.com/notramo
+#   ccl2of4 - https://github.com/ccl2of4
 
 eval 'exec perl -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
@@ -48,7 +49,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.26';
+my $version  = '1.27';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
