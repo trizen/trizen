@@ -81,7 +81,7 @@ if (not -d $config_dir) {
 }
 
 #----------------------- GLOBAL VARIABLES -----------------------#
-$ENV{EDITOR} ||= 'nano';
+my $editor = $ENV{VISUAL} ||= $ENV{EDITOR} ||= 'nano';
 
 my %CONFIG = (
               VERSION                      => $version,
@@ -1019,10 +1019,10 @@ sub edit_text_files ($info) {
 
         if ($term->ask_yn(prompt => "=>> Do you want to edit $file?", default => 'n')) {
 
-            system $ENV{EDITOR}, rel2abs($file);
+            system $editor, rel2abs($file);
 
             if ($?) {
-                warn "[!] $ENV{EDITOR} exited with code: ", $? >> 8, "\n";
+                warn "[!] $editor exited with code: ", $? >> 8, "\n";
                 return;
             }
         }
