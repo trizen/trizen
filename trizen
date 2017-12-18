@@ -49,6 +49,8 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
+# TODO: use Term::ANSIColor for terminal colored output.
+
 my $version  = '1.27';
 my $execname = 'trizen';
 
@@ -205,7 +207,7 @@ if (not -d $lconfig{clone_dir}) {
       or die "[x] Unable to create dir $lconfig{clone_dir}: $!";
 }
 
-my $short_arguments = 'TDFCUNQRSGbcdefghiklmnopqrstuvwy';
+my $short_arguments = 'TDFCUNQRSGabcdefghiklmnopqrstuvwy';
 
 my @package_suffices = qw (
   .tar.7z
@@ -434,6 +436,11 @@ else {
 # Others
 if ($lconfig{q}) {
     $lconfig{quiet} = 1;
+}
+
+# `-a` as alias for `--aur`
+if ($lconfig{a}) {
+    $lconfig{aur} = delete $lconfig{a};
 }
 
 if ($lconfig{debug}) {
