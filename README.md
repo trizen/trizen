@@ -4,14 +4,31 @@ trizen
 trizen is a lightweight wrapper for AUR, written in Perl.
 
 Main features include:
-* Installation of packages from AUR
+* Installation of packages from the AUR
 * Search support for AUR packages
 * Reading AUR comments for packages
-* Updating the installed AUR packages
-* Recursive AUR dependencies support
+* Upgrade support for AUR packages
+* Recursive resolver of AUR dependencies
 * Built-in interaction with 'pacman'
 * Edit support for text files
 * Input/output UTF-8 support
+
+# INSTALLATION
+
+* Tagged version:
+```bash
+git clone https://aur.archlinux.org/trizen.git
+cd trizen
+makepkg -si
+```
+
+* `-git` version:
+
+```bash
+git clone https://aur.archlinux.org/trizen-git.git
+cd trizen-git
+makepkg -si
+```
 
 # Screenshots
 
