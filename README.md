@@ -56,20 +56,20 @@ Main options:
     -Sm             : outputs the packages maintained by [...]
     -Sp             : outputs PKGBUILD only
     -Sl             : builds and installs package from `pwd`
-    -Su             : upgrades installed packages
+    -Syu            : upgrades installed packages
     -Sc             : clears the cache directory
-    -C              : shows AUR comments for packages
+    -C              : outputs AUR comments for a package
     -G              : clones a package in the current directory
     -Gd             : clones a package with all needed AUR dependencies
     -R              : removes packages (see pacman -Rh)
     -Q              : for installed packages (see pacman -Qh)
-    -U              : installs local packages from `--clone-dir` or `pwd`
+    -U              : installs local packages from '--clone-dir' or `pwd`
 
 Other options:
     --quiet         : be quiet
     --really-quiet  : be really quiet
     --nocolors      : no text colors
-    --aur           : only AUR packages (with -S, -Si, -Su, -Ss)
+    --aur           : only AUR actions (with -S, -Si, -Su, -Ss, -Sc)
     --asdep         : installs packages as dependencies
     --movepkg       : move built packages into pacman's cache directory
     --needed        : do not reinstall up-to-date packages
@@ -93,7 +93,7 @@ Meta options:
     --version       : print version and exit
     --update-config : update the configuration file
 
-** Each config-key is a valid argument when preceded by '--'
+:: Each config-key is a valid option when preceded with '--'
 
 ```
 

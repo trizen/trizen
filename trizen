@@ -666,9 +666,9 @@ sub execute_pacman_command ($needs_root, @cmd) {
                                : $pacman_command
                               );
 
-    msg(":: Pacman command: $pacman_command") if $lconfig{debug};
+    msg(":: Pacman command: $user_pacman_command") if $lconfig{debug};
     {
-        system $lconfig{as_root} ? $pacman_command : $user_pacman_command;
+        system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
         if ($? and $needs_root) {
             note(":: Exit code: " . ($? >> 8)) if $lconfig{debug};
             $term->ask_yn(prompt => "=>> Try again?", default => 'n') and redo;
