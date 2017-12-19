@@ -1512,7 +1512,7 @@ sub search_aur_packages (@keywords) {
 
     if (not $lconfig{aur}) {
         push(@left_over_arguments, '--quiet') if $lconfig{quiet};
-        execute_pacman_command(0, qw(-Ss), @left_over_arguments, @keywords);
+        execute_pacman_command(0, @left_over_arguments, @keywords);
     }
 
     my @all_results;
