@@ -28,6 +28,7 @@
 #   notramo - https://github.com/notramo
 #   ccl2of4 - https://github.com/ccl2of4
 #   nl6720  - https://github.com/nl6720
+#   JJK96   - https://github.com/JJK96
 
 eval 'exec perl -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
