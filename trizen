@@ -830,7 +830,8 @@ sub download_package ($pkgname, $path) {
     my $git_url  = "$aur_base_url/$pkg_base.git";
     my $dir_name = rel2abs(catdir($path, $pkg_base));
 
-    if ((-d $dir_name) and (-f catfile($dir_name, 'PKGBUILD'))) {
+    if ((-d $dir_name) and (-d catdir($dir_name, '.git'))) {
+
         my $pkgbuild_prev = catfile($dir_name, '.git', '.PKGBUILD');
         my $pkgbuild_curr = catfile($dir_name, 'PKGBUILD');
 
@@ -866,6 +867,8 @@ sub download_package ($pkgname, $path) {
         }
     }
     else {
+
+        # Clone the build files
         system('/usr/bin/git', '-C', $path, 'clone',
                ($lconfig{git_clone_depth} > 0 ? "--depth=$lconfig{git_clone_depth}" : ()),
                ($lconfig{quiet} ? ('-q') : ()), $git_url)
