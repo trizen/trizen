@@ -69,9 +69,13 @@ my $config_dir = (
   . "/$execname";
 
 my $config_file = catfile($config_dir, "$execname.conf");
-my $user = (getpwuid $<)[0] || substr(`whoami`, 0, -1);
-my $arch = substr(`uname -m`, 0, -1);
-my @ignored = split ' ',`pacconf IgnorePkg`;
+my $user = (getpwuid $<)[0] || substr(`/usr/bin/whoami`, 0, -1);
+my $arch = substr(`/usr/bin/uname -m`, 0, -1);
+
+my %ignored_pkgs;
+if (-x '/usr/bin/pacconf') {
+    %ignored_pkgs = map { ($_ => 1) } split(' ', `/usr/bin/pacconf IgnorePkg`);
+}
 
 # UTF-8 output
 binmode(STDOUT, ':utf8');
@@ -95,7 +99,7 @@ my $stdout_on_tty = -t STDOUT;
 
 # Disable colors
 if (('--nocolors' ~~ \@ARGV) or not $stdout_on_tty) {
-    %c = map { ($_, "") } keys %c;
+    %c = map { ($_ => "") } keys %c;
 }
 
 if (not -d $config_dir) {
@@ -1583,12 +1587,13 @@ sub update_local_packages () {
             note(":: <<$pkgname>> has been flagged {!out-of-date!}!") if $hash_ref->{OutOfDate};
         }
 
-        if (
-            !grep(/^$pkgname$/,@ignored) && (
-            versioncmp($packages{$pkgname}, $version) == -1
-            or (    $lconfig{devel}
-                and $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/))
-          ) {
+        next if exists($ignored_pkgs{$pkgname});
+
+        my $is_devel_pkg = $lconfig{devel}
+          && $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/;
+
+        if (versioncmp($packages{$pkgname}, $version) == -1 or $is_devel_pkg) {
+
             $for_update{++$i} = $pkgname;
             $for_update{$pkgname} = $pkgname;
 #<<<
