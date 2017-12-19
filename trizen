@@ -157,29 +157,31 @@ my %lconfig = (
     needed        => 0,
     noconfirm     => 0,
     aur           => 0,
-    search        => 0,
-    info          => 0,
-    clean         => 0,
-    local         => 0,
+    search        => 0,                           # -s
+    info          => 0,                           # -i
+    clean         => 0,                           # -c
+    local         => 0,                           # -l
     pkgbuild      => 0,
     sysupgrade    => 0,
     comments      => 0,
-    database      => 0,                         # -D
-    files         => 0,                         # -F
-    query         => 0,                         # -Q
-    remove        => 0,                         # -R
-    sync          => 0,                         # -S
-    deptest       => 0,                         # -T
-    upgrade       => 0,                         # -U
+    database      => 0,                           # -D
+    files         => 0,                           # -F
+    query         => 0,                           # -Q
+    remove        => 0,                           # -R
+    sync          => 0,                           # -S
+    deptest       => 0,                           # -T
+    upgrade       => 0,                           # -U
     get           => 0,
-    with_deps     => 0,
-    maintainer    => 0,
+    refresh       => 0,                           # -y
+    check         => 0,                           # -k
+    with_deps     => 0,                           # -d
+    maintainer    => 0,                           # -m
     really_quiet  => 0,
     noinstall     => 0,
     update_config => 0,
     show_ood      => 0,
     asdep         => 0,
-    as_root       => $user eq 'root' ? 1 : 0,
+    as_root       => ($user eq 'root' ? 1 : 0),
     stats         => \&show_stats,
     help          => \&help,
     version       => \&version,
@@ -293,7 +295,7 @@ $c{bbgreen}Main options:$c{reset}
     -Sm             : outputs the packages maintained by [...]
     -Sp             : outputs PKGBUILD only
     -Sl             : builds and installs package from `pwd`
-    -Su             : upgrades installed packages
+    -Syu            : upgrades installed packages
     -Sc             : clears the cache directory
     -C              : outputs AUR comments for a package
     -G              : clones a package in the current directory
@@ -306,7 +308,7 @@ $c{bbgreen}Other options:$c{reset}
     --quiet         : be quiet
     --really-quiet  : be really quiet
     --nocolors      : no text colors
-    --aur           : only AUR packages (with -S, -Si, -Su, -Ss)
+    --aur           : only AUR actions (with -S, -Si, -Su, -Ss, -Sc)
     --asdep         : installs packages as dependencies
     --movepkg       : move built packages into pacman's cache directory
     --needed        : do not reinstall up-to-date packages
@@ -453,13 +455,13 @@ if ($lconfig{debug}) {
 }
 
 if ($lconfig{really_quiet}) {
-    $SIG{__WARN__} = sub { };
+    open STDOUT, '>', undef;
     open STDERR, '>', undef;
     $lconfig{quiet} = 1;
 }
 
 if ($lconfig{quiet}) {
-    open STDOUT, '>', undef;
+    $SIG{__WARN__} = sub { };
 }
 
 if ($lconfig{nocolors}) {
@@ -1439,14 +1441,20 @@ sub install_package ($pkg) {
 }
 
 sub clear_cache () {
+
+    if (!$lconfig{aur}) {
+        push(@left_over_arguments, '--clean') if $lconfig{clean};
+        execute_pacman_command(1, @left_over_arguments);
+    }
+
     if ($lconfig{clone_dir} !~ m{^/tmp/}) {
         $term->ask_yn(prompt => "=> Remove directory $c{bold}$lconfig{clone_dir}$c{reset}?", default => 'n') || return;
     }
+
     msg(":: Removing <<$lconfig{clone_dir}>>...");
     rmtree($lconfig{clone_dir})
       or error(":: Cannot remove <<$lconfig{clone_dir}>>: {!$!!}");
     msg(":: Done!");
-    main_quit();
 }
 
 sub print_aur_results (@results) {
@@ -1503,7 +1511,8 @@ sub print_aur_results (@results) {
 sub search_aur_packages (@keywords) {
 
     if (not $lconfig{aur}) {
-        execute_pacman_command(0, qw(-Ss), @keywords);
+        push(@left_over_arguments, '--quiet') if $lconfig{quiet};
+        execute_pacman_command(0, qw(-Ss), @left_over_arguments, @keywords);
     }
 
     my @all_results;
@@ -1546,7 +1555,8 @@ sub list_aur_maintainer_packages ($maintainer) {
 sub update_local_packages () {
 
     if (not $lconfig{aur}) {
-        execute_pacman_command(1, qw(-Syu));
+        push(@left_over_arguments, '--refresh') if $lconfig{refresh};
+        execute_pacman_command(1, @left_over_arguments);
     }
 
     my %packages;
@@ -1871,7 +1881,7 @@ elsif ($lconfig{C} or $lconfig{comments}) {    # -C
     }
 }
 elsif ($lconfig{G} or $lconfig{get}) {    # -G
-    if ($lconfig{d} or $lconfig{with_deps}) {
+    if ($lconfig{d} or $lconfig{with_deps}) {    # -Gd
         my $curdir = rel2abs(curdir());
         foreach my $pkg (@argv_packages) {
             local $lconfig{aur}            = 1 if _parse_pkgname(\$pkg);
@@ -1891,7 +1901,7 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
             }
         }
     }
-    else {
+    else {    # -G only
         foreach my $pkg (@argv_packages) {
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
             msg(":: Cloning package: $pkg") if $lconfig{debug};
@@ -1924,8 +1934,9 @@ elsif ($lconfig{R} or $lconfig{remove}) {               # -R
 elsif ($lconfig{D} or $lconfig{database}) {             # -D
     @pacman_arguments = ();
     push(@left_over_arguments, '--asdeps') if $lconfig{asdep};
+    push(@left_over_arguments, '--check')  if $lconfig{check};
 
-    if ($lconfig{k} or '--check' ~~ @left_over_arguments) {
+    if ($lconfig{k} or $lconfig{check}) {
         execute_pacman_command(0, @left_over_arguments);
     }
     else {
@@ -1934,24 +1945,25 @@ elsif ($lconfig{D} or $lconfig{database}) {             # -D
 }
 elsif ($lconfig{F} or $lconfig{files}) {                # -F
     @pacman_arguments = ();
-    push(@left_over_arguments, '--quiet')  if $lconfig{quiet};
-    push(@left_over_arguments, '--search') if $lconfig{search};
+    push(@left_over_arguments, '--quiet')   if $lconfig{quiet};
+    push(@left_over_arguments, '--search')  if $lconfig{search};
+    push(@left_over_arguments, '--refresh') if $lconfig{refresh};
 
-    if ($lconfig{y} or '--refresh' ~~ @left_over_arguments) {
+    if ($lconfig{y} or $lconfig{refresh}) {
         execute_pacman_command(1, @left_over_arguments);
     }
     else {
         execute_pacman_command(0, @left_over_arguments);
     }
 }
-elsif ($lconfig{Q} or $lconfig{query}) {                # -Q
+elsif ($lconfig{Q} or $lconfig{query}) {    # -Q
     @pacman_arguments = ();
     push(@left_over_arguments, '--search') if $lconfig{search};
     push(@left_over_arguments, '--info')   if $lconfig{info};
     push(@left_over_arguments, '--quiet')  if $lconfig{quiet};
     execute_pacman_command(0, @left_over_arguments);
 }
-elsif ($lconfig{T} or $lconfig{deptest}) {              # -T
+elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
     @pacman_arguments = ();
     execute_pacman_command(0, @left_over_arguments);
 }
