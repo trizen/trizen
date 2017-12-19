@@ -71,6 +71,7 @@ my $config_dir = (
 my $config_file = catfile($config_dir, "$execname.conf");
 my $user = (getpwuid $<)[0] || substr(`whoami`, 0, -1);
 my $arch = substr(`uname -m`, 0, -1);
+my @ignored = split ' ',`pacconf IgnorePkg`;
 
 # UTF-8 output
 binmode(STDOUT, ':utf8');
@@ -1580,9 +1581,10 @@ sub update_local_packages () {
         }
 
         if (
+            !grep(/^$pkgname$/,@ignored) && (
             versioncmp($packages{$pkgname}, $version) == -1
             or (    $lconfig{devel}
-                and $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/)
+                and $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/))
           ) {
             $for_update{++$i} = $pkgname;
             $for_update{$pkgname} = $pkgname;
