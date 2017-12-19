@@ -22,6 +22,7 @@ depends=(
          'perl-json'
          'perl-data-dump'
          'perl-lwp-protocol-https'
+         'pacutils'
         )
 
 optdepends=(
