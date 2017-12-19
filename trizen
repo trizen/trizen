@@ -830,7 +830,7 @@ sub download_package ($pkgname, $path) {
     my $git_url  = "$aur_base_url/$pkg_base.git";
     my $dir_name = rel2abs(catdir($path, $pkg_base));
 
-    if (-d $dir_name) {
+    if ((-d $dir_name) and (-f catfile($dir_name, 'PKGBUILD'))) {
         my $pkgbuild_prev = catfile($dir_name, '.git', '.PKGBUILD');
         my $pkgbuild_curr = catfile($dir_name, 'PKGBUILD');
 
@@ -847,7 +847,7 @@ sub download_package ($pkgname, $path) {
         if (!$lconfig{nopull}) {
 #<<<
             system('/usr/bin/git', '-C', $dir_name, 'reset', '--hard', 'HEAD', ($lconfig{quiet} ? ('-q') : ())) && return;
-            system('/usr/bin/git', '-C', $dir_name, 'pull', '--ff',            ($lconfig{quiet} ? ('-q') : ())) && return;
+            system('/usr/bin/git', '-C', $dir_name, 'pull',  '--ff',           ($lconfig{quiet} ? ('-q') : ())) && return;
 #>>>
         }
 
@@ -959,12 +959,11 @@ sub find_local_package ($pkgname, $dir) {
     }
 
     closedir $dir_h;
-    return $newest_package if defined $newest_package;
-    return;
+    return $newest_package;
 }
 
 sub move_built_package ($pkg) {
-    my $pkg_tarball = find_local_package($pkg, rel2abs(curdir())) or return;
+    my $pkg_tarball = find_local_package($pkg, rel2abs(curdir())) // return;
 
     if (not -d $lconfig{movepkg_dir}) {
         make_path($lconfig{movepkg_dir})
@@ -1121,12 +1120,11 @@ sub run_makepkg_command ($pkg, @args) {
 sub install_local_package (@) {
     my ($pkg, @pacman_argvs) = @_;
 
-    my $pkg_tarball = find_local_package($pkg, rel2abs(curdir()))
-      or do {
+    my $pkg_tarball = find_local_package($pkg, rel2abs(curdir())) // do {
         note(":: Unable to find a built tarball for <<$pkg>>");
         $? = 2 << 8;
         return;
-      };
+    };
 
     if ($lconfig{noinstall}) {
         if ($lconfig{movepkg}) {
@@ -1901,7 +1899,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
         }
         else {                                          # install from cache dir
             foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
-                my $tarball = find_local_package($pkg, $dir) || next;
+                my $tarball = find_local_package($pkg, $dir) // next;
                 msg(":: Installing: $tarball");
                 execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $tarball);
             }
