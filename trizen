@@ -75,6 +75,28 @@ my $arch = substr(`uname -m`, 0, -1);
 # UTF-8 output
 binmode(STDOUT, ':utf8');
 
+#----------------------- COLORS -----------------------#
+my %c = (
+         cblack  => (ON_BLACK),
+         byellow => (BOLD YELLOW),
+         bpurple => (BOLD MAGENTA),
+         bblue   => (BOLD BLUE),
+         bgreen  => (BOLD GREEN),
+         bbgreen => (BOLD GREEN ON_BLACK),
+         bold    => (BOLD),
+         bred    => (BOLD RED),
+         reset   => (RESET),
+        );
+
+@ARGV = map { decode_utf8($_) } @ARGV;
+
+my $stdout_on_tty = -t STDOUT;
+
+# Disable colors
+if (('--nocolors' ~~ \@ARGV) or not $stdout_on_tty) {
+    %c = map { ($_, "") } keys %c;
+}
+
 if (not -d $config_dir) {
     make_path($config_dir)
       or note(":: Unable to create directory <<$config_dir>>: {!$!!}");
@@ -248,27 +270,6 @@ sub main_quit () {
     }
     kill('TERM', $sudo_autorepeat_pid) if $sudo_autorepeat_pid;
     exit($? >> 8);
-}
-
-#----------------------- COLORS -----------------------#
-my %c = (
-         cblack  => (ON_BLACK),
-         byellow => (BOLD YELLOW),
-         bpurple => (BOLD MAGENTA),
-         bblue   => (BOLD BLUE),
-         bgreen  => (BOLD GREEN),
-         bbgreen => (BOLD GREEN ON_BLACK),
-         bold    => (BOLD),
-         bred    => (BOLD RED),
-         reset   => (RESET),
-        );
-
-@ARGV = map { decode_utf8($_) } @ARGV;
-
-my $stdout_on_tty = -t STDOUT;
-
-if (('--nocolors' ~~ \@ARGV) or not $stdout_on_tty) {
-    %c = map { $_ => q{} } keys %c;
 }
 
 #----------------------- USAGE -----------------------#
