@@ -296,7 +296,7 @@ $c{bbgreen}Main options:$c{reset}
 
     $c{bold}-S$c{reset}, $c{bold}--sync$c{reset}      : install a package (see: $execname -Sh)
     $c{bold}-C$c{reset}, $c{bold}--comments$c{reset}  : outputs AUR comments for a package
-    $c{bold}-G$c{reset}, $c{bold}--get$c{reset}       : clones a package in the current directory (see: $execname -Gh)
+    $c{bold}-G$c{reset}, $c{bold}--get$c{reset}       : clones a package in the current directory
     $c{bold}-R$c{reset}, $c{bold}--remove$c{reset}    : removes packages (see: pacman -Rh)
     $c{bold}-Q$c{reset}, $c{bold}--query$c{reset}     : query locally-installed packages (see: pacman -Qh)
     $c{bold}-U$c{reset}, $c{bold}--upgrade$c{reset}   : install built packages from $lconfig{clone_dir} or `pwd`
@@ -339,6 +339,8 @@ $c{bbgreen}Main options:$c{reset}
 
 $c{bbgreen}Other options:$c{reset}
 
+     $c{bold}--devel$c{reset}         : update devel packages during -Su
+     $c{bold}--show-ood$c{reset}      : show out-of-date flagged packages during -Su
      $c{bold}--noinfo$c{reset}        : do not display package info after cloning
      $c{bold}--nopull$c{reset}        : do not `git pull` new changes
      $c{bold}--noedit$c{reset}        : do not prompt to edit files
@@ -348,9 +350,7 @@ $c{bbgreen}Other options:$c{reset}
      $c{bold}--asdeps$c{reset}        : installs packages as dependencies
      $c{bold}--asexplicit$c{reset}    : installs packages as explicitly installed
      $c{bold}--force$c{reset}         : pass the `--force` argument to `pacman`
-     $c{bold}--skipinteg$c{reset}     : pass the `--skipinteg` argument to `pacman`
-     $c{bold}--show-ood$c{reset}      : show out-of-date flagged packages during -Su
-     $c{bold}--devel$c{reset}         : update devel packages during -Su
+     $c{bold}--skipinteg$c{reset}     : pass the `--skipinteg` argument to `makepkg`
      $c{bold}--noconfirm$c{reset}     : do not ask for any confirmation
      $c{bold}--movepkg$c{reset}       : move built packages into pacman's cache directory
      $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (with --movepkg)
