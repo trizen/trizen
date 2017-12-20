@@ -162,7 +162,7 @@ my %lconfig = (
     clean         => 0,                           # -c
     local         => 0,                           # -l
     pkgbuild      => 0,
-    sysupgrade    => 0,
+    sysupgrade    => 0,                           # -u
     comments      => 0,
     database      => 0,                           # -D
     files         => 0,                           # -F
@@ -173,6 +173,7 @@ my %lconfig = (
     upgrade       => 0,                           # -U
     get           => 0,
     refresh       => 0,                           # -y
+    upgrades      => 0,                           # -u
     check         => 0,                           # -k
     with_deps     => 0,                           # -d
     maintainer    => 0,                           # -m
@@ -180,7 +181,9 @@ my %lconfig = (
     noinstall     => 0,
     update_config => 0,
     show_ood      => 0,
-    asdep         => 0,
+    asdep         => 0,                           # alias for `--asdeps`
+    asdeps        => 0,
+    asexplicit    => 0,
     as_root       => ($user eq 'root' ? 1 : 0),
     stats         => \&show_stats,
     help          => \&help,
@@ -309,7 +312,8 @@ $c{bbgreen}Other options:$c{reset}
     --really-quiet  : be really quiet
     --nocolors      : no text colors
     --aur           : only AUR actions (with -S, -Si, -Su, -Ss, -Sc)
-    --asdep         : installs packages as dependencies
+    --asdeps        : installs packages as dependencies
+    --asexplicit    : installs packages as explicitly installed
     --movepkg       : move built packages into pacman's cache directory
     --needed        : do not reinstall up-to-date packages
     --noedit        : do not prompt to edit files
@@ -414,8 +418,6 @@ sub parse_short_arguments () {
     }
 }
 
-my @pacman_arguments;
-
 if ($lconfig{as_root}) {
     warn "\n\t\t$c{bred}!!! You are running $c{bbgreen}${execname}$c{reset}$c{bred} as root !!!$c{reset}\n\n" if $lconfig{S};
 }
@@ -424,25 +426,22 @@ if ($lconfig{skipinteg}) {
     $lconfig{makepkg_command} .= ' --skipinteg';
 }
 
-if ($lconfig{needed}) {
-    push @pacman_arguments, '--needed';
-}
-
-if ($lconfig{force}) {
-    push @pacman_arguments, '--force';
-}
-
 if ($lconfig{noconfirm}) {
     $Term::UI::AUTOREPLY = 1;
-    push @pacman_arguments, '--noconfirm';
     $lconfig{makepkg_command} .= ' --noconfirm';
 }
 else {
     $Term::UI::AUTOREPLY = 0;
 }
 
+# `--asdep` as alias for `--asdeps`
+if ($lconfig{asdep}) {
+    $lconfig{asdeps} = delete $lconfig{asdep};
+}
+
+# `-q` as alias for `--quiet`
 if ($lconfig{q}) {
-    $lconfig{quiet} = 1;
+    $lconfig{quiet} = delete $lconfig{q};
 }
 
 # `-a` as alias for `--aur`
@@ -641,13 +640,24 @@ EOC
     return @comments;
 }
 
+sub get_pacman_arguments ($full, @options) {
+
+    my @args = ($full ? @left_over_arguments : ());
+
+    foreach my $option (@options) {
+        push(@args, '--' . $option) if $lconfig{$option};
+    }
+
+    return @args;
+}
+
 sub execute_pacman_command ($needs_root, @cmd) {
 
     my $pacman_command = join(
         q{ },
         do {
             my %seen;
-            grep { !$seen{$_}++ } map { quotemeta($_) } $lconfig{pacman_command}, @pacman_arguments, @cmd;
+            grep { !$seen{$_}++ } map { quotemeta($_) } $lconfig{pacman_command}, @cmd;
           }
     );
 
@@ -1277,18 +1287,6 @@ sub _is_lib32 ($pkg) {
     return;
 }
 
-sub install_as_dep ($pkg) {
-    msg(":: Installing <<$pkg>> as dependency...") if $lconfig{debug};
-    build_and_install_package($pkg, '--asdeps') and return 1;
-    return;
-}
-
-sub install_as_explicit ($pkg) {
-    msg(":: Installing <<$pkg>> as explicit...") if $lconfig{debug};
-    build_and_install_package($pkg, '--asexplicit') and return 1;
-    return;
-}
-
 sub install_package ($pkg) {
 
     # Avoid circular dependencies
@@ -1306,8 +1304,10 @@ sub install_package ($pkg) {
         msg(":: Package <<$pkg>> exists in the AUR!") if $lconfig{debug};
     }
     elsif (not($lconfig{aur}) and is_available_in_pacman_repo($pkg)) {
-        execute_pacman_command(1, qw(-S), (grep { /^--./ } @left_over_arguments), $pkg) and return 1;
-        return;
+        return
+          execute_pacman_command(1, '-S',
+                                 get_pacman_arguments(0, qw(noconfirm asdeps asexplicit force needed quiet)),
+                                 (grep { /^--./ } @left_over_arguments), $pkg);
     }
     else {
         note(":: Package not found: $pkg");
@@ -1331,14 +1331,16 @@ sub install_package ($pkg) {
     msg(":: Package: $info->{Name}");
     msg(":: AUR URL: " . sprintf($aur_package_id_url, $info->{ID}));
 
+    my @args = get_pacman_arguments(0, qw(asdeps asexplicit noconfirm force needed));
+
+    # Package will be installed as a dependency
+    if ($lconfig{asdeps}) {
+        msg(":: Package <<$pkg>> will be installed as a dependency...") if $lconfig{debug};
+    }
+
     # When a package is already built, install it without building it again.
     if ($already_built{$pkg}) {
-        if (defined($lconfig{main_pkg}) and $pkg eq $lconfig{main_pkg}) {
-            return install_built_package($pkg, $lconfig{asdep} ? '--asdeps' : '--asexplicit');
-        }
-        else {
-            return install_built_package($pkg, '--asdeps');
-        }
+        return install_built_package($pkg, @args);
     }
 
     if ($lconfig{show_comments}) {
@@ -1417,7 +1419,11 @@ sub install_package ($pkg) {
             msg(":: Package <<$name>> is available in pacman's repository!") if $lconfig{debug};
         }
         else {
-            msg(":: Trying to install package: <<$name>>") if $lconfig{debug};
+            msg(":: Trying to install dependency: <<$name>>") if $lconfig{debug};
+
+            # Mark as a dependency
+            local $lconfig{asdeps} = 1;
+
             install_package($name) or do {
                 note(":: Dependency not found: <<$name>>");
                 next;
@@ -1426,25 +1432,17 @@ sub install_package ($pkg) {
     }
 
     chdir($info->{_localpath});
+
     msg(":: Current directory is: " . rel2abs(curdir())) if $lconfig{debug};
+    msg(":: Building and installing <<$pkg>>...") if $lconfig{debug};
 
-    if (    not $lconfig{asdep}
-        and defined($lconfig{main_pkg})
-        and $pkg eq $lconfig{main_pkg}) {    # install as explicit
-        install_as_explicit($pkg) and return 1;
-    }
-    else {                                   # install as dependency
-        install_as_dep($pkg) and return 1;
-    }
-
-    return;
+    return build_and_install_package($pkg, @args);
 }
 
 sub clear_cache () {
 
     if (!$lconfig{aur}) {
-        push(@left_over_arguments, '--clean') if $lconfig{clean};
-        execute_pacman_command(1, @left_over_arguments);
+        execute_pacman_command(1, get_pacman_arguments(1, qw(sync clean noconfirm force quiet)));
     }
 
     if ($lconfig{clone_dir} !~ m{^/tmp/}) {
@@ -1511,8 +1509,7 @@ sub print_aur_results (@results) {
 sub search_aur_packages (@keywords) {
 
     if (not $lconfig{aur}) {
-        push(@left_over_arguments, '--quiet') if $lconfig{quiet};
-        execute_pacman_command(0, @left_over_arguments, @keywords);
+        execute_pacman_command(0, get_pacman_arguments(1, qw(sync quiet search), @keywords));
     }
 
     my @all_results;
@@ -1555,8 +1552,7 @@ sub list_aur_maintainer_packages ($maintainer) {
 sub update_local_packages () {
 
     if (not $lconfig{aur}) {
-        push(@left_over_arguments, '--refresh') if $lconfig{refresh};
-        execute_pacman_command(1, @left_over_arguments);
+        execute_pacman_command(1, get_pacman_arguments(1, qw(sync noconfirm force quiet refresh upgrades)));
     }
 
     my %packages;
@@ -1642,11 +1638,6 @@ sub update_local_packages () {
     }
 
     foreach my $pkgname (@for_update) {
-
-        # Check for `explicitly installed`
-        (local $lconfig{main_pkg} = $pkgname)
-          if (`/usr/bin/pacman -Qie \Q$pkgname\E` =~ /\S/);
-
         if (install_package($pkgname)) {
             msg(":: <<$pkgname>> has been upgraded!") if $lconfig{debug};
         }
@@ -1792,7 +1783,6 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         my $curdir = rel2abs(curdir());
         foreach my $pkg (@argv_packages) {
             local $lconfig{clone_dir} = $curdir;
-            local $lconfig{main_pkg}  = $pkg;
             local $lconfig{nopull}    = 1;
             if (!install_package($pkg)) {
                 note(":: Package not found: $pkg");
@@ -1850,7 +1840,6 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         if (@argv_packages) {
             foreach my $pkg (@argv_packages) {
                 local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
-                local $lconfig{main_pkg} = $pkg;
                 if (install_package($pkg)) {
                     msg(":: Package <<$pkg>> has been successfully installed!") if $lconfig{debug};
                 }
@@ -1882,11 +1871,13 @@ elsif ($lconfig{C} or $lconfig{comments}) {    # -C
 }
 elsif ($lconfig{G} or $lconfig{get}) {    # -G
     if ($lconfig{d} or $lconfig{with_deps}) {    # -Gd
+
         my $curdir = rel2abs(curdir());
+
         foreach my $pkg (@argv_packages) {
+
             local $lconfig{aur}            = 1 if _parse_pkgname(\$pkg);
             local $lconfig{clone_dir}      = $curdir;
-            local $lconfig{main_pkg}       = $pkg;
             local $lconfig{nobuild}        = 1;
             local $lconfig{noinstall}      = 1;
             local $lconfig{noconfirm}      = 1;
@@ -1914,58 +1905,52 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
     }
 }
 elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
+
+    my @args = get_pacman_arguments(0, qw(asdeps asexplicit noconfirm force needed));
+
     foreach my $pkg (@argv_packages) {
         if ($pkg =~ /$pkg_suffix_re/o and -e $pkg) {    # install from current dir
-            execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $pkg);
+            execute_pacman_command(1, qw(-U), @args, $pkg);
         }
         else {                                          # install from cache dir
             foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
                 my $tarball = find_local_package($pkg, $dir) // next;
                 msg(":: Installing: $tarball");
-                execute_pacman_command(1, qw(-U), $lconfig{asdep} ? '--asdeps' : (), $tarball);
+                execute_pacman_command(1, qw(-U), @args, $tarball);
             }
         }
     }
 }
 elsif ($lconfig{R} or $lconfig{remove}) {               # -R
-    @pacman_arguments = ();
-    execute_pacman_command(1, @left_over_arguments);
+    execute_pacman_command(1, get_pacman_arguments(1, qw(remove noconfirm)));
 }
 elsif ($lconfig{D} or $lconfig{database}) {             # -D
-    @pacman_arguments = ();
-    push(@left_over_arguments, '--asdeps') if $lconfig{asdep};
-    push(@left_over_arguments, '--check')  if $lconfig{check};
+
+    my @args = get_pacman_arguments(1, qw(database asdeps asexplicit check noconfirm));
 
     if ($lconfig{k} or $lconfig{check}) {
-        execute_pacman_command(0, @left_over_arguments);
+        execute_pacman_command(0, @args);
     }
     else {
-        execute_pacman_command(1, @left_over_arguments);
+        execute_pacman_command(1, @args);
     }
 }
 elsif ($lconfig{F} or $lconfig{files}) {                # -F
-    @pacman_arguments = ();
-    push(@left_over_arguments, '--quiet')   if $lconfig{quiet};
-    push(@left_over_arguments, '--search')  if $lconfig{search};
-    push(@left_over_arguments, '--refresh') if $lconfig{refresh};
+
+    my @args = get_pacman_arguments(1, qw(files quiet search refresh noconfirm));
 
     if ($lconfig{y} or $lconfig{refresh}) {
-        execute_pacman_command(1, @left_over_arguments);
+        execute_pacman_command(1, @args);
     }
     else {
-        execute_pacman_command(0, @left_over_arguments);
+        execute_pacman_command(0, @args);
     }
 }
-elsif ($lconfig{Q} or $lconfig{query}) {    # -Q
-    @pacman_arguments = ();
-    push(@left_over_arguments, '--search') if $lconfig{search};
-    push(@left_over_arguments, '--info')   if $lconfig{info};
-    push(@left_over_arguments, '--quiet')  if $lconfig{quiet};
-    execute_pacman_command(0, @left_over_arguments);
+elsif ($lconfig{Q} or $lconfig{query}) {                # -Q
+    execute_pacman_command(0, get_pacman_arguments(1, qw(query check search info quiet noconfirm)));
 }
-elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
-    @pacman_arguments = ();
-    execute_pacman_command(0, @left_over_arguments);
+elsif ($lconfig{T} or $lconfig{deptest}) {              # -T
+    execute_pacman_command(0, get_pacman_arguments(1, qw(deptest noconfirm)));
 }
 
 main_quit();
