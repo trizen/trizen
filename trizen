@@ -1340,15 +1340,15 @@ sub install_package ($pkg) {
 
     my @args = get_pacman_arguments(0, qw(noconfirm force needed));
 
-    # Package will be installed as a dependency
+    # Package will be installed as dependency
     if ($lconfig{asdeps}) {
-        msg(":: Package <<$pkg>> will be installed as a dependency...") if $lconfig{debug};
+        msg(":: Package <<$pkg>> will be installed as dependency...") if $lconfig{debug};
         push @args, '--asdeps';
     }
 
-    # Package will be installed as explicit
+    # Package will be explicitly installed
     elsif ($lconfig{asexplicit}) {
-        msg(":: Package <<$pkg>> will be installed as explicit...") if $lconfig{debug};
+        msg(":: Package <<$pkg>> will be explicitly installed...") if $lconfig{debug};
         push @args, '--asexplicit';
     }
 
@@ -1435,7 +1435,7 @@ sub install_package ($pkg) {
         else {
             msg(":: Trying to install dependency: <<$name>>") if $lconfig{debug};
 
-            # Mark as a dependency
+            # Activate `dependency` mode
             local $lconfig{asdeps} = 1;
 
             install_package($name) or do {

@@ -70,7 +70,8 @@ Other options:
     --really-quiet  : be really quiet
     --nocolors      : no text colors
     --aur           : only AUR actions (with -S, -Si, -Su, -Ss, -Sc)
-    --asdep         : installs packages as dependencies
+    --asdeps        : installs packages as dependencies
+    --asexplicit    : installs packages as explicitly installed
     --movepkg       : move built packages into pacman's cache directory
     --needed        : do not reinstall up-to-date packages
     --noedit        : do not prompt to edit files
