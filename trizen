@@ -1633,7 +1633,7 @@ sub update_local_packages () {
 
     # Get info only for a random subset of 150 packages to avoid the "Request-URI too large" error.
     my @subset = do {
-        my @list = keys %packages;
+        my @list = grep { not exists $ignored_pkgs{$_} } keys %packages;
         sort splice(@list, 0, 150);
     };
 
@@ -1666,8 +1666,6 @@ sub update_local_packages () {
         if ($lconfig{show_ood}) {
             note(":: <<$pkgname>> has been flagged {!out-of-date!}!") if $hash_ref->{OutOfDate};
         }
-
-        next if exists($ignored_pkgs{$pkgname});
 
         my $is_devel_pkg = $lconfig{devel}
           && $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/;
