@@ -909,8 +909,8 @@ sub download_package ($pkgname, $path) {
 #>>>
         }
 
-        if (defined($old_pkgbuild_content)
-            and open(my $fh, '>', $pkgbuild_prev)) {
+        if (defined($old_pkgbuild_content) and open(my $fh, '>', $pkgbuild_prev)) {
+
             print {$fh} $old_pkgbuild_content;
             close $fh;
 
@@ -1129,11 +1129,13 @@ sub edit_text_files ($info) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
         next if substr($file, -4) eq q{.bak};    # ignore backup (.bak) files
-        next if chr ord $file eq q{.};           # ignore hidden files
+        next if substr($file, 0, 1) eq q{.};     # ignore hidden files
 
-        next
-          if ((-s $file) > 50 * 1024 or not -T _)
-          and not $file ~~ ['PKGBUILD', qr/(?:^|\.)install\z/];    # ignore files larger than 50 KB
+        # Ignore files larger than 50 KB, and are not PKGBUILD or *.install
+        if (((-s $file) > 50 * 1024 or not -T _)
+            and not $file ~~ ['PKGBUILD', qr/(?:^|\.)install\z/]) {
+            next;
+        }
 
         if ($lconfig{show_build_files_content}) {
             output_file_content($file);
@@ -1688,7 +1690,7 @@ sub update_local_packages () {
     # https://github.com/trizen/trizen/issues/24
     foreach my $pkgname (@subset) {
         if (not $exists_in_aur{$pkgname}) {
-            note(":: <<$pkgname>> is {!*NOT*!} found in the AUR!") if $lconfig{show_inexistent_packages};
+            note(":: <<$pkgname>> is {!not found!} in the AUR!") if $lconfig{show_inexistent_packages};
         }
     }
 
@@ -1720,7 +1722,7 @@ sub update_local_packages () {
             msg(":: <<$pkgname>> has been upgraded!") if $lconfig{debug};
         }
         else {
-            note(":: <<$pkgname>> has {!*NOT*!} been upgraded!");
+            note(":: <<$pkgname>> has {!NOT!} been upgraded!");
         }
     }
 
