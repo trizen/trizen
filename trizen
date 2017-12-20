@@ -52,7 +52,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.29';
+my $version  = '1.30';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
