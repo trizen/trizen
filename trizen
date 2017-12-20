@@ -52,7 +52,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.30';
+my $version  = '1.31';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -217,6 +217,8 @@ if (-e $config_file and (-s _) > 1) {
 
     if (ref($CONFIG) eq 'HASH') {
         my @valid_keys = grep { exists $CONFIG{$_} } keys(%$CONFIG);
+
+        $CONFIG->{clone_dir} //= $CONFIG{clone_dir};
 
         @CONFIG{@valid_keys}  = @{$CONFIG}{@valid_keys};
         @lconfig{@valid_keys} = @{$CONFIG}{@valid_keys};
