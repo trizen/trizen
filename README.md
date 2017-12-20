@@ -42,7 +42,9 @@ makepkg -si
 
 #### Options
 
-![trizen -h](https://user-images.githubusercontent.com/614513/32417044-dc3d6d6c-c25b-11e7-9ef4-ce9e3aa90a34.png)
+![trizen -h](https://user-images.githubusercontent.com/614513/34225865-89b6e954-e5d0-11e7-8cd9-106cf575c860.png)
+
+![trizen -Sh](https://user-images.githubusercontent.com/614513/34225867-8b42ec1e-e5d0-11e7-96f0-70f3f5c25959.png)
 
 # Usage
 
