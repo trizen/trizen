@@ -47,55 +47,90 @@ makepkg -si
 # Usage
 
 ```
-usage: trizen [option] [pkgname] [pkgname] [...]
+usage: trizen [options] [pkgname] [pkgname] [...]
 
 Main options:
-    -S              : installs package
-    -Ss             : searches for package
-    -Si             : outputs info for package
-    -Sm             : outputs the packages maintained by [...]
-    -Sp             : outputs PKGBUILD only
-    -Sl             : builds and installs package from `pwd`
-    -Syu            : upgrades installed packages
-    -Sc             : clears the cache directory
-    -C              : outputs AUR comments for a package
-    -G              : clones a package in the current directory
-    -Gd             : clones a package with all needed AUR dependencies
-    -R              : removes packages (see pacman -Rh)
-    -Q              : for installed packages (see pacman -Qh)
-    -U              : installs local packages from '--clone-dir' or `pwd`
+
+    -S, --sync      : install a package (see: trizen -Sh)
+    -C, --comments  : outputs AUR comments for a package
+    -G, --get       : clones a package in the current directory (see: trizen -Gh)
+    -R, --remove    : removes packages (see: pacman -Rh)
+    -Q, --query     : query locally-installed packages (see: pacman -Qh)
+    -U, --upgrade   : install built packages from '--clone-dir' or `pwd`
 
 Other options:
-    --quiet         : be quiet
-    --really-quiet  : be really quiet
-    --nocolors      : no text colors
-    --aur           : only AUR actions (with -S, -Si, -Su, -Ss, -Sc)
-    --asdeps        : installs packages as dependencies
-    --asexplicit    : installs packages as explicitly installed
-    --movepkg       : move built packages into pacman's cache directory
-    --needed        : do not reinstall up-to-date packages
-    --noedit        : do not prompt to edit files
-    --nopull        : do not `git pull` new changes
-    --nobuild       : do not build packages (implies --noedit)
-    --noinstall     : do not install packages after building
-    --noinfo        : do not display package info after cloning
-    --devel         : update devel packages during -Su
-    --show-ood      : show out-of-date flagged packages during -Su
-    --noconfirm     : do not ask for any confirmation
-    --force         : pass the --force option to pacman
-    --skipinteg     : pass the --skipinteg option to makepkg
-    --stats         : show some info about the installed packages
-    --clone-dir=s   : directory where to clone and build packages
-    --movepkg-dir=s : move built packages in this directory (with --movepkg)
 
-Meta options:
-    --debug         : activate the debug/verbose mode
-    --help          : print this message and exit
-    --version       : print version and exit
-    --update-config : update the configuration file
+        --quiet     : do not display any warnings
+        --stats     : show stats about the installed packages
+        --nocolors  : disable text colors
+        --debug     : activate the debug/verbose mode
+        --help      : print this message and exit
+        --version   : print version and exit
 
-:: Each config-key is a valid option when preceded with '--'
+See also:
 
+    trizen -Sh
+    trizen -Gh
+
+:: Each configuration key is a valid option when preceded with '--'
+```
+
+# Sync options (`-S`)
+
+```
+usage: trizen {-S --sync} [options] [package(s)]
+
+Main options:
+
+ -s, --search        : search for packages
+ -i, --info          : output info for package
+ -m, --maintainer    : output packages maintained by [...]
+ -p, --pkgbuild      : output PKGBUILD only
+ -l, --local         : builds and installs package from `pwd`
+ -u, --sysupgrade    : upgrade installed packages
+ -y, --refresh       : refresh package databases (with: -u)
+ -c, --clean         : clean the cache directory of `trizen` and `pacman`
+ -a, --aur           : only AUR operations (with: -c, -u, -s, -i)
+
+Other options:
+
+     --noinfo        : do not display package info after cloning
+     --nopull        : do not `git pull` new changes
+     --noedit        : do not prompt to edit files
+     --nobuild       : do not build packages (implies --noedit)
+     --noinstall     : do not install packages after building
+     --needed        : do not reinstall up-to-date packages
+     --asdeps        : installs packages as dependencies
+     --asexplicit    : installs packages as explicitly installed
+     --force         : pass the `--force` argument to `pacman`
+     --skipinteg     : pass the `--skipinteg` argument to `pacman`
+     --show-ood      : show out-of-date flagged packages during -Su
+     --devel         : update devel packages during -Su
+     --noconfirm     : do not ask for any confirmation
+     --movepkg       : move built packages into pacman's cache directory
+     --movepkg-dir=s : move built packages in this directory (with --movepkg)
+     --clone-dir=s   : directory where to clone and build packages
+
+Examples:
+
+    trizen -S  <package>     # install <package>
+    trizen -Ss <keyword>     # search for <keyword>
+    trizen -Si <package>     # show info about <package>
+```
+
+# Get options (`-G`)
+
+```
+usage: trizen {-G --get} [options] [package(s)]
+
+Main options:
+
+    -d, --with-deps     : clones a package with all needed AUR dependencies
+
+Examples:
+
+    trizen -G  <package>     # clones <package>
+    trizen -Gd <package>     # clones <package> along with its AUR dependencies
 ```
 
 A configuration file is automatically generated at: `~/.config/trizen/trizen.conf`

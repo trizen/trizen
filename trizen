@@ -21,7 +21,7 @@
 # Created on: 07 July 2010
 # Rewritten on: 16 February 2011
 # Second rewrite on: 24 March 2012
-# Latest edit on: 19 December 2017
+# Latest edit on: 20 December 2017
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -185,9 +185,9 @@ my %lconfig = (
     asdep         => 0,                           # alias for `--asdeps`
     asdeps        => 0,
     asexplicit    => 0,
+    help          => 0,
     as_root       => ($user eq 'root' ? 1 : 0),
     stats         => \&show_stats,
-    help          => \&help,
     version       => \&version,
               );
 
@@ -290,56 +290,98 @@ sub help {
 
 ========================= $c{bbgreen}Trizen's AUR Package Manager$c{reset} =========================
 
-$c{bold}usage:$c{reset} $execname [option] [pkgname] [pkgname] [...]
+$c{bold}usage:$c{reset} $execname [options] [pkgname] [pkgname] [...]
 
 $c{bbgreen}Main options:$c{reset}
-    -S              : installs package
-    -Ss             : searches for package
-    -Si             : outputs info for package
-    -Sm             : outputs the packages maintained by [...]
-    -Sp             : outputs PKGBUILD only
-    -Sl             : builds and installs package from `pwd`
-    -Syu            : upgrades installed packages
-    -Sc             : clears the cache directory
-    -C              : outputs AUR comments for a package
-    -G              : clones a package in the current directory
-    -Gd             : clones a package with all needed AUR dependencies
-    -R              : removes packages (see pacman -Rh)
-    -Q              : for installed packages (see pacman -Qh)
-    -U              : installs local packages from $lconfig{clone_dir} or `pwd`
+
+    $c{bold}-S$c{reset}, $c{bold}--sync$c{reset}      : install a package (see: $execname -Sh)
+    $c{bold}-C$c{reset}, $c{bold}--comments$c{reset}  : outputs AUR comments for a package
+    $c{bold}-G$c{reset}, $c{bold}--get$c{reset}       : clones a package in the current directory (see: $execname -Gh)
+    $c{bold}-R$c{reset}, $c{bold}--remove$c{reset}    : removes packages (see: pacman -Rh)
+    $c{bold}-Q$c{reset}, $c{bold}--query$c{reset}     : query locally-installed packages (see: pacman -Qh)
+    $c{bold}-U$c{reset}, $c{bold}--upgrade$c{reset}   : install built packages from $lconfig{clone_dir} or `pwd`
 
 $c{bbgreen}Other options:$c{reset}
-    --quiet         : be quiet
-    --really-quiet  : be really quiet
-    --nocolors      : no text colors
-    --aur           : only AUR actions (with -S, -Si, -Su, -Ss, -Sc)
-    --asdeps        : installs packages as dependencies
-    --asexplicit    : installs packages as explicitly installed
-    --movepkg       : move built packages into pacman's cache directory
-    --needed        : do not reinstall up-to-date packages
-    --noedit        : do not prompt to edit files
-    --nopull        : do not `git pull` new changes
-    --nobuild       : do not build packages (implies --noedit)
-    --noinstall     : do not install packages after building
-    --noinfo        : do not display package info after cloning
-    --devel         : update devel packages during -Su
-    --show-ood      : show out-of-date flagged packages during -Su
-    --noconfirm     : do not ask for any confirmation
-    --force         : pass the --force option to pacman
-    --skipinteg     : pass the --skipinteg option to makepkg
-    --stats         : show some info about the installed packages
-    --clone-dir=s   : directory where to clone and build packages
-    --movepkg-dir=s : move built packages in this directory (with --movepkg)
 
-$c{bbgreen}Meta options:$c{reset}
-    --debug         : activate the debug/verbose mode
-    --help          : print this message and exit
-    --version       : print version and exit
-    --update-config : update the configuration file
+        $c{bold}--quiet$c{reset}     : do not display any warnings
+        $c{bold}--stats$c{reset}     : show stats about the installed packages
+        $c{bold}--nocolors$c{reset}  : disable text colors
+        $c{bold}--debug$c{reset}     : activate the debug/verbose mode
+        $c{bold}--help$c{reset}      : print this message and exit
+        $c{bold}--version$c{reset}   : print version and exit
 
-$c{bred}::$c{reset} Each config-key is a valid option when preceded with '--'
-$c{bred}::$c{reset} Configuration file: $config_file
+$c{bbgreen}See also:$c{reset}
+
+    $c{bold}$execname -Sh$c{reset}
+    $c{bold}$execname -Gh$c{reset}
+
+$c{bred}::$c{reset} Each configuration key is a valid option when preceded with '--'
+$c{bred}::$c{reset} Configuration file: $c{bold}$config_file$c{reset}
 HELP
+    main_quit();
+}
+
+sub sync_help {
+    print <<"SYNC_HELP";
+$c{bold}usage:$c{reset} $execname {-S --sync} [options] [package(s)]
+
+$c{bbgreen}Main options:$c{reset}
+
+ $c{bold}-s$c{reset}, $c{bold}--search$c{reset}        : search for packages
+ $c{bold}-i$c{reset}, $c{bold}--info$c{reset}          : output info for package
+ $c{bold}-m$c{reset}, $c{bold}--maintainer$c{reset}    : output packages maintained by [...]
+ $c{bold}-p$c{reset}, $c{bold}--pkgbuild$c{reset}      : output PKGBUILD only
+ $c{bold}-l$c{reset}, $c{bold}--local$c{reset}         : builds and installs package from `pwd`
+ $c{bold}-u$c{reset}, $c{bold}--sysupgrade$c{reset}    : upgrade installed packages
+ $c{bold}-y$c{reset}, $c{bold}--refresh$c{reset}       : refresh package databases (with: -u)
+ $c{bold}-c$c{reset}, $c{bold}--clean$c{reset}         : clean the cache directory of `$execname` and `pacman`
+ $c{bold}-a$c{reset}, $c{bold}--aur$c{reset}           : only AUR operations (with: -c, -u, -s, -i)
+
+$c{bbgreen}Other options:$c{reset}
+
+     $c{bold}--noinfo$c{reset}        : do not display package info after cloning
+     $c{bold}--nopull$c{reset}        : do not `git pull` new changes
+     $c{bold}--noedit$c{reset}        : do not prompt to edit files
+     $c{bold}--nobuild$c{reset}       : do not build packages (implies --noedit)
+     $c{bold}--noinstall$c{reset}     : do not install packages after building
+     $c{bold}--needed$c{reset}        : do not reinstall up-to-date packages
+     $c{bold}--asdeps$c{reset}        : installs packages as dependencies
+     $c{bold}--asexplicit$c{reset}    : installs packages as explicitly installed
+     $c{bold}--force$c{reset}         : pass the `--force` argument to `pacman`
+     $c{bold}--skipinteg$c{reset}     : pass the `--skipinteg` argument to `pacman`
+     $c{bold}--show-ood$c{reset}      : show out-of-date flagged packages during -Su
+     $c{bold}--devel$c{reset}         : update devel packages during -Su
+     $c{bold}--noconfirm$c{reset}     : do not ask for any confirmation
+     $c{bold}--movepkg$c{reset}       : move built packages into pacman's cache directory
+     $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (with --movepkg)
+     $c{bold}--clone-dir=s$c{reset}   : directory where to clone and build packages
+
+$c{bbgreen}Examples:$c{reset}
+
+    $c{bold}$execname -S  <package>$c{reset}     # install <package>
+    $c{bold}$execname -Ss <keyword>$c{reset}     # search for <keyword>
+    $c{bold}$execname -Si <package>$c{reset}     # show info about <package>
+
+SYNC_HELP
+
+    main_quit();
+}
+
+sub get_help {
+    print <<"GET_HELP";
+$c{bold}usage:$c{reset} $execname {-G --get} [options] [package(s)]
+
+$c{bbgreen}Main options:$c{reset}
+
+    $c{bold}-d$c{reset}, $c{bold}--with-deps$c{reset}     : clones a package with all needed AUR dependencies
+
+$c{bbgreen}Examples:$c{reset}
+
+    $c{bold}$execname -G  <package>$c{reset}     # clones <package>
+    $c{bold}$execname -Gd <package>$c{reset}     # clones <package> along with its AUR dependencies
+
+GET_HELP
+
     main_quit();
 }
 
@@ -470,10 +512,6 @@ if ($lconfig{nocolors}) {
 
 if ($lconfig{movepkg}) {
     $lconfig{movepkg_dir} = rel2abs($lconfig{movepkg_dir});
-}
-
-if ($lconfig{h}) {
-    help();
 }
 
 if ($lconfig{nobuild}) {
@@ -1801,6 +1839,11 @@ sub _parse_pkgname ($pkgref) {
 my @argv_packages = get_non_arguments_from_array(@left_over_arguments);
 
 if ($lconfig{S} or $lconfig{sync}) {    # -S
+
+    if ($lconfig{h} or $lconfig{help}) {    # -Sh
+        sync_help();
+    }
+
     if ($lconfig{i} or $lconfig{info}) {    # -Si
         foreach my $pkg (@argv_packages) {
 
@@ -1910,6 +1953,11 @@ elsif ($lconfig{C} or $lconfig{comments}) {    # -C
     }
 }
 elsif ($lconfig{G} or $lconfig{get}) {    # -G
+
+    if ($lconfig{h} or $lconfig{help}) {    # -Gh
+        get_help();
+    }
+
     if ($lconfig{d} or $lconfig{with_deps}) {    # -Gd
 
         my $curdir = rel2abs(curdir());
@@ -1946,6 +1994,11 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
 }
 elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
 
+    if ($lconfig{h} or $lconfig{help}) {
+        execute_pacman_command(0, '-Uh');
+        main_quit();
+    }
+
     my @args = get_pacman_arguments(0, qw(asdeps asexplicit noconfirm force needed));
 
     foreach my $pkg (@argv_packages) {
@@ -1962,9 +2015,20 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
     }
 }
 elsif ($lconfig{R} or $lconfig{remove}) {               # -R
+
+    if ($lconfig{h} or $lconfig{help}) {
+        execute_pacman_command(0, '-Rh');
+        main_quit();
+    }
+
     execute_pacman_command(1, get_pacman_arguments(1, qw(remove noconfirm)));
 }
 elsif ($lconfig{D} or $lconfig{database}) {             # -D
+
+    if ($lconfig{h} or $lconfig{help}) {
+        execute_pacman_command(0, '-Dh');
+        main_quit();
+    }
 
     my @args = get_pacman_arguments(1, qw(database asdeps asexplicit check noconfirm));
 
@@ -1975,7 +2039,12 @@ elsif ($lconfig{D} or $lconfig{database}) {             # -D
         execute_pacman_command(1, @args);
     }
 }
-elsif ($lconfig{F} or $lconfig{files}) {                # -F
+elsif ($lconfig{F} or $lconfig{files}) {    # -F
+
+    if ($lconfig{h} or $lconfig{help}) {
+        execute_pacman_command(0, '-Fh');
+        main_quit();
+    }
 
     my @args = get_pacman_arguments(1, qw(files quiet search refresh noconfirm));
 
@@ -1986,11 +2055,26 @@ elsif ($lconfig{F} or $lconfig{files}) {                # -F
         execute_pacman_command(0, @args);
     }
 }
-elsif ($lconfig{Q} or $lconfig{query}) {                # -Q
+elsif ($lconfig{Q} or $lconfig{query}) {    # -Q
+
+    if ($lconfig{h} or $lconfig{help}) {
+        execute_pacman_command(0, '-Qh');
+        main_quit();
+    }
+
     execute_pacman_command(0, get_pacman_arguments(1, qw(query check search info quiet noconfirm)));
 }
-elsif ($lconfig{T} or $lconfig{deptest}) {              # -T
+elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
+
+    if ($lconfig{h} or $lconfig{help}) {
+        execute_pacman_command(0, '-Th');
+        main_quit();
+    }
+
     execute_pacman_command(0, get_pacman_arguments(1, qw(deptest noconfirm)));
+}
+elsif ($lconfig{h} or $lconfig{help}) {
+    help();
 }
 
 main_quit();
