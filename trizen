@@ -1435,8 +1435,8 @@ sub install_package ($pkg) {
         else {
 
             # Check to see if the dependency is already provided by some other installed package.
-            # Currently, this is defined only for dependencies that do not require a specific version of a package.
-            if (not defined $version) {
+            if (not defined($local_version)) {    # dependency is not installed
+
                 chomp(my $deptest = `/usr/bin/pacman -T \Q$name\E`);
 
                 if ($deptest eq '') {
