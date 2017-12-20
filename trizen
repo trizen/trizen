@@ -52,7 +52,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.28';
+my $version  = '1.29';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -148,6 +148,7 @@ my %CONFIG = (
               aur_results_popularity       => 1,
               aur_results_last_modified    => 1,
               aur_results_show_installed   => 1,
+              show_inexistent_packages     => 1,
               install_built_with_noconfirm => 0,
              );
 
@@ -205,10 +206,12 @@ sub dump_configuration ($config, $configuration_file) {
     open my $config_fh, '>:utf8', $configuration_file or return;
 
     require Data::Dump;
-    my $dumped_config = q{our $CONFIG = } . Data::Dump::dump($config);
+    my $dumped_config = q{our $CONFIG = } . Data::Dump::dump($config) . "\n";
     print $config_fh $config_header, $dumped_config;
     close $config_fh;
 }
+
+$lconfig{clone_dir} = ($CONFIG{clone_dir} //= catdir(tmpdir(), "$execname-$user"));
 
 if (-e $config_file and (-s _) > 1) {
     require $config_file;    # Load the configuration file
@@ -234,8 +237,6 @@ else {
     dump_configuration(\%CONFIG, $config_file)
       or note(":: Cannot open file <<$config_file>> for write: {!$!!}");
 }
-
-$lconfig{clone_dir} = ($CONFIG{clone_dir} //= catdir(tmpdir(), "$execname-$user"));
 
 if (not -d $lconfig{clone_dir}) {
     make_path($lconfig{clone_dir})
@@ -1590,12 +1591,15 @@ sub update_local_packages () {
     close $pipe_h;
 
     # Get info only for a random subset of 150 packages to avoid the "Request-URI too large" error.
-    my $info_request = join(
-        '&' => map { "arg[]=$_" } map { uri_escape_utf8($_) } do {
-            my @list = keys %packages;
-            sort splice(@list, 0, 150);
-          }
-    );
+    my @subset = do {
+        my @list = keys %packages;
+        sort splice(@list, 0, 150);
+    };
+
+    my $info_request = join('&' => map { "arg[]=$_" } map { uri_escape_utf8($_) } @subset);
+
+    my %exists_in_aur;
+    @exists_in_aur{@subset} = ();
 
     my $multiinfo = json2perl(
         get("$aur_rpc_base_url?v=$AUR_V&type=multiinfo&$info_request") // do {
@@ -1615,6 +1619,8 @@ sub update_local_packages () {
 
         my $pkgname = $hash_ref->{Name};
         my $version = $hash_ref->{Version};
+
+        $exists_in_aur{$pkgname} = 1;
 
         if ($lconfig{show_ood}) {
             note(":: <<$pkgname>> has been flagged {!out-of-date!}!") if $hash_ref->{OutOfDate};
@@ -1637,6 +1643,14 @@ sub update_local_packages () {
         elsif ($version ne $packages{$pkgname}) {
             note(":: <<$pkgname>> has a different version in the AUR!" . " ({!$packages{$pkgname}!} != <<$version$c{reset}>>)")
               if $lconfig{debug};
+        }
+    }
+
+    # Notify when pacakge is not found in AUR
+    # https://github.com/trizen/trizen/issues/24
+    foreach my $pkgname (@subset) {
+        if (not $exists_in_aur{$pkgname}) {
+            note(":: <<$pkgname>> is {!*NOT*!} found in the AUR!") if $lconfig{show_inexistent_packages};
         }
     }
 
