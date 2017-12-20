@@ -142,7 +142,6 @@ my %CONFIG = (
               movepkg_dir                  => '/var/cache/pacman/pkg',
               pacman_local_dir             => '/var/lib/pacman/local',
               pacman_command               => '/usr/bin/pacman',
-              clone_dir                    => undef,
               show_build_files_content     => 1,
               aur_results_votes            => 1,
               aur_results_popularity       => 1,
@@ -151,6 +150,8 @@ my %CONFIG = (
               show_inexistent_packages     => 1,
               install_built_with_noconfirm => 0,
              );
+
+$CONFIG{clone_dir} = catdir(tmpdir(), "$execname-$user");
 
 my %lconfig = (
     %CONFIG,
@@ -210,8 +211,6 @@ sub dump_configuration ($config, $configuration_file) {
     print $config_fh $config_header, $dumped_config;
     close $config_fh;
 }
-
-$lconfig{clone_dir} = ($CONFIG{clone_dir} //= catdir(tmpdir(), "$execname-$user"));
 
 if (-e $config_file and (-s _) > 1) {
     require $config_file;    # Load the configuration file
