@@ -1304,10 +1304,17 @@ sub install_package ($pkg) {
         msg(":: Package <<$pkg>> exists in the AUR!") if $lconfig{debug};
     }
     elsif (not($lconfig{aur}) and is_available_in_pacman_repo($pkg)) {
-        return
-          execute_pacman_command(1, '-S',
-                                 get_pacman_arguments(0, qw(noconfirm asdeps asexplicit force needed quiet)),
-                                 (grep { /^--./ } @left_over_arguments), $pkg);
+
+        my @args = ('-S', get_pacman_arguments(0, qw(noconfirm force needed quiet)));
+
+        if ($lconfig{asdeps}) {
+            push @args, '--asdeps';
+        }
+        elsif ($lconfig{asexplicit}) {
+            push @args, '--asexplicit';
+        }
+
+        return execute_pacman_command(1, @args, (grep { /^--./ } @left_over_arguments), $pkg);
     }
     else {
         note(":: Package not found: $pkg");
@@ -1331,11 +1338,18 @@ sub install_package ($pkg) {
     msg(":: Package: $info->{Name}");
     msg(":: AUR URL: " . sprintf($aur_package_id_url, $info->{ID}));
 
-    my @args = get_pacman_arguments(0, qw(asdeps asexplicit noconfirm force needed));
+    my @args = get_pacman_arguments(0, qw(noconfirm force needed));
 
     # Package will be installed as a dependency
     if ($lconfig{asdeps}) {
         msg(":: Package <<$pkg>> will be installed as a dependency...") if $lconfig{debug};
+        push @args, '--asdeps';
+    }
+
+    # Package will be installed as explicit
+    elsif ($lconfig{asexplicit}) {
+        msg(":: Package <<$pkg>> will be installed as explicit...") if $lconfig{debug};
+        push @args, '--asexplicit';
     }
 
     # When a package is already built, install it without building it again.
