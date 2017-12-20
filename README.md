@@ -55,7 +55,7 @@ Main options:
 
     -S, --sync      : install a package (see: trizen -Sh)
     -C, --comments  : outputs AUR comments for a package
-    -G, --get       : clones a package in the current directory (see: trizen -Gh)
+    -G, --get       : clones a package in the current directory
     -R, --remove    : removes packages (see: pacman -Rh)
     -Q, --query     : query locally-installed packages (see: pacman -Qh)
     -U, --upgrade   : install built packages from '--clone-dir' or `pwd`
@@ -96,6 +96,8 @@ Main options:
 
 Other options:
 
+     --devel         : update devel packages during -Su
+     --show-ood      : show out-of-date flagged packages during -Su
      --noinfo        : do not display package info after cloning
      --nopull        : do not `git pull` new changes
      --noedit        : do not prompt to edit files
@@ -105,9 +107,7 @@ Other options:
      --asdeps        : installs packages as dependencies
      --asexplicit    : installs packages as explicitly installed
      --force         : pass the `--force` argument to `pacman`
-     --skipinteg     : pass the `--skipinteg` argument to `pacman`
-     --show-ood      : show out-of-date flagged packages during -Su
-     --devel         : update devel packages during -Su
+     --skipinteg     : pass the `--skipinteg` argument to `makepkg`
      --noconfirm     : do not ask for any confirmation
      --movepkg       : move built packages into pacman's cache directory
      --movepkg-dir=s : move built packages in this directory (with --movepkg)
