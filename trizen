@@ -400,7 +400,7 @@ sub parse_long_arguments (@args) {
         \@args,
         \%lconfig,
         map {
-                (defined($lconfig{$_}) and $lconfig{$_} =~ /^[01]\z/) ? "$_!"
+                (defined($lconfig{$_}) and $lconfig{$_} =~ /^[01]\z/) ? $_
               : ref($lconfig{$_}) ? $_
               : "$_=s"
           } keys %lconfig,
@@ -418,13 +418,7 @@ my @left_over_arguments;
                     push @long_arguments, "--$option";
                 }
                 else {
-                    my $negated = $option =~ s/^no_?//r;
-                    if (exists $lconfig{$negated}) {
-                        if ($lconfig{$negated}) {
-                            $lconfig{$negated} = 0;
-                        }
-                    }
-                    elsif ($arg =~ /.=/) {
+                    if ($arg =~ /.=/) {
                         my ($argument, $value) = $option =~ /^(.*?)=(.*)/;
                         if (exists $lconfig{$argument}) {
                             $lconfig{$argument} = $value;
@@ -1419,9 +1413,10 @@ sub install_package ($pkg) {
         recompute_dependencies($info);
     }
 
+    print "\n";
+
     if (not $lconfig{noinfo}) {
-        print "\n";
-        show_info($info) or return;
+        show_info($info);
     }
 
     foreach my $pkgname (
