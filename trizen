@@ -1366,13 +1366,16 @@ sub install_package ($pkg) {
     }
 
     if (my $version = package_is_installed($pkg)) {
+
         msg(":: Package <<$pkg>> is already installed!") if $lconfig{debug};
+
         if ($lconfig{needed}) {
             if (versioncmp($version, $info->{Version}) >= 0) {
+                msg(":: Package <<$pkg>> is installed and up-to-date -- skipping");
                 return 1;    # package is installed and up-to-date
             }
             else {
-                note(":: Package <<$pkg>> is out-of-date!") if $lconfig{debug};
+                note(":: Package <<$pkg>> is {!out-of-date!}!") if $lconfig{debug};
             }
         }
     }
@@ -1470,10 +1473,10 @@ sub install_package ($pkg) {
         }
 
         if ($already_installed{$name} or (defined($local_version) ? defined($version) ? $is_up_to_date : 1 : 0)) {
-            msg(":: Skipping package <<$name>> - already installed!") if $lconfig{debug};
+            msg(":: Dependency <<$name>> is already installed -- skipping") if $lconfig{debug};
         }
         elsif (is_available_in_pacman_repo($name)) {
-            msg(":: Package <<$name>> is available in pacman's repository!") if $lconfig{debug};
+            msg(":: Dependency <<$name>> is available in pacman's repository -- skipping") if $lconfig{debug};
         }
         else {
 
@@ -1483,7 +1486,7 @@ sub install_package ($pkg) {
                 chomp(my $deptest = `/usr/bin/pacman -T \Q$name\E`);
 
                 if ($deptest eq '') {
-                    msg(":: Dependency <<$name>> is already provided by other package...") if $lconfig{debug};
+                    msg(":: Dependency <<$name>> is provided by other package -- skipping") if $lconfig{debug};
                     next;
                 }
             }
