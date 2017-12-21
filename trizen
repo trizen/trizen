@@ -52,7 +52,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.31';
+my $version  = '1.32';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -147,7 +147,8 @@ my %CONFIG = (
               aur_results_popularity       => 1,
               aur_results_last_modified    => 1,
               aur_results_show_installed   => 1,
-              show_inexistent_packages     => 1,
+              show_inexistent              => 1,
+              show_unmaintained            => 1,
               install_built_with_noconfirm => 0,
              );
 
@@ -328,34 +329,34 @@ $c{bold}usage:$c{reset} $execname {-S --sync} [options] [package(s)]
 
 $c{bbgreen}Main options:$c{reset}
 
- $c{bold}-s$c{reset}, $c{bold}--search$c{reset}        : search for packages
- $c{bold}-i$c{reset}, $c{bold}--info$c{reset}          : output info for package
- $c{bold}-m$c{reset}, $c{bold}--maintainer$c{reset}    : output packages maintained by [...]
- $c{bold}-p$c{reset}, $c{bold}--pkgbuild$c{reset}      : output PKGBUILD only
- $c{bold}-l$c{reset}, $c{bold}--local$c{reset}         : builds and installs package from `pwd`
- $c{bold}-u$c{reset}, $c{bold}--sysupgrade$c{reset}    : upgrade installed packages
- $c{bold}-y$c{reset}, $c{bold}--refresh$c{reset}       : refresh package databases (with: -u)
- $c{bold}-c$c{reset}, $c{bold}--clean$c{reset}         : clean the cache directory of `$execname` and `pacman`
- $c{bold}-a$c{reset}, $c{bold}--aur$c{reset}           : only AUR operations (with: -c, -u, -s, -i)
+  $c{bold}-s$c{reset}, $c{bold}--search$c{reset}        : search for packages
+  $c{bold}-i$c{reset}, $c{bold}--info$c{reset}          : output info for package
+  $c{bold}-m$c{reset}, $c{bold}--maintainer$c{reset}    : output packages maintained by [...]
+  $c{bold}-p$c{reset}, $c{bold}--pkgbuild$c{reset}      : output PKGBUILD only
+  $c{bold}-l$c{reset}, $c{bold}--local$c{reset}         : builds and installs package from `pwd`
+  $c{bold}-u$c{reset}, $c{bold}--sysupgrade$c{reset}    : upgrade installed packages
+  $c{bold}-y$c{reset}, $c{bold}--refresh$c{reset}       : refresh package databases (with: -u)
+  $c{bold}-c$c{reset}, $c{bold}--clean$c{reset}         : clean the cache directory of `$execname` and `pacman`
+  $c{bold}-a$c{reset}, $c{bold}--aur$c{reset}           : only AUR operations (with: -c, -u, -s, -i)
 
 $c{bbgreen}Other options:$c{reset}
 
-     $c{bold}--devel$c{reset}         : update devel packages during -Su
-     $c{bold}--show-ood$c{reset}      : show out-of-date flagged packages during -Su
-     $c{bold}--noinfo$c{reset}        : do not display package info after cloning
-     $c{bold}--nopull$c{reset}        : do not `git pull` new changes
-     $c{bold}--noedit$c{reset}        : do not prompt to edit files
-     $c{bold}--nobuild$c{reset}       : do not build packages (implies --noedit)
-     $c{bold}--noinstall$c{reset}     : do not install packages after building
-     $c{bold}--needed$c{reset}        : do not reinstall up-to-date packages
-     $c{bold}--asdeps$c{reset}        : installs packages as dependencies
-     $c{bold}--asexplicit$c{reset}    : installs packages as explicitly installed
-     $c{bold}--force$c{reset}         : pass the `--force` argument to `pacman`
-     $c{bold}--skipinteg$c{reset}     : pass the `--skipinteg` argument to `makepkg`
-     $c{bold}--noconfirm$c{reset}     : do not ask for any confirmation
-     $c{bold}--movepkg$c{reset}       : move built packages into pacman's cache directory
-     $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (with --movepkg)
-     $c{bold}--clone-dir=s$c{reset}   : directory where to clone and build packages
+      $c{bold}--devel$c{reset}         : update devel packages during -Su
+      $c{bold}--show-ood$c{reset}      : show out-of-date flagged packages during -Su
+      $c{bold}--noinfo$c{reset}        : do not display package info after cloning
+      $c{bold}--nopull$c{reset}        : do not `git pull` new changes
+      $c{bold}--noedit$c{reset}        : do not prompt to edit files
+      $c{bold}--nobuild$c{reset}       : do not build packages (implies --noedit)
+      $c{bold}--noinstall$c{reset}     : do not install packages after building
+      $c{bold}--needed$c{reset}        : do not reinstall up-to-date packages
+      $c{bold}--asdeps$c{reset}        : installs packages as dependencies
+      $c{bold}--asexplicit$c{reset}    : installs packages as explicitly installed
+      $c{bold}--force$c{reset}         : pass the `--force` argument to `pacman`
+      $c{bold}--skipinteg$c{reset}     : pass the `--skipinteg` argument to `makepkg`
+      $c{bold}--noconfirm$c{reset}     : do not ask for any confirmation
+      $c{bold}--movepkg$c{reset}       : move built packages into pacman's cache directory
+      $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (with --movepkg)
+      $c{bold}--clone-dir=s$c{reset}   : directory where to clone and build packages
 
 $c{bbgreen}Examples:$c{reset}
 
@@ -1654,6 +1655,7 @@ sub update_local_packages () {
 
     my $i = 0;
     my %for_update;
+
     foreach my $hash_ref (@{$multiinfo->{results}}) {
 
         ref($hash_ref) eq 'HASH' or next;
@@ -1663,8 +1665,12 @@ sub update_local_packages () {
 
         $exists_in_aur{$pkgname} = 1;
 
-        if ($lconfig{show_ood}) {
-            note(":: <<$pkgname>> has been flagged {!out-of-date!}!") if $hash_ref->{OutOfDate};
+        if ($lconfig{show_ood} and $hash_ref->{OutOfDate}) {
+            note(":: Package <<$pkgname>> has been flagged {!out-of-date!}!");
+        }
+
+        if ($lconfig{show_unmaintained} and not $hash_ref->{Maintainer}) {
+            note(":: Package <<$pkgname>> is {!unmaintained!}!");
         }
 
         my $is_devel_pkg = $lconfig{devel}
@@ -1680,16 +1686,19 @@ sub update_local_packages () {
 #>>>
         }
         elsif ($version ne $packages{$pkgname}) {
-            note(":: <<$pkgname>> has a different version in the AUR!" . " ({!$packages{$pkgname}!} != <<$version$c{reset}>>)")
+            note(  ":: Package <<$pkgname>> has a different version in the AUR!"
+                 . " ({!$packages{$pkgname}!} != <<$version$c{reset}>>)")
               if $lconfig{debug};
         }
     }
 
-    # Notify when pacakge is not found in AUR
+    # Notify when a package is not found in the AUR
     # https://github.com/trizen/trizen/issues/24
-    foreach my $pkgname (@subset) {
-        if (not $exists_in_aur{$pkgname}) {
-            note(":: <<$pkgname>> is {!not found!} in the AUR!") if $lconfig{show_inexistent_packages};
+    if ($lconfig{show_inexistent}) {
+        foreach my $pkgname (@subset) {
+            if (not $exists_in_aur{$pkgname}) {
+                note(":: Package <<$pkgname>> was {!not found!} in the AUR!");
+            }
         }
     }
 
