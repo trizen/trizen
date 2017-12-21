@@ -1517,10 +1517,8 @@ sub clear_cache () {
         execute_pacman_command(1, get_pacman_arguments(1, qw(sync clean noconfirm force quiet)));
     }
 
-    opendir(my $dir_h, $lconfig{clone_dir}) or do {
-        note(":: Cannot access the AUR cache directory: {!$!!}");
-        return;
-    };
+    opendir(my $dir_h, $lconfig{clone_dir})
+      or error(":: Cannot access the AUR cache directory: {!$!!}");
 
     if ($lconfig{clone_dir} !~ m{^/tmp/}) {
         $term->ask_yn(prompt  => "=> Do you want to remove the content of $c{bold}$lconfig{clone_dir}$c{reset}?",
@@ -1539,7 +1537,7 @@ sub clear_cache () {
 
         if (-d $dir and -d catdir($dir, '.git')) {
             msg(":: Removing <<$dir>>...") if $lconfig{debug};
-            rmtree($dir) or note(":: Cannot remove directory <<$dir>>: {!$!}");
+            rmtree($dir) or note(":: Cannot remove directory <<$dir>>: {!$!!}");
         }
     }
 
