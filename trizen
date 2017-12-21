@@ -18,10 +18,10 @@
 
 # Author: Daniel "Trizen" Șuteu
 # License: GPLv3
-# Created on: 07 July 2010
-# Rewritten on: 16 February 2011
-# Second rewrite on: 24 March 2012
-# Latest edit on: 20 December 2017
+# Created: 07 July 2010
+# First rewrite: 16 February 2011
+# Second rewrite: 24 March 2012
+# Latest edit: 21 December 2017
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -52,7 +52,7 @@ use File::Path qw(make_path rmtree);
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.32';
+my $version  = '1.33';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -290,7 +290,7 @@ sub main_quit () {
 sub help {
     print <<"HELP";
 
-========================= $c{bbgreen}Trizen's AUR Package Manager$c{reset} =========================
+========================== $c{bbgreen}Trizen AUR Package Manager$c{reset} ==========================
 
 $c{bold}usage:$c{reset} $execname [options] [pkgname] [pkgname] [...]
 
@@ -407,7 +407,10 @@ sub parse_long_arguments (@args) {
     );
 }
 
-my @left_over_arguments;
+my @keyword_arguments;
+my @leftover_short_arguments;
+my @leftover_long_arguments;
+
 {
     my @long_arguments;
     foreach my $arg (@ARGV) {
@@ -430,7 +433,17 @@ my @left_over_arguments;
             }
         }
 
-        push @left_over_arguments, $arg;
+        next if $arg =~ /^--?\z/;    # ignore '--' and '-'
+
+        if ($arg =~ /^--/) {
+            push @leftover_long_arguments, $arg;
+        }
+        elsif ($arg =~ /^-/) {
+            push @leftover_short_arguments, $arg;
+        }
+        else {
+            push @keyword_arguments, $arg;
+        }
     }
 
     if (@long_arguments) {
@@ -625,10 +638,6 @@ sub mirror ($url, $filename) {
     return $lwp->mirror($url, $filename);
 }
 
-sub get_non_arguments_from_array (@arr) {
-    return grep { substr($_, 0, 1) ne '-' } @arr;
-}
-
 sub get_comments ($id) {
 
     $id // return;
@@ -672,7 +681,7 @@ EOC
 
 sub get_pacman_arguments ($full, @options) {
 
-    my @args = ($full ? @left_over_arguments : ());
+    my @args = ($full ? (@leftover_short_arguments, @leftover_long_arguments) : ());
 
     foreach my $option (@options) {
         push(@args, '--' . $option) if $lconfig{$option};
@@ -834,7 +843,7 @@ sub indent_array (@elems) {
 
     my $rest = join("\n", @elems);
     $rest =~ s/^\s+//gm;
-    $rest =~ s/^/' ' x 17/gem;
+    $rest =~ s/^/' ' x 18/gem;
 
     return "$first\n$rest";
 }
@@ -958,26 +967,27 @@ sub get_rpc_info ($pkgname) {
 sub show_info ($info) {
 
     say map { sprintf $c{bold} . $_->[0], $c{reset} . $_->[1] }
-      ["Name           : %s\n", "$c{bold}$info->{Name}$c{reset}"],
-      ["Version        : %s\n", $info->{Version} // 'Unknown'],
-      ["Maintainer     : %s\n", $info->{Maintainer} // "$c{bred}None$c{reset}"],
-      ["URL            : %s\n", $info->{URL}],
-      ["AUR URL        : %s\n", sprintf($aur_package_id_url, $info->{ID})],
-      ["License        : %s\n", indent_array(array_ref_or_string($info->{License}))],
-      ["Votes          : %s\n", $info->{NumVotes}],
-      ["Popularity     : %s\n", sprintf("%.2g%%", $info->{Popularity})],
-      ["Installed      : %s\n", package_is_installed($info->{Name}) ? "$c{bbgreen}Yes$c{reset}" : 'No'],
-      ["Out Of Date    : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
-      ["Depends On     : %s\n", indent_array(array_ref_or_string($info->{Depends}))],
-      ["Make Deps      : %s\n", indent_array(array_ref_or_string($info->{MakeDepends}))],
-      ["Check Deps     : %s\n", indent_array(array_ref_or_string($info->{CheckDepends}))],
-      ["Optional Deps  : %s\n", indent_array(array_ref_or_string($info->{OptDepends}))],
-      ["Provides       : %s\n", indent_array(array_ref_or_string($info->{Provides}))],
-      ["Conflicts With : %s\n", indent_array(array_ref_or_string($info->{Conflicts}))],
-      ["Replaces       : %s\n", indent_array(array_ref_or_string($info->{Replaces}))],
-      ["Package Base   : %s\n", $info->{PackageBase}],
-      ["Last Update    : %s\n", scalar localtime($info->{LastModified} || $info->{FirstSubmitted})],
-      ["Description    : %s\n", $info->{Description}];
+      ["Repository      : %s\n", "$c{bpurple}AUR$c{reset}"],
+      ["Name            : %s\n", "$c{bold}$info->{Name}$c{reset}"],
+      ["Version         : %s\n", $info->{Version} // 'Unknown'],
+      ["Maintainer      : %s\n", $info->{Maintainer} // "$c{bred}None$c{reset}"],
+      ["URL             : %s\n", $info->{URL}],
+      ["AUR URL         : %s\n", sprintf($aur_package_id_url, $info->{ID})],
+      ["License         : %s\n", indent_array(array_ref_or_string($info->{License}))],
+      ["Votes           : %s\n", $info->{NumVotes}],
+      ["Popularity      : %s\n", sprintf("%.2g%%", $info->{Popularity})],
+      ["Installed       : %s\n", package_is_installed($info->{Name}) ? "$c{bbgreen}Yes$c{reset}" : 'No'],
+      ["Out Of Date     : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
+      ["Depends On      : %s\n", indent_array(array_ref_or_string($info->{Depends}))],
+      ["Make Deps       : %s\n", indent_array(array_ref_or_string($info->{MakeDepends}))],
+      ["Check Deps      : %s\n", indent_array(array_ref_or_string($info->{CheckDepends}))],
+      ["Optional Deps   : %s\n", indent_array(array_ref_or_string($info->{OptDepends}))],
+      ["Provides        : %s\n", indent_array(array_ref_or_string($info->{Provides}))],
+      ["Conflicts With  : %s\n", indent_array(array_ref_or_string($info->{Conflicts}))],
+      ["Replaces        : %s\n", indent_array(array_ref_or_string($info->{Replaces}))],
+      ["Package Base    : %s\n", $info->{PackageBase}],
+      ["Last Update     : %s\n", scalar localtime($info->{LastModified} || $info->{FirstSubmitted})],
+      ["Description     : %s\n", $info->{Description}];
 
     return 1;
 }
@@ -1340,6 +1350,8 @@ sub install_package ($pkg) {
     }
     elsif (not($lconfig{aur}) and is_available_in_pacman_repo($pkg)) {
 
+        msg(":: Package <<$pkg>> is available in pacman's repository...") if $lconfig{debug};
+
         my @args = ('-S', get_pacman_arguments(0, qw(noconfirm force needed quiet)));
 
         if ($lconfig{asdeps}) {
@@ -1349,7 +1361,7 @@ sub install_package ($pkg) {
             push @args, '--asexplicit';
         }
 
-        return execute_pacman_command(1, @args, (grep { /^--./ } @left_over_arguments), $pkg);
+        return execute_pacman_command(1, @args, @leftover_long_arguments, $pkg);
     }
     else {
         note(":: Package not found: $pkg");
@@ -1392,6 +1404,7 @@ sub install_package ($pkg) {
 
     # When a package is already built, install it without building it again.
     if ($already_built{$pkg}) {
+        msg(":: Package <<$pkg>> is already built -- installing") if $lconfig{debug};
         return install_built_package($pkg, @args);
     }
 
@@ -1594,7 +1607,7 @@ sub print_aur_results (@results) {
 sub search_aur_packages (@keywords) {
 
     if (not $lconfig{aur}) {
-        execute_pacman_command(0, get_pacman_arguments(1, qw(sync quiet search), @keywords));
+        execute_pacman_command(0, get_pacman_arguments(1, qw(sync quiet search)), @keywords);
     }
 
     my @all_results;
@@ -1654,13 +1667,13 @@ sub update_local_packages () {
         sort splice(@list, 0, 150);
     };
 
-    my $info_request = join('&' => map { "arg[]=$_" } map { uri_escape_utf8($_) } @subset);
-
     my %exists_in_aur;
     @exists_in_aur{@subset} = ();
 
+    my $pkgs_query = join('&', map { 'arg[]=' . uri_escape_utf8($_) } @subset);
+
     my $multiinfo = json2perl(
-        get("$aur_rpc_base_url?v=$AUR_V&type=multiinfo&$info_request") // do {
+        get("$aur_rpc_base_url?v=$AUR_V&type=multiinfo&$pkgs_query") // do {
             note(":: Unable to get info for local packages...");
             $? = 1 << 8;
             return;
@@ -1864,9 +1877,9 @@ sub _parse_pkgname ($pkgref) {
     return;
 }
 
-# MAIN
-
-my @argv_packages = get_non_arguments_from_array(@left_over_arguments);
+#
+## MAIN
+#
 
 if ($lconfig{S} or $lconfig{sync}) {    # -S
 
@@ -1874,8 +1887,20 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         sync_help();
     }
 
-    if ($lconfig{i} or $lconfig{info}) {    # -Si
-        foreach my $pkg (@argv_packages) {
+    if ($lconfig{c} or $lconfig{clean}) {    # -Sc
+        clear_cache();
+    }
+
+    if ($lconfig{u} or $lconfig{sysupgrade}) {    # -Su
+        update_local_packages();
+    }
+
+    if ($lconfig{s} or $lconfig{search}) {        # -Ss
+        search_aur_packages(splice @keyword_arguments);
+    }
+
+    if ($lconfig{i} or $lconfig{info}) {          # -Si
+        foreach my $pkg (splice @keyword_arguments) {
 
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
 
@@ -1892,9 +1917,10 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             }
         }
     }
-    elsif ($lconfig{l} or $lconfig{local}) {    # -Sl
+
+    if ($lconfig{l} or $lconfig{local}) {    # -Sl
         my $curdir = rel2abs(curdir());
-        foreach my $pkg (@argv_packages) {
+        foreach my $pkg (splice @keyword_arguments) {
             local $lconfig{clone_dir} = $curdir;
             local $lconfig{nopull}    = 1;
             if (!install_package($pkg)) {
@@ -1904,14 +1930,9 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             }
         }
     }
-    elsif ($lconfig{u} or $lconfig{sysupgrade}) {    # -Su
-        update_local_packages();
-    }
-    elsif ($lconfig{s} or $lconfig{search}) {        # -Ss
-        search_aur_packages(@argv_packages);
-    }
-    elsif ($lconfig{m} or $lconfig{maintainer}) {    # -Sm
-        foreach my $maintainer (@argv_packages) {
+
+    if ($lconfig{m} or $lconfig{maintainer}) {    # -Sm
+        foreach my $maintainer (splice @keyword_arguments) {
             msg(":: AUR packages maintained by <<$maintainer>>") if $lconfig{debug};
             list_aur_maintainer_packages($maintainer)
               or do {
@@ -1921,8 +1942,9 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
               };
         }
     }
-    elsif ($lconfig{p} or $lconfig{pkgbuild}) {      # -Sp
-        foreach my $pkg (@argv_packages) {
+
+    if ($lconfig{p} or $lconfig{pkgbuild}) {      # -Sp
+        foreach my $pkg (splice @keyword_arguments) {
 
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
 
@@ -1946,25 +1968,19 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             close $fh;
         }
     }
-    elsif ($lconfig{c} or $lconfig{clean}) {    # -Sc
-        clear_cache();
-    }
-    else {                                      # -S only
-        if (@argv_packages) {
-            foreach my $pkg (@argv_packages) {
-                local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
-                if (install_package($pkg)) {
-                    msg(":: Package <<$pkg>> has been successfully installed!") if $lconfig{debug};
-                }
-                else {
-                    note(":: Cannot install package: $pkg") if $lconfig{debug};
-                }
-            }
+
+    foreach my $pkg (splice @keyword_arguments) {    # -S only
+        local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
+        if (install_package($pkg)) {
+            msg(":: Package <<$pkg>> has been successfully installed!") if $lconfig{debug};
+        }
+        else {
+            note(":: Cannot install package: $pkg") if $lconfig{debug};
         }
     }
 }
-elsif ($lconfig{C} or $lconfig{comments}) {    # -C
-    foreach my $pkg (@argv_packages) {
+elsif ($lconfig{C} or $lconfig{comments}) {          # -C
+    foreach my $pkg (@keyword_arguments) {
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
         my $info = info_for_package($pkg) // do {
             note(":: Package not found: $pkg");
@@ -1992,7 +2008,7 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
 
         my $curdir = rel2abs(curdir());
 
-        foreach my $pkg (@argv_packages) {
+        foreach my $pkg (@keyword_arguments) {
 
             local $lconfig{aur}            = 1 if _parse_pkgname(\$pkg);
             local $lconfig{clone_dir}      = $curdir;
@@ -2011,7 +2027,7 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
         }
     }
     else {    # -G only
-        foreach my $pkg (@argv_packages) {
+        foreach my $pkg (@keyword_arguments) {
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
             msg(":: Cloning package: $pkg") if $lconfig{debug};
             if (!download_package($pkg, rel2abs(curdir()))) {
@@ -2031,7 +2047,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
 
     my @args = get_pacman_arguments(0, qw(asdeps asexplicit noconfirm force needed));
 
-    foreach my $pkg (@argv_packages) {
+    foreach my $pkg (@keyword_arguments) {
         if ($pkg =~ /$pkg_suffix_re/o and -e $pkg) {    # install from current dir
             execute_pacman_command(1, qw(-U), @args, $pkg);
         }
@@ -2051,7 +2067,7 @@ elsif ($lconfig{R} or $lconfig{remove}) {               # -R
         main_quit();
     }
 
-    execute_pacman_command(1, get_pacman_arguments(1, qw(remove noconfirm)));
+    execute_pacman_command(1, get_pacman_arguments(1, qw(remove noconfirm)), @keyword_arguments);
 }
 elsif ($lconfig{D} or $lconfig{database}) {             # -D
 
@@ -2060,7 +2076,7 @@ elsif ($lconfig{D} or $lconfig{database}) {             # -D
         main_quit();
     }
 
-    my @args = get_pacman_arguments(1, qw(database asdeps asexplicit check noconfirm));
+    my @args = (get_pacman_arguments(1, qw(database asdeps asexplicit check noconfirm)), @keyword_arguments);
 
     if ($lconfig{k} or $lconfig{check}) {
         execute_pacman_command(0, @args);
@@ -2076,7 +2092,7 @@ elsif ($lconfig{F} or $lconfig{files}) {    # -F
         main_quit();
     }
 
-    my @args = get_pacman_arguments(1, qw(files quiet search refresh noconfirm));
+    my @args = (get_pacman_arguments(1, qw(files quiet search refresh noconfirm)), @keyword_arguments);
 
     if ($lconfig{y} or $lconfig{refresh}) {
         execute_pacman_command(1, @args);
@@ -2092,7 +2108,7 @@ elsif ($lconfig{Q} or $lconfig{query}) {    # -Q
         main_quit();
     }
 
-    execute_pacman_command(0, get_pacman_arguments(1, qw(query check search info quiet noconfirm)));
+    execute_pacman_command(0, get_pacman_arguments(1, qw(query check search info quiet noconfirm)), @keyword_arguments);
 }
 elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
 
@@ -2101,7 +2117,7 @@ elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
         main_quit();
     }
 
-    execute_pacman_command(0, get_pacman_arguments(1, qw(deptest noconfirm)));
+    execute_pacman_command(0, get_pacman_arguments(1, qw(deptest noconfirm)), @keyword_arguments);
 }
 elsif ($lconfig{h} or $lconfig{help}) {
     help();
