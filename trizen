@@ -1344,7 +1344,7 @@ sub install_package ($pkg) {
 
     my $info = download_package($pkg, $lconfig{clone_dir});
     if (ref($info) eq 'HASH') {
-        msg(":: Package <<$pkg>> exists in the AUR!") if $lconfig{debug};
+        msg(":: Package <<$pkg>> exists in AUR!") if $lconfig{debug};
     }
     elsif (not($lconfig{aur}) and is_available_in_pacman_repo($pkg)) {
 
@@ -1686,18 +1686,18 @@ sub update_local_packages () {
 #>>>
         }
         elsif ($version ne $packages{$pkgname}) {
-            note(  ":: Package <<$pkgname>> has a different version in the AUR!"
+            note(  ":: Package <<$pkgname>> has a different version in AUR!"
                  . " ({!$packages{$pkgname}!} != <<$version$c{reset}>>)")
               if $lconfig{debug};
         }
     }
 
-    # Notify when a package is not found in the AUR
+    # Notify when a package is not found in AUR
     # https://github.com/trizen/trizen/issues/24
     if ($lconfig{show_inexistent}) {
         foreach my $pkgname (@subset) {
             if (not $exists_in_aur{$pkgname}) {
-                note(":: Package <<$pkgname>> was {!not found!} in the AUR!");
+                note(":: Package <<$pkgname>> was {!not found!} in AUR -- skipping");
             }
         }
     }
