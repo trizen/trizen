@@ -1737,7 +1737,7 @@ sub update_local_packages () {
             @for_update = sort map { $for_update{$_} } grep { /^[0-9]{1,3}\z/ && $_ > 0 && $_ <= $i } keys %for_update;
         }
         else {
-            @for_update = map { $for_update{$_} } grep { exists $for_update{$_} } split /[,\s]+/;
+            @for_update = map { $for_update{$_} } grep { exists $for_update{$_} } split(/[,\s]+/, $reply);
         }
     }
     else {
