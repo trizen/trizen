@@ -1517,13 +1517,33 @@ sub clear_cache () {
         execute_pacman_command(1, get_pacman_arguments(1, qw(sync clean noconfirm force quiet)));
     }
 
+    opendir(my $dir_h, $lconfig{clone_dir}) or do {
+        note(":: Cannot access the AUR cache directory: {!$!!}");
+        return;
+    };
+
     if ($lconfig{clone_dir} !~ m{^/tmp/}) {
-        $term->ask_yn(prompt => "=> Remove directory $c{bold}$lconfig{clone_dir}$c{reset}?", default => 'n') || return;
+        $term->ask_yn(prompt  => "=> Do you want to remove the content of $c{bold}$lconfig{clone_dir}$c{reset}?",
+                      default => 'n')
+          || return;
     }
 
-    msg(":: Removing <<$lconfig{clone_dir}>>...");
-    rmtree($lconfig{clone_dir})
-      or error(":: Cannot remove <<$lconfig{clone_dir}>>: {!$!!}");
+    msg(":: Removing the content of <<$lconfig{clone_dir}>>...");
+
+    foreach my $name (readdir($dir_h)) {
+
+        next if substr($name, 0, 1) eq '.';    # skip dot files
+        next if $name !~ /^[a-z0-9\-_+]+\z/;   # validate directory name
+
+        my $dir = catdir($lconfig{clone_dir}, $name);
+
+        if (-d $dir and -d catdir($dir, '.git')) {
+            msg(":: Removing <<$dir>>...") if $lconfig{debug};
+            rmtree($dir) or note(":: Cannot remove directory <<$dir>>: {!$!}");
+        }
+    }
+
+    closedir($dir_h);
     msg(":: Done!");
 }
 
