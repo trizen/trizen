@@ -37,9 +37,9 @@ use 5.020;
 use strict;
 use warnings;
 
-use experimental qw(signatures smartmatch);
+use experimental qw(signatures);
 
-use List::Util qw(first);
+use List::Util qw(first any);
 use Encode qw(decode_utf8);
 use Getopt::Std qw(getopts);
 use Text::ParseWords qw(quotewords);
@@ -99,7 +99,7 @@ my %c = (
 my $stdout_on_tty = -t STDOUT;
 
 # Disable colors
-if (('--nocolors' ~~ \@ARGV) or not $stdout_on_tty) {
+if (not $stdout_on_tty or (any { $_ eq '--nocolors' } @ARGV)) {
     %c = map { ($_ => "") } keys %c;
 }
 
@@ -411,31 +411,26 @@ my @left_over_arguments;
 {
     my @long_arguments;
     foreach my $arg (@ARGV) {
-        given ($arg) {
-            when (/^--(\w.*)/) {
-                my $option = $1 =~ tr/-/_/r;
-                if (exists $lconfig{$option}) {
-                    push @long_arguments, "--$option";
-                }
-                else {
-                    if ($arg =~ /.=/) {
-                        my ($argument, $value) = $option =~ /^(.*?)=(.*)/;
-                        if (exists $lconfig{$argument}) {
-                            $lconfig{$argument} = $value;
-                        }
-                        else {
-                            continue;
-                        }
-                    }
-                    else {
-                        continue;
-                    }
-                }
+
+        if ($arg =~ /^--(\w.*)/) {
+            my $option = $1 =~ tr/-/_/r;
+
+            if (exists $lconfig{$option}) {
+                push @long_arguments, "--$option";
+                next;
             }
-            default {
-                push @left_over_arguments, $arg;
+
+            if ($arg =~ /.=/) {
+                my ($argument, $value) = $option =~ /^(.*?)=(.*)/;
+
+                if (exists $lconfig{$argument}) {
+                    $lconfig{$argument} = $value;
+                    next;
+                }
             }
         }
+
+        push @left_over_arguments, $arg;
     }
 
     if (@long_arguments) {
@@ -1128,8 +1123,11 @@ sub edit_text_files ($info) {
         next if substr($file, 0, 1) eq q{.};     # ignore hidden files
 
         # Ignore files larger than 50 KB, and are not PKGBUILD or *.install
-        if (((-s $file) > 50 * 1024 or not -T _)
-            and not $file ~~ ['PKGBUILD', qr/(?:^|\.)install\z/]) {
+        if (
+            ((-s $file) > 50 * 1024 or not -T _)
+            and not(   $file eq 'PKGBUILD'
+                    or $file =~ /(?:^|\.)install\z/)
+          ) {
             next;
         }
 
@@ -1398,7 +1396,7 @@ sub install_package ($pkg) {
     }
 
     if ($lconfig{show_comments}) {
-        print "\n";
+        say '';
         foreach my $comment (get_comments($info->{ID})) {
             say $comment;
         }
@@ -1409,12 +1407,14 @@ sub install_package ($pkg) {
         edit_text_files($info);
     }
 
+    say '';
+
+    # Recompute dependencies
     if ($lconfig{recompute_deps}) {
         recompute_dependencies($info);
     }
 
-    print "\n";
-
+    # Display package info
     if (not $lconfig{noinfo}) {
         show_info($info);
     }
@@ -1726,15 +1726,18 @@ sub update_local_packages () {
 
     my @for_update;
     if (keys %for_update) {
-        given ($lconfig{noconfirm} ? 'all' : $term->readline("\n=>> Select packages for upgrade (default: all)\n>$c{reset} "))
-        {
-            when (['all', q{}]) {
-                @for_update =
-                  sort map { $for_update{$_} } grep { /^[0-9]{1,2}\z/ && $_ > 0 && $_ <= $i } keys %for_update;
-            }
-            default {
-                @for_update = map { $for_update{$_} } grep { exists $for_update{$_} } split /[,\s]+/;
-            }
+
+        my $reply = (
+                     $lconfig{noconfirm}
+                     ? 'all'
+                     : $term->readline("\n=>> Select packages for upgrade (default: all)\n>$c{reset} ")
+                    );
+
+        if ($reply eq 'all' or $reply eq '') {
+            @for_update = sort map { $for_update{$_} } grep { /^[0-9]{1,3}\z/ && $_ > 0 && $_ <= $i } keys %for_update;
+        }
+        else {
+            @for_update = map { $for_update{$_} } grep { exists $for_update{$_} } split /[,\s]+/;
         }
     }
     else {
@@ -1789,35 +1792,36 @@ sub show_stats {
 
         open my $fh, '<:utf8', catfile($lconfig{pacman_local_dir}, $subdir, 'desc') or next;
         while (defined(my $line = <$fh>)) {
-            given ($line) {
-                when ("%REASON%\n") {
-                    $reason_deps{$current_pkg} = ();
+
+            chomp($line);
+
+            if ($line eq "%REASON%") {
+                $reason_deps{$current_pkg} = ();
+            }
+            elsif ($line eq "%DEPENDS%") {
+                while (defined(my $dep = <$fh>)) {
+                    chomp $dep;
+                    last if $dep eq q{};
+                    $dependencies{strip_version($dep)} = ();
                 }
-                when ("%DEPENDS%\n") {
-                    while (defined(my $dep = <$fh>)) {
-                        chomp $dep;
-                        last if $dep eq q{};
-                        $dependencies{strip_version($dep)} = ();
-                    }
+            }
+            elsif ($line eq "%PROVIDES%" and exists $reason_deps{$current_pkg}) {
+                while (defined(my $provided = <$fh>)) {
+                    chomp $provided;
+                    last if $provided eq q{};
+                    push @{$reason_deps{$current_pkg}}, strip_version($provided);
                 }
-                when ($_ eq "%PROVIDES%\n" and exists $reason_deps{$current_pkg}) {
-                    while (defined(my $provided = <$fh>)) {
-                        chomp $provided;
-                        last if $provided eq q{};
-                        push @{$reason_deps{$current_pkg}}, strip_version($provided);
-                    }
-                }
-                when ("%SIZE%\n") {
-                    $total_size += <$fh>;
-                }
-                when ("%BUILDDATE%\n") {
-                    chomp(my $date = <$fh>);
-                    $append_package->($date, $current_pkg, 'built');
-                }
-                when ("%INSTALLDATE%\n") {
-                    chomp(my $date = <$fh>);
-                    $append_package->($date, $current_pkg, 'installed');
-                }
+            }
+            elsif ($line eq "%SIZE%") {
+                $total_size += <$fh>;
+            }
+            elsif ($line eq "%BUILDDATE%") {
+                chomp(my $date = <$fh>);
+                $append_package->($date, $current_pkg, 'built');
+            }
+            elsif ($line eq "%INSTALLDATE%") {
+                chomp(my $date = <$fh>);
+                $append_package->($date, $current_pkg, 'installed');
             }
         }
     }
