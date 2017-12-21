@@ -717,7 +717,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
                                : $pacman_command
                               );
 
-    msg(":: Pacman command: $user_pacman_command") if $lconfig{debug};
+    msg(":: Pacman command: " . ($user_pacman_command =~ s/\\(.)/$1/gr)) if $lconfig{debug};
     {
         system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
         if ($? and $needs_root) {
