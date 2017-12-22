@@ -1688,7 +1688,7 @@ sub list_aur_maintainer_packages ($maintainer) {
 sub update_local_packages () {
 
     if (not $lconfig{aur}) {
-        execute_pacman_command(1, get_pacman_arguments(1, qw(sync noconfirm force quiet refresh upgrades)));
+        execute_pacman_command(1, get_pacman_arguments(1, qw(sync sysupgrade noconfirm force quiet refresh)));
     }
 
     my %packages;
