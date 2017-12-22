@@ -1495,7 +1495,7 @@ sub install_package ($pkg) {
             # Check to see if the dependency is already provided by some other installed package.
             if (not defined($local_version)) {    # dependency is not installed
 
-                chomp(my $deptest = `/usr/bin/pacman -T \Q$name\E`);
+                chomp(my $deptest = `/usr/bin/pacman -T \Q$pkgname\E`);
 
                 if ($deptest eq '') {
                     msg(":: Dependency <<$name>> is provided by other package -- skipping") if $lconfig{debug};
