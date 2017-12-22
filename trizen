@@ -274,13 +274,22 @@ my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/o;
 
 my $sudo_autorepeat_pid;
 
+sub exit_code ($code = $?) {
+
+    if ($code >= 256) {
+        $code >>= 8;
+    }
+
+    return $code;
+}
+
 # Main quit
 sub main_quit () {
     if ($lconfig{update_config}) {
         dump_configuration(\%CONFIG, $config_file);
     }
     kill('TERM', $sudo_autorepeat_pid) if $sudo_autorepeat_pid;
-    exit($? >> 8);
+    exit(exit_code());
 }
 
 #----------------------- USAGE -----------------------#
@@ -722,7 +731,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
     {
         system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
         if ($? and $needs_root) {
-            note(":: Exit code: " . ($? >> 8)) if $lconfig{debug};
+            note(":: Exit code: " . exit_code()) if $lconfig{debug};
             $term->ask_yn(prompt => "=>> Try again?", default => 'n') and redo;
         }
     }
@@ -1052,7 +1061,7 @@ sub move_built_package ($pkg) {
                   );
 
             if ($?) {
-                note(":: Unable to move package <<$pkg>> into <<$lconfig{movepkg_dir}>> -- exit code: " . ($? >> 8));
+                note(":: Unable to move package <<$pkg>> into <<$lconfig{movepkg_dir}>> -- exit code: " . exit_code());
                 if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
                     move_built_package($pkg);
                 }
@@ -1096,7 +1105,7 @@ sub recompute_dependencies ($info) {
     my @srcinfo = map { decode_utf8($_) } `/usr/bin/makepkg --printsrcinfo`;
 
     if ($?) {
-        note(":: `makepkg --printsrcinfo` exited with code: " . ($? >> 8));
+        note(":: `makepkg --printsrcinfo` exited with code: " . exit_code());
         return;
     }
 
@@ -1157,7 +1166,7 @@ sub edit_text_files ($info) {
             system $editor, rel2abs($file);
 
             if ($?) {
-                note(":: $editor exited with code: " . ($? >> 8));
+                note(":: $editor exited with code: " . exit_code());
                 return;
             }
         }
@@ -1171,7 +1180,7 @@ sub run_makepkg_command ($pkg, @args) {
     system join(' ', $lconfig{makepkg_command}, @args);
 
     if ($?) {
-        note(":: Unable to build <<$pkg>> - makepkg exited with code: " . ($? >> 8));
+        note(":: Unable to build <<$pkg>> - makepkg exited with code: " . exit_code());
         if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
             local $lconfig{nopull} = 1;
             delete $seen_package{$pkg};
@@ -1195,7 +1204,7 @@ sub install_local_package (@) {
 
     my $pkg_tarball = find_local_package($pkg, rel2abs(curdir())) // do {
         note(":: Unable to find a built tarball for <<$pkg>>");
-        $? = 2 << 8;
+        $? = 2;
         return;
     };
 
@@ -1376,7 +1385,7 @@ sub install_package ($pkg) {
     }
     else {
         note(":: Package not found: $pkg");
-        $? = 1 << 8;
+        $? = 1;
         return;
     }
 
@@ -1694,7 +1703,7 @@ sub update_local_packages () {
     my $multiinfo = json2perl(
         get("$aur_rpc_base_url?v=$AUR_V&type=multiinfo&$pkgs_query") // do {
             note(":: Unable to get info for local packages...");
-            $? = 1 << 8;
+            $? = 1;
             return;
           }
     );
@@ -1983,7 +1992,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             else {
                 my $info = info_for_package($pkg) // do {
                     note(":: Package not found: $pkg");
-                    $? = 1 << 8;
+                    $? = 1;
                     next;
                 };
                 show_info($info);
@@ -1998,7 +2007,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             local $lconfig{nopull}    = 1;
             if (!install_package($pkg)) {
                 note(":: Package not found: $pkg");
-                $? = 1 << 8;
+                $? = 1;
                 next;
             }
         }
@@ -2010,7 +2019,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             list_aur_maintainer_packages($maintainer)
               or do {
                 note(":: Maintainer not found: $maintainer");
-                $? = 1 << 8;
+                $? = 1;
                 next;
               };
         }
@@ -2023,13 +2032,13 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
 
             download_package($pkg, $lconfig{clone_dir}) or do {
                 note(":: Package not found: $pkg");
-                $? = 1 << 8;
+                $? = 1;
                 next;
             };
             open my $fh, '<:utf8', 'PKGBUILD'
               or do {
                 note(":: Cannot open PKGBUILD of package <<$pkg>>: {!$!!}");
-                $? = 2 << 8;
+                $? = 2;
                 next;
               };
 
@@ -2057,7 +2066,7 @@ elsif ($lconfig{C} or $lconfig{comments}) {          # -C
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
         my $info = info_for_package($pkg) // do {
             note(":: Package not found: $pkg");
-            $? = 1 << 8;
+            $? = 1;
             next;
         };
 
@@ -2094,7 +2103,7 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
 
             if (!install_package($pkg)) {
                 note(":: Package not found: $pkg");
-                $? = 1 << 8;
+                $? = 1;
                 next;
             }
         }
@@ -2105,7 +2114,7 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
             msg(":: Cloning package: $pkg") if $lconfig{debug};
             if (!download_package($pkg, rel2abs(curdir()))) {
                 note(":: Package not found: $pkg");
-                $? = 1 << 8;
+                $? = 1;
                 next;
             }
         }
