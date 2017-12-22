@@ -42,14 +42,11 @@ use experimental qw(signatures);
 use List::Util qw(first any);
 use Encode qw(decode_utf8);
 use Getopt::Std qw(getopts);
-use Text::ParseWords qw(quotewords);
-use URI::Escape qw(uri_escape_utf8 uri_unescape);
+use URI::Escape qw(uri_escape_utf8);
 
 use Term::ANSIColor qw(:constants);
 
-use File::Copy qw(move);
 use File::Path qw(make_path rmtree);
-use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
 my $version  = '1.33';
@@ -1032,8 +1029,12 @@ sub move_built_package ($pkg) {
     }
     if (-d $lconfig{movepkg_dir}) {
         if (-w _) {
+
+            require File::Copy;
+            require File::Basename;
+
             msg(":: Moving $pkg_tarball into $lconfig{movepkg_dir}") if $lconfig{debug};
-            move($pkg_tarball, catfile($lconfig{movepkg_dir}, basename($pkg_tarball)))
+            File::Copy::move($pkg_tarball, catfile($lconfig{movepkg_dir}, File::Basename::basename($pkg_tarball)))
               or note(":: Unable to move $pkg into $lconfig{movepkg_dir}: {!$!!}");
         }
         else {
