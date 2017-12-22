@@ -1764,7 +1764,6 @@ sub update_local_packages () {
     }
 
     my @selected_packages;
-    my $packages_count = scalar(@packages_for_update);
 
     if (keys %for_update) {
 
@@ -1775,8 +1774,7 @@ sub update_local_packages () {
                     );
 
         if ($reply eq 'all' or $reply eq '') {
-            @selected_packages =
-              sort map { $for_update{$_} } grep { /^[0-9]{1,3}\z/ && $_ > 0 && $_ <= $packages_count } keys %for_update;
+            @selected_packages = map { $_->{name} } @packages_for_update;
         }
         else {
             @selected_packages = map { $for_update{$_} } grep { exists $for_update{$_} } split(/[,\s]+/, $reply);
@@ -1789,10 +1787,10 @@ sub update_local_packages () {
 
     foreach my $pkgname (@selected_packages) {
         if (install_package($pkgname)) {
-            msg(":: <<$pkgname>> has been upgraded!") if $lconfig{debug};
+            msg(":: Package <<$pkgname>> has been upgraded!") if $lconfig{debug};
         }
         else {
-            note(":: <<$pkgname>> has {!NOT!} been upgraded!");
+            note(":: Package <<$pkgname>> has {!NOT!} been upgraded!");
         }
     }
 
