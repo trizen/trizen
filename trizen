@@ -404,13 +404,19 @@ sub parse_long_arguments (@args) {
     );
 }
 
+sub parse_short_arguments () {
+    getopts($short_arguments, \%lconfig);
+}
+
 my @keyword_arguments;
 my @leftover_short_arguments;
 my @leftover_long_arguments;
 
-{
+sub parse_arguments (@arguments) {
+
     my @long_arguments;
-    foreach my $arg (@ARGV) {
+
+    foreach my $arg (@arguments) {
 
         if ($arg =~ /^--(\w.*)/) {
             my $option = $1 =~ tr/-/_/r;
@@ -448,19 +454,16 @@ my @leftover_long_arguments;
         Getopt::Long::Configure('no_ignore_case');
         parse_long_arguments(@long_arguments);
     }
-}
 
-sub parse_short_arguments () {
-    getopts($short_arguments, \%lconfig);
-}
-
-{
     my @short_arguments = grep { /^-[$short_arguments]/ } @ARGV;
+
     if (@short_arguments) {
         local @ARGV = @short_arguments;
         parse_short_arguments();
     }
 }
+
+parse_arguments(@ARGV);
 
 if ($lconfig{as_root}) {
     warn "\n\t\t$c{bred}!!! You are running $c{bbgreen}${execname}$c{reset}$c{bred} as root !!!$c{reset}\n\n" if $lconfig{S};
