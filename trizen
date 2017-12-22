@@ -329,12 +329,12 @@ $c{bold}usage:$c{reset} $execname {-S --sync} [options] [package(s)]
 
 $c{bbgreen}Main options:$c{reset}
 
-  $c{bold}-s$c{reset}, $c{bold}--search$c{reset}        : search for packages
-  $c{bold}-i$c{reset}, $c{bold}--info$c{reset}          : output info for package
-  $c{bold}-m$c{reset}, $c{bold}--maintainer$c{reset}    : output packages maintained by [...]
-  $c{bold}-p$c{reset}, $c{bold}--pkgbuild$c{reset}      : output PKGBUILD only
-  $c{bold}-l$c{reset}, $c{bold}--local$c{reset}         : builds and installs package from `pwd`
-  $c{bold}-u$c{reset}, $c{bold}--sysupgrade$c{reset}    : upgrade installed packages
+  $c{bold}-s$c{reset}, $c{bold}--search$c{reset}        : searches for packages
+  $c{bold}-i$c{reset}, $c{bold}--info$c{reset}          : outputs info for packages
+  $c{bold}-m$c{reset}, $c{bold}--maintainer$c{reset}    : outputs packages maintained by [...]
+  $c{bold}-p$c{reset}, $c{bold}--pkgbuild$c{reset}      : outputs PKGBUILD only
+  $c{bold}-l$c{reset}, $c{bold}--local$c{reset}         : builds and installs packages from `pwd`
+  $c{bold}-u$c{reset}, $c{bold}--sysupgrade$c{reset}    : upgrades installed packages
   $c{bold}-y$c{reset}, $c{bold}--refresh$c{reset}       : refresh package databases (with: -u)
   $c{bold}-c$c{reset}, $c{bold}--clean$c{reset}         : clean the cache directory of `$execname` and `pacman`
   $c{bold}-a$c{reset}, $c{bold}--aur$c{reset}           : only AUR operations (with: -c, -u, -s, -i)
@@ -998,7 +998,7 @@ sub find_local_package ($pkgname, $dir) {
 
     opendir(my $dir_h, $dir)
       or do {
-        note(":: Unable to open dir <<$dir>>: {!$!!}");
+        note(":: Cannot access directory <<$dir>>: {!$!!}");
         return;
       };
 
@@ -1352,7 +1352,7 @@ sub install_package ($pkg) {
 
         msg(":: Package <<$pkg>> is available in pacman's repository...") if $lconfig{debug};
 
-        my @args = ('-S', get_pacman_arguments(0, qw(noconfirm force needed quiet)));
+        my @args = ('-S', get_pacman_arguments(0, qw(noconfirm force needed quiet)), @leftover_long_arguments);
 
         if ($lconfig{asdeps}) {
             push @args, '--asdeps';
@@ -1361,7 +1361,7 @@ sub install_package ($pkg) {
             push @args, '--asexplicit';
         }
 
-        return execute_pacman_command(1, @args, @leftover_long_arguments, $pkg);
+        return execute_pacman_command(1, @args, $pkg);
     }
     else {
         note(":: Package not found: $pkg");
@@ -1409,10 +1409,7 @@ sub install_package ($pkg) {
     }
 
     if ($lconfig{show_comments}) {
-        say '';
-        foreach my $comment (get_comments($info->{ID})) {
-            say $comment;
-        }
+        say "\n", join("\n", get_comments($info->{ID}));
     }
 
     # Edit PKGBUILD and other -T files
@@ -1519,14 +1516,14 @@ sub install_package ($pkg) {
     return build_and_install_package($pkg, @args);
 }
 
-sub clear_cache () {
+sub clean_cache () {
 
     if (!$lconfig{aur}) {
         execute_pacman_command(1, get_pacman_arguments(1, qw(sync clean noconfirm force quiet)));
     }
 
     opendir(my $dir_h, $lconfig{clone_dir})
-      or error(":: Cannot access the AUR cache directory: {!$!!}");
+      or error(":: Cannot access the AUR clone directory: {!$!!}");
 
     if ($lconfig{clone_dir} !~ m{^/tmp/}) {
         $term->ask_yn(prompt  => "=> Do you want to remove the content of $c{bold}$lconfig{clone_dir}$c{reset}?",
@@ -1682,8 +1679,7 @@ sub update_local_packages () {
 
     ref($multiinfo->{results}) eq 'ARRAY' or return;
 
-    my $i = 0;
-    my %for_update;
+    my @packages_for_update;
 
     foreach my $hash_ref (@{$multiinfo->{results}}) {
 
@@ -1706,13 +1702,7 @@ sub update_local_packages () {
           && $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/;
 
         if (versioncmp($packages{$pkgname}, $version) == -1 or $is_devel_pkg) {
-
-            $for_update{++$i} = $pkgname;
-            $for_update{$pkgname} = $pkgname;
-#<<<
-            printf("$c{bblue}%2s$c{reset}. $c{bold}%s$c{reset}: $c{bred}%s$c{reset} $c{bold}==>$c{reset} $c{bbgreen}%s$c{reset}\n",
-                $i, $pkgname, $packages{$pkgname}, $version);
-#>>>
+            push @packages_for_update, {name => $pkgname, version => $version};
         }
         elsif ($version ne $packages{$pkgname}) {
             note(  ":: Package <<$pkgname>> has a different version in AUR!"
@@ -1731,13 +1721,51 @@ sub update_local_packages () {
         }
     }
 
+    my $max_pkgname_width = 0;
+    my $max_version_width = 0;
+
+    foreach my $package (@packages_for_update) {
+
+        my $pkgname = $package->{name};
+
+        my $pkgname_len = length($pkgname);
+        my $version_len = length($packages{$pkgname});
+
+        if ($pkgname_len > $max_pkgname_width) {
+            $max_pkgname_width = $pkgname_len;
+        }
+
+        if ($version_len > $max_version_width) {
+            $max_version_width = $version_len;
+        }
+    }
+
+    my %for_update;
+
+    foreach my $i (0 .. $#packages_for_update) {
+
+        my $package = $packages_for_update[$i];
+
+        my $pkgname = $package->{name};
+        my $version = $package->{version};
+
+        $for_update{$i + 1} = $pkgname;
+        $for_update{$pkgname} = $pkgname;
+
+        printf(
+             "$c{bblue}%2s$c{reset}. $c{bold}%*s$c{reset}: $c{bred}%*s$c{reset} $c{bold}==>$c{reset} $c{bbgreen}%s$c{reset}\n",
+             $i + 1, $max_pkgname_width, $pkgname, $max_version_width, $packages{$pkgname}, $version);
+    }
+
     # When piped in interactive mode, just return.
     # e.g.: trizen -Su --aur | wc -l
     if (not $lconfig{noconfirm} and not $stdout_on_tty) {
         return 1;
     }
 
-    my @for_update;
+    my @selected_packages;
+    my $packages_count = scalar(@packages_for_update);
+
     if (keys %for_update) {
 
         my $reply = (
@@ -1747,17 +1775,19 @@ sub update_local_packages () {
                     );
 
         if ($reply eq 'all' or $reply eq '') {
-            @for_update = sort map { $for_update{$_} } grep { /^[0-9]{1,3}\z/ && $_ > 0 && $_ <= $i } keys %for_update;
+            @selected_packages =
+              sort map { $for_update{$_} } grep { /^[0-9]{1,3}\z/ && $_ > 0 && $_ <= $packages_count } keys %for_update;
         }
         else {
-            @for_update = map { $for_update{$_} } grep { exists $for_update{$_} } split(/[,\s]+/, $reply);
+            @selected_packages = map { $for_update{$_} } grep { exists $for_update{$_} } split(/[,\s]+/, $reply);
         }
     }
     else {
         msg(":: No AUR updates found!");
+        return 1;
     }
 
-    foreach my $pkgname (@for_update) {
+    foreach my $pkgname (@selected_packages) {
         if (install_package($pkgname)) {
             msg(":: <<$pkgname>> has been upgraded!") if $lconfig{debug};
         }
@@ -1888,7 +1918,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
 
     if ($lconfig{c} or $lconfig{clean}) {    # -Sc
-        clear_cache();
+        clean_cache();
     }
 
     if ($lconfig{u} or $lconfig{sysupgrade}) {    # -Su
