@@ -746,19 +746,29 @@ sub is_available_in_pacman_repo ($pkgname) {
     return $exit_code ? 0 : 1;
 }
 
-sub package_is_installed ($pkgname) {
+sub package_is_installed ($pkgname, $strict = 1) {
     my $regex = qr{^\Q$pkgname\E-([^-]+-\d+)\z};
 
-    opendir(my $dir_h, $lconfig{pacman_local_dir}) or return;
+    my @directories;
 
-    while (defined(my $dir = readdir($dir_h))) {
+    if (!$strict and ref($lconfig{_package_dirs}) eq 'ARRAY') {
+        @directories = @{$lconfig{_package_dirs}};
+    }
+    else {
+        opendir(my $dir_h, $lconfig{pacman_local_dir}) or return;
+        @directories = readdir($dir_h);
+        closedir($dir_h);
+
+        # Cache the package directories
+        $lconfig{_package_dirs} = \@directories;
+    }
+
+    foreach my $dir (@directories) {
         if ($dir =~ $regex) {
-            closedir $dir_h;
             return $1;
         }
     }
 
-    closedir $dir_h;
     return;
 }
 
@@ -988,7 +998,7 @@ sub show_info ($info) {
       ["License         : %s\n", indent_array(array_ref_or_string($info->{License}))],
       ["Votes           : %s\n", $info->{NumVotes}],
       ["Popularity      : %s\n", sprintf("%.2g%%", $info->{Popularity})],
-      ["Installed       : %s\n", package_is_installed($info->{Name}) ? "$c{bbgreen}Yes$c{reset}" : 'No'],
+      ["Installed       : %s\n", package_is_installed($info->{Name}, 0) ? "$c{bbgreen}Yes$c{reset}" : 'No'],
       ["Out Of Date     : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
       ["Depends On      : %s\n", indent_array(array_ref_or_string($info->{Depends}))],
       ["Make Deps       : %s\n", indent_array(array_ref_or_string($info->{MakeDepends}))],
@@ -1591,7 +1601,7 @@ sub print_aur_results (@results) {
         # Compare installed version with AUR version
         my $is_installed_string = $lconfig{aur_results_show_installed}
           ? do {
-            my $installed_version = package_is_installed($result->{Name});
+            my $installed_version = package_is_installed($result->{Name}, 0);
 
             defined($installed_version)
               ? versioncmp($installed_version, $result->{Version}) >= 0
