@@ -1612,22 +1612,24 @@ sub search_aur_packages (@keywords) {
         push @all_results, json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=search&arg=$key") // next);
     }
 
-    my @keys_re = map { qr/\Q$_\E/i } @keywords;
     my %seen;
+    my @keys_re = map { qr/\Q$_\E/i } @keywords;
 
     my @matched_results;
     foreach my $results (@all_results) {
 
         ref($results->{results}) eq 'ARRAY' or next;
 
-      LOOP_2: foreach my $result (@{$results->{results}}) {
+        foreach my $result (@{$results->{results}}) {
             next if $seen{$result->{Name}}++;
-            foreach my $key_re (@keys_re) {
-                if (    not(($result->{Name} // '') =~ $key_re)
-                    and not(($result->{Description} // '') =~ $key_re)) {
-                    next LOOP_2;
-                }
-            }
+
+#<<<
+            next if any {
+                      not(($result->{Name}        // '') =~ $_)
+                  and not(($result->{Description} // '') =~ $_)
+            } @keys_re;
+#>>>
+
             push @matched_results, $result;
         }
     }
