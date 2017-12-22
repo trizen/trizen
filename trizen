@@ -1721,13 +1721,15 @@ sub update_local_packages () {
         }
 
         my $is_vcs_package = is_vcs_package($pkgname);
+        my $local_vcmp = versioncmp($packages{$pkgname}, $version);
 
-        if (versioncmp($packages{$pkgname}, $version) < 0 or ($lconfig{devel} and $is_vcs_package)) {
+        if ($local_vcmp < 0 or ($lconfig{devel} and $is_vcs_package)) {
             push @packages_for_update,
               {
-                name    => $pkgname,
-                version => $version,
-                is_vcs  => $is_vcs_package,
+                name       => $pkgname,
+                version    => $version,
+                is_vcs     => $is_vcs_package,
+                local_vcmp => $local_vcmp,
               };
         }
         elsif ($version ne $packages{$pkgname}) {
@@ -1778,12 +1780,10 @@ sub update_local_packages () {
         $for_update{$i + 1} = $pkgname;
         $for_update{$pkgname} = $pkgname;
 
-        my $cmp = versioncmp($packages{$pkgname}, $version);
+        if ($package->{is_vcs} and $package->{local_vcmp} >= 0) {
 
-        if ($package->{is_vcs} and $cmp >= 0) {
-
-            my $aur_color   = $cmp == 0 ? $c{bgreen} : $c{byellow};
-            my $local_color = $cmp == 0 ? $c{bgreen} : $c{bblue};
+            my $aur_color   = $package->{local_vcmp} == 0 ? $c{bgreen} : $c{byellow};
+            my $local_color = $package->{local_vcmp} == 0 ? $c{bgreen} : $c{bblue};
 
 #<<<
             printf(
