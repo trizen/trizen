@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 21 December 2017
+# Latest edit: 22 December 2017
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -49,7 +49,7 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.33';
+my $version  = '1.34';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -341,7 +341,7 @@ $c{bbgreen}Main options:$c{reset}
 
 $c{bbgreen}Other options:$c{reset}
 
-      $c{bold}--devel$c{reset}         : update devel packages during -Su
+      $c{bold}--devel$c{reset}         : update VCS packages during -Su
       $c{bold}--show-ood$c{reset}      : show out-of-date flagged packages during -Su
       $c{bold}--noinfo$c{reset}        : do not display package info after cloning
       $c{bold}--nopull$c{reset}        : do not `git pull` new changes
@@ -1332,11 +1332,15 @@ sub build_and_install_package ($pkg, @args) {
     return;
 }
 
-sub _is_lib32 ($pkg) {
+sub is_lib32 ($pkg) {
     if ($arch ne 'x86_64') {
         return 1 if $pkg =~ /^lib32-\w/;
     }
     return;
+}
+
+sub is_vcs_package ($pkg) {
+    $pkg =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/;
 }
 
 sub install_package ($pkg) {
@@ -1381,12 +1385,21 @@ sub install_package ($pkg) {
         msg(":: Package <<$pkg>> is already installed!") if $lconfig{debug};
 
         if ($lconfig{needed}) {
-            if (versioncmp($version, $info->{Version}) >= 0) {
+
+            # Ignore the `--needed` flag when `--devel` is used and the package is a VCS package
+            if ($lconfig{devel} and is_vcs_package($pkg)) {
+                msg(":: Package <<$pkg>> is a VCS package -- installing");
+            }
+
+            # Compare the local version against the AUR version
+            elsif (versioncmp($version, $info->{Version}) >= 0) {
                 msg(":: Package <<$pkg>> is installed and up-to-date -- skipping");
                 return 1;    # package is installed and up-to-date
             }
+
+            # Package seems to be out-of-date
             else {
-                note(":: Package <<$pkg>> is {!out-of-date!}!") if $lconfig{debug};
+                note(":: Package <<$pkg>> seems to be {!out-of-date!} -- installing") if $lconfig{debug};
             }
         }
     }
@@ -1448,7 +1461,7 @@ sub install_package ($pkg) {
 
         my ($name, $cmp, $version) = parse_package_name_and_version($pkgname);
 
-        if (_is_lib32($name)) {
+        if (is_lib32($name)) {
             msg(":: Ignoring lib32-* package arch '$arch': $name") if $lconfig{debug};
             next;
         }
@@ -1707,11 +1720,15 @@ sub update_local_packages () {
             note(":: Package <<$pkgname>> is {!unmaintained!}!");
         }
 
-        my $is_devel_pkg = $lconfig{devel}
-          && $pkgname =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/;
+        my $is_vcs_package = is_vcs_package($pkgname);
 
-        if (versioncmp($packages{$pkgname}, $version) == -1 or $is_devel_pkg) {
-            push @packages_for_update, {name => $pkgname, version => $version};
+        if (versioncmp($packages{$pkgname}, $version) < 0 or ($lconfig{devel} and $is_vcs_package)) {
+            push @packages_for_update,
+              {
+                name    => $pkgname,
+                version => $version,
+                is_vcs  => $is_vcs_package,
+              };
         }
         elsif ($version ne $packages{$pkgname}) {
             note(  ":: Package <<$pkgname>> has a different version in AUR!"
@@ -1761,9 +1778,28 @@ sub update_local_packages () {
         $for_update{$i + 1} = $pkgname;
         $for_update{$pkgname} = $pkgname;
 
-        printf(
-             "$c{bblue}%2s$c{reset}. $c{bold}%*s$c{reset}: $c{bred}%*s$c{reset} $c{bold}==>$c{reset} $c{bbgreen}%s$c{reset}\n",
-             $i + 1, $max_pkgname_width, $pkgname, $max_version_width, $packages{$pkgname}, $version);
+        my $cmp = versioncmp($packages{$pkgname}, $version);
+
+        if ($package->{is_vcs} and $cmp >= 0) {
+
+            my $aur_color   = $cmp == 0 ? $c{bgreen} : $c{byellow};
+            my $local_color = $cmp == 0 ? $c{bgreen} : $c{bblue};
+
+#<<<
+            printf(
+                "$c{bblue}%2s$c{reset}. $c{bold}%*s$c{reset}: $local_color%*s$c{reset} $c{bold}<=>$c{reset} $aur_color%s$c{reset}\n",
+                $i + 1, $max_pkgname_width, $pkgname, $max_version_width, $packages{$pkgname}, $version
+            );
+#>>>
+        }
+        else {
+#<<<
+            printf(
+                "$c{bblue}%2s$c{reset}. $c{bold}%*s$c{reset}: $c{bred}%*s$c{reset} $c{bold}==>$c{reset} $c{bbgreen}%s$c{reset}\n",
+                $i + 1, $max_pkgname_width, $pkgname, $max_version_width, $packages{$pkgname}, $version
+            );
+#>>>
+        }
     }
 
     # When piped in interactive mode, just return.
