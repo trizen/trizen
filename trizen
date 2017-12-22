@@ -293,11 +293,14 @@ $c{bold}usage:$c{reset} $execname [options] [pkgname] [pkgname] [...]
 
 $c{bbgreen}Main options:$c{reset}
 
-    $c{bold}-S$c{reset}, $c{bold}--sync$c{reset}      : install a package (see: $execname -Sh)
-    $c{bold}-C$c{reset}, $c{bold}--comments$c{reset}  : outputs AUR comments for a package
+    $c{bold}-S$c{reset}, $c{bold}--sync$c{reset}      : install packages (see: $execname -Sh)
+    $c{bold}-C$c{reset}, $c{bold}--comments$c{reset}  : display AUR comments for a package
     $c{bold}-G$c{reset}, $c{bold}--get$c{reset}       : clones a package in the current directory
-    $c{bold}-R$c{reset}, $c{bold}--remove$c{reset}    : removes packages (see: pacman -Rh)
-    $c{bold}-Q$c{reset}, $c{bold}--query$c{reset}     : query locally-installed packages (see: pacman -Qh)
+    $c{bold}-R$c{reset}, $c{bold}--remove$c{reset}    : remove packages from the system (see: pacman -Rh)
+    $c{bold}-Q$c{reset}, $c{bold}--query$c{reset}     : query the package database (see: pacman -Qh)
+    $c{bold}-F$c{reset}, $c{bold}--files$c{reset}     : query the files database (see: pacman -Fh)
+    $c{bold}-D$c{reset}, $c{bold}--database$c{reset}  : operate on the package database (see: pacman -Dh)
+    $c{bold}-T$c{reset}, $c{bold}--deptest$c{reset}   : check dependencies (see: pacman -Th)
     $c{bold}-U$c{reset}, $c{bold}--upgrade$c{reset}   : install built packages from $lconfig{clone_dir} or `pwd`
 
 $c{bbgreen}Other options:$c{reset}
