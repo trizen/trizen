@@ -747,26 +747,24 @@ sub is_available_in_pacman_repo ($pkgname) {
 }
 
 sub package_is_installed ($pkgname, $strict = 1) {
-    my $regex = qr{^\Q$pkgname\E-([^-]+-\d+)\z};
+    my $regex = qr{/\Q$pkgname\E-([^-]+-\d+)/};
 
-    my @directories;
+    my $dirs_string;
 
-    if (!$strict and ref($lconfig{_package_dirs}) eq 'ARRAY') {
-        @directories = @{$lconfig{_package_dirs}};
+    if (!$strict and defined($lconfig{_dirs_string})) {
+        $dirs_string = $lconfig{_dirs_string};
     }
     else {
         opendir(my $dir_h, $lconfig{pacman_local_dir}) or return;
-        @directories = readdir($dir_h);
+        $dirs_string = '/' . join('/', readdir($dir_h)) . '/';
         closedir($dir_h);
 
-        # Cache the package directories
-        $lconfig{_package_dirs} = \@directories;
+        # Cache the directories
+        $lconfig{_dirs_string} = $dirs_string;
     }
 
-    foreach my $dir (@directories) {
-        if ($dir =~ $regex) {
-            return $1;
-        }
+    if ($dirs_string =~ $regex) {
+        return $1;
     }
 
     return;
