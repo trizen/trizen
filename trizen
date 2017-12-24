@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 22 December 2017
+# Latest edit: 24 December 2017
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -1703,7 +1703,7 @@ sub update_local_packages () {
 
     # Get info only for a random subset of 150 packages to avoid the "Request-URI too large" error.
     my @subset = do {
-        my @list = grep { not exists $ignored_pkgs{$_} } keys %packages;
+        my @list = keys %packages;
         sort splice(@list, 0, 150);
     };
 
@@ -1745,6 +1745,14 @@ sub update_local_packages () {
         my $local_vcmp = versioncmp($packages{$pkgname}, $version);
 
         if ($local_vcmp < 0 or ($lconfig{devel} and $is_vcs_package)) {
+
+            if (exists $ignored_pkgs{$pkgname}) {
+                note(  ":: <<$pkgname>> - ignoring package upgrade ({!$packages{$pkgname}!} => <<"
+                     . (($is_vcs_package && $local_vcmp >= 0) ? 'latest' : $version)
+                     . ">>)");
+                next;
+            }
+
             push @packages_for_update,
               {
                 name       => $pkgname,
