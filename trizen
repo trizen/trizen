@@ -755,9 +755,13 @@ sub package_is_installed ($pkgname, $strict = 1) {
         $dirs_string = $lconfig{_dirs_string};
     }
     else {
-        opendir(my $dir_h, $lconfig{pacman_local_dir}) or return;
-        $dirs_string = '/' . join('/', readdir($dir_h)) . '/';
-        closedir($dir_h);
+        if (opendir(my $dir_h, $lconfig{pacman_local_dir})) {
+            $dirs_string = '/' . join('/', readdir($dir_h)) . '/';
+            closedir($dir_h);
+        }
+        else {
+            $dirs_string = '/' . join('/', map { join('-', split(' ', $_)) } `/usr/bin/pacman -Q`) . '/';
+        }
 
         # Cache the directories
         $lconfig{_dirs_string} = $dirs_string;
