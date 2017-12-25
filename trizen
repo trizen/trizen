@@ -1302,7 +1302,7 @@ sub install_built_package ($pkg, @args) {
 
         say '';
         msg(":: This group contains <<" . scalar(@packages) . ">> more packages:");
-        say join("\n", map { "\t$_" } @packages), "\n";
+        say "\n" . join("\n", map { "   $_" } @packages), "\n";
 
         if (
             $term->ask_yn(prompt  => '=>> Do you want to install more packages from this group?',
