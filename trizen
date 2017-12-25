@@ -747,28 +747,52 @@ sub is_available_in_pacman_repo ($pkgname) {
 }
 
 sub package_is_installed ($pkgname, $strict = 1) {
-    my $regex = qr{/\Q$pkgname\E-([^-]+-\d+)/};
 
-    my $dirs_string;
+    my $installed_packages = {};
 
-    if (!$strict and defined($lconfig{_dirs_string})) {
-        $dirs_string = $lconfig{_dirs_string};
+    if (!$strict and ref($lconfig{_installed_packages_cache}) eq 'HASH') {
+        $installed_packages = $lconfig{_installed_packages_cache};
     }
     else {
+
         if (opendir(my $dir_h, $lconfig{pacman_local_dir})) {
-            $dirs_string = '/' . join('/', readdir($dir_h)) . '/';
+
+            # Performance optimization when $strict is true
+            if ($strict) {
+
+                my $dirs_string = '/' . join('/', readdir($dir_h)) . '/';
+                closedir($dir_h);
+
+                if ($dirs_string =~ m{/\Q$pkgname\E-([^-]+-\d+)/}) {
+                    return $1;
+                }
+
+                return;
+            }
+
+            foreach my $dir (readdir($dir_h)) {
+                if (scalar(reverse($dir)) =~ /^(.+?-.+?)-(.+)/) {
+
+                    my $name    = reverse($2);
+                    my $version = reverse($1);
+
+                    $installed_packages->{$name} = $version;
+                }
+            }
+
             closedir($dir_h);
         }
-        else {
-            $dirs_string = '/' . join('/', map { join('-', split(' ', $_)) } `/usr/bin/pacman -Q`) . '/';
+
+        if (not keys(%$installed_packages)) {
+            %$installed_packages = map { split(' ', $_) } `/usr/bin/pacman -Q`;
         }
 
-        # Cache the directories
-        $lconfig{_dirs_string} = $dirs_string;
+        # Cache the installed packages
+        $lconfig{_installed_packages_cache} = $installed_packages;
     }
 
-    if ($dirs_string =~ $regex) {
-        return $1;
+    if (exists $installed_packages->{$pkgname}) {
+        return $installed_packages->{$pkgname};
     }
 
     return;
@@ -1000,7 +1024,7 @@ sub show_info ($info) {
       ["License         : %s\n", indent_array(array_ref_or_string($info->{License}))],
       ["Votes           : %s\n", $info->{NumVotes}],
       ["Popularity      : %s\n", sprintf("%.2g%%", $info->{Popularity})],
-      ["Installed       : %s\n", package_is_installed($info->{Name}, 0) ? "$c{bbgreen}Yes$c{reset}" : 'No'],
+      ["Installed       : %s\n", package_is_installed($info->{Name}) ? "$c{bbgreen}Yes$c{reset}" : 'No'],
       ["Out Of Date     : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
       ["Depends On      : %s\n", indent_array(array_ref_or_string($info->{Depends}))],
       ["Make Deps       : %s\n", indent_array(array_ref_or_string($info->{MakeDepends}))],
