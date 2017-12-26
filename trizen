@@ -72,7 +72,7 @@ my $arch = substr(`/usr/bin/uname -m`, 0, -1);
 
 my %ignored_pkgs;
 if (-x '/usr/bin/pacconf') {
-    %ignored_pkgs = map { ($_ => 1) } split(' ', `/usr/bin/pacconf IgnorePkg`);
+    %ignored_pkgs = map { ($_ => 1) } split(' ', `/usr/bin/pacconf IgnorePkg 2> /dev/null`);
 }
 
 # UTF-8 output
