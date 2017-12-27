@@ -39,51 +39,29 @@ fi
 
 # options for passing to _arguments: main trizen commands
 _trizen_opts_commands=(
-    {-D,--database}'[Modify database]'
-    {-Q,--query}'[Query the package database]'
-    {-R,--remove}'[Remove a package from the system]'
     {-S,--sync}'[Synchronize packages]'
+    {-D,--database}'[Operate on the package database]'
+    {-Q,--query}'[Query the package database]'
+    {-R,--remove}'[Remove packages from the system]'
     {-T,--deptest}'[Check if dependencies are installed]'
     {-U,--upgrade}'[Upgrade a package]'
 
-    {-s,--search}'[Search AUR package names and descriptions]'
-    {-i,--info}'[Show info for target(s)]'
-    {-d,--download}'[Download target(s)]'
-    {-m,--makepkg}'[Download and make target(s)]'
-    {-y,--sync}'[Download, make and install target(s)]'
-    {-k,--check}'[Check for AUR update(s)]'
-    {-u,--update}'[Update AUR package(s)]'
     {-h,--help}'[Display usage]'
-    '-V[Display pacman version]'
     {-v,--version}'[Display trizen version]'
     '(-h --help)'{-h,--help}'[Display usage]'
 )
 
 _trizen_opts_extended=(
-    {-a,--aur}'[Only search, install or clean packages from the AUR]'
-    {-e,--edit}'[Edit target(s) PKGBUILD and view install script]'
-    {-r,--repo}'[Only search, install or clean packages from the repositories]'
-    '--domain[Point at another domain]'
-    '--foreign[Consider already installed foreign dependencies]'
+    {-a,--aur}'[Only AUR operations]'
     '--noedit[Do not prompt to edit files]'
-    '--rebuild[Always rebuild package(s)]'
-    '--silent[Silence output]'
 )
 
 # options for passing to _arguments: options common to all commands
 _trizen_opts_common=(
-    {-b,--dbpath}'[Alternate database location]:database_location:_files -/'
-    '--color[colorize the output]:color options:(always never auto)'
     {-h,--help}'[Display syntax for the given operation]'
-    '--root[Set alternate installation root]:installation root:_files -/'
-    {-v,--verbose}'[Be more verbose]'
-    '--cachedir[Alternate package cache location]:cache_location:_files -/'
-    '--config[An alternate configuration file]:config file:_files'
-    '--logfile[An alternate log file]:config file:_files'
+    '--clone-dir[Alternate package cache location]:cache_location:_files -/'
+    '--debug[Activate the debug/verbose mode]'
     '--noconfirm[Do not ask for confirmation]'
-    '--noprogressbar[Do not show a progress bar when downloading files]'
-    '--noscriptlet[Do not execute the install scriptlet if one exists]'
-    '--print[Only print the targets instead of performing the operation]'
 )
 
 # options for passing to _arguments: options for --upgrade commands
@@ -139,28 +117,31 @@ _trizen_opts_database=(
 # options for passing to _arguments: options for --sync command
 _trizen_opts_sync_actions=(
     '(-S --sync)'{-S,--sync}
-    {\*-c,\*--clean}'[Remove old packages from cache]:\*:clean:->sync_clean'
-    {-g,--groups}'[View all members of a package group]:*:package groups:->sync_group'
-    {-s,--search}'[Search package names and descriptions]:*:search text:->sync_search'
-    '--dbonly[Only remove database entry, do not remove files]'
+    {\*-c,\*--clean}'[Clean the cache directory]:\*:clean:->sync_clean'
     '--needed[Do not reinstall up to date packages]'
-    '--recursive[Reinstall all dependencies of target packages]'
 )
 
 # options for passing to _arguments: options for --sync command
 _trizen_opts_sync_modifiers=(
-    {\*-d,\*--nodeps}'[Skip dependency checks]'
     {\*-i,\*--info}'[View package information]'
-    {-l,--list}'[List all packages in a repository]'
-    {-p,--print}'[Print download URIs for each package to be installed]'
-    {\*-u,\*--sysupgrade}'[Upgrade all out-of-date packages]'
-    {-w,--downloadonly}'[Download packages only]'
-    {\*-y,\*--refresh}'[Download fresh package databases]'
+    {-m,--maintainer}'[Show packages maintained by <username>]'
+    {-y,--refresh}'[Refresh package databases]'
+    {-u,--sysupgrade}'[Upgrade installed packages]'
+    {-s,--search}'[Search for packages]'
+    {-p,--pkgbuild}'[Show PKGBUILD only]'
+    {-l,--local}'[Build and installs packages from `pwd`]'
     {-q,--quiet}'[Show less information]'
     '*--ignore[Ignore a package upgrade]:package: _trizen_all_packages'
-    '*--ignoregroup[Ignore a group upgrade]:package group:_trizen_completions_all_groups'
     '--asdeps[Install packages as non-explicitly installed]'
     '--asexplicit[Install packages as explicitly installed]'
+    '--devel[Update VCS packages during -Su]'
+    '--show-ood[Show out-of-date flagged packages during -Su]'
+    '--noinfo[Do not display package info after cloning]'
+    '--nopull[Do not `git pull` new changes]'
+    '--noedit[Do not prompt to edit files]'
+    '--nobuild[Do not build packages (implies --noedit)]'
+    '--noinstall[Do not install packages after building]'
+    '--skipinteg[Pass the `--skipinteg` argument to `makepkg`]'
     '--force[Overwrite conflicting files]'
 )
 
@@ -261,9 +242,7 @@ _trizen_action_sync() {
         sync_group)
             _arguments -s : \
                 "$_trizen_opts_common[@]" \
-                "$_trizen_opts_sync_modifiers[@]" \
-                '(-g --group)'{-g,--groups} \
-                '*:package group:_trizen_completions_all_groups'
+                "$_trizen_opts_sync_modifiers[@]"
             ;;
         sync_search)
             _arguments -s : \
