@@ -178,7 +178,6 @@ my %lconfig = (
     check         => 0,                           # -k
     with_deps     => 0,                           # -d
     maintainer    => 0,                           # -m
-    really_quiet  => 0,
     noinstall     => 0,
     update_config => 0,
     asdep         => 0,                           # alias for `--asdeps`
@@ -510,12 +509,6 @@ if ($lconfig{a}) {
 
 if ($lconfig{debug}) {
     $lconfig{lwp_show_progress} = 1;
-}
-
-if ($lconfig{really_quiet}) {
-    open STDOUT, '>', undef;
-    open STDERR, '>', undef;
-    $lconfig{quiet} = 1;
 }
 
 if ($lconfig{quiet}) {

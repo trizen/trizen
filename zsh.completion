@@ -47,7 +47,7 @@ _trizen_opts_commands=(
     {-U,--upgrade}'[Upgrade a package]'
 
     {-h,--help}'[Display usage]'
-    {-v,--version}'[Display trizen version]'
+    '--version[Display trizen version]'
     '(-h --help)'{-h,--help}'[Display usage]'
 )
 
