@@ -338,12 +338,12 @@ $c{bold}usage:$c{reset} $execname {-S --sync} [options] [package(s)]
 
 $c{bbgreen}Main options:$c{reset}
 
-  $c{bold}-s$c{reset}, $c{bold}--search$c{reset}        : searches for packages
-  $c{bold}-i$c{reset}, $c{bold}--info$c{reset}          : outputs info for packages
-  $c{bold}-m$c{reset}, $c{bold}--maintainer$c{reset}    : outputs packages maintained by [...]
-  $c{bold}-p$c{reset}, $c{bold}--pkgbuild$c{reset}      : outputs PKGBUILD only
-  $c{bold}-l$c{reset}, $c{bold}--local$c{reset}         : builds and installs packages from `pwd`
-  $c{bold}-u$c{reset}, $c{bold}--sysupgrade$c{reset}    : upgrades installed packages
+  $c{bold}-s$c{reset}, $c{bold}--search$c{reset}        : search for packages
+  $c{bold}-i$c{reset}, $c{bold}--info$c{reset}          : show info for packages
+  $c{bold}-m$c{reset}, $c{bold}--maintainer$c{reset}    : show packages maintained by <username>
+  $c{bold}-p$c{reset}, $c{bold}--pkgbuild$c{reset}      : show PKGBUILD only
+  $c{bold}-l$c{reset}, $c{bold}--local$c{reset}         : build and install packages from `pwd`
+  $c{bold}-u$c{reset}, $c{bold}--sysupgrade$c{reset}    : upgrade installed packages
   $c{bold}-y$c{reset}, $c{bold}--refresh$c{reset}       : refresh package databases (with: -u)
   $c{bold}-c$c{reset}, $c{bold}--clean$c{reset}         : clean the cache directory of `$execname` and `pacman`
   $c{bold}-a$c{reset}, $c{bold}--aur$c{reset}           : only AUR operations (with: -c, -u, -s, -i)
@@ -358,8 +358,8 @@ $c{bbgreen}Other options:$c{reset}
       $c{bold}--nobuild$c{reset}       : do not build packages (implies --noedit)
       $c{bold}--noinstall$c{reset}     : do not install packages after building
       $c{bold}--needed$c{reset}        : do not reinstall up-to-date packages
-      $c{bold}--asdeps$c{reset}        : installs packages as dependencies
-      $c{bold}--asexplicit$c{reset}    : installs packages as explicitly installed
+      $c{bold}--asdeps$c{reset}        : install packages as non-explicitly installed
+      $c{bold}--asexplicit$c{reset}    : install packages as explicitly installed
       $c{bold}--force$c{reset}         : pass the `--force` argument to `pacman`
       $c{bold}--skipinteg$c{reset}     : pass the `--skipinteg` argument to `makepkg`
       $c{bold}--noconfirm$c{reset}     : do not ask for any confirmation

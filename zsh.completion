@@ -70,7 +70,7 @@ _trizen_opts_pkgfile=(
     '*--nodeps[Skip dependency checks]'
     '--dbonly[Only remove database entry, do not remove files]'
     '--force[Overwrite conflicting files]'
-    '--needed[Do not reinstall up to date packages]'
+    '--needed[Do not reinstall up-to-date packages]'
     '*:package file:_files -g "*.pkg.tar*~*.sig(.,@)"'
 )
 
@@ -118,7 +118,7 @@ _trizen_opts_database=(
 _trizen_opts_sync_actions=(
     '(-S --sync)'{-S,--sync}
     {\*-c,\*--clean}'[Clean the cache directory]:\*:clean:->sync_clean'
-    '--needed[Do not reinstall up to date packages]'
+    '--needed[Do not reinstall up-to-date packages]'
 )
 
 # options for passing to _arguments: options for --sync command
@@ -131,7 +131,6 @@ _trizen_opts_sync_modifiers=(
     {-p,--pkgbuild}'[Show PKGBUILD only]'
     {-l,--local}'[Build and installs packages from `pwd`]'
     {-q,--quiet}'[Show less information]'
-    '*--ignore[Ignore a package upgrade]:package: _trizen_all_packages'
     '--asdeps[Install packages as non-explicitly installed]'
     '--asexplicit[Install packages as explicitly installed]'
     '--devel[Update VCS packages during -Su]'
