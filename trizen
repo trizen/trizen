@@ -1710,13 +1710,7 @@ sub update_local_packages () {
         execute_pacman_command(1, get_pacman_arguments(1, qw(sync sysupgrade noconfirm force quiet refresh)));
     }
 
-    my %packages;
-    open my $pipe_h, '-|:utf8', '/usr/bin/pacman', '-Qm';
-    while (defined(my $line = <$pipe_h>)) {
-        my ($package, $version) = split(' ', $line);
-        $packages{$package} = $version;
-    }
-    close $pipe_h;
+    my %packages = map { split(' ', $_) } `/usr/bin/pacman -Qm`;
 
     # Get info only for a random subset of 150 packages to avoid the "Request-URI too large" error.
     my @subset = do {
