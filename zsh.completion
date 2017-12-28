@@ -138,6 +138,7 @@ _trizen_opts_sync_modifiers=(
     '--noinfo[Do not display package info after cloning]'
     '--nopull[Do not `git pull` new changes]'
     '--noedit[Do not prompt to edit files]'
+    '--ignore[Space-separated list of packages to ignore]'
     '--nobuild[Do not build packages (implies --noedit)]'
     '--noinstall[Do not install packages after building]'
     '--skipinteg[Pass the `--skipinteg` argument to `makepkg`]'

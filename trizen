@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 25 December 2017
+# Latest edit: 28 December 2017
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -49,7 +49,7 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.35';
+my $version  = '1.36';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -116,7 +116,7 @@ my %CONFIG = (
               nocolors                     => 0,
               movepkg                      => 0,
               noedit                       => 0,
-              nobuild                      => 0,
+              noinstall                    => 0,
               nopull                       => 0,
               noinfo                       => 0,
               skipinteg                    => 0,
@@ -178,12 +178,13 @@ my %lconfig = (
     check         => 0,                           # -k
     with_deps     => 0,                           # -d
     maintainer    => 0,                           # -m
-    noinstall     => 0,
-    update_config => 0,
+    nobuild       => 0,
     asdep         => 0,                           # alias for `--asdeps`
     asdeps        => 0,
     asexplicit    => 0,
     help          => 0,
+    update_config => 0,
+    ignore        => '',                          # packages to ignore during -Su
     as_root       => ($user eq 'root' ? 1 : 0),
     stats         => \&show_stats,
     version       => \&version,
@@ -365,6 +366,7 @@ $c{bbgreen}Other options:$c{reset}
       $c{bold}--movepkg$c{reset}       : move built packages into pacman's cache directory
       $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (with --movepkg)
       $c{bold}--clone-dir=s$c{reset}   : directory where to clone and build packages
+      $c{bold}--ignore=s$c{reset}      : space-separated list of packages to ignore during -Su
 
 $c{bbgreen}Examples:$c{reset}
 
@@ -478,6 +480,10 @@ parse_arguments(@ARGV);
 
 if ($lconfig{as_root}) {
     warn "\n\t\t$c{bred}!!! You are running $c{bbgreen}${execname}$c{reset}$c{bred} as root !!!$c{reset}\n\n" if $lconfig{S};
+}
+
+if ($lconfig{ignore}) {
+    @ignored_pkgs{split(/[,\s]+/, $lconfig{ignore})} = ();
 }
 
 if ($lconfig{skipinteg}) {
