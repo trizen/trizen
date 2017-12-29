@@ -431,21 +431,23 @@ sub parse_arguments (@arguments) {
 
     foreach my $arg (@arguments) {
 
+        if ($arg =~ /^--(\w.*?)=(.+)/) {
+            my ($option, $value) = ($1, $2);
+
+            $option =~ tr/-/_/;
+
+            if (exists $lconfig{$option}) {
+                $lconfig{$option} = $value;
+                next;
+            }
+        }
+
         if ($arg =~ /^--(\w.*)/) {
-            my $option = $1 =~ tr/-/_/r;
+            my $option = ($1 =~ tr/-/_/r);
 
             if (exists $lconfig{$option}) {
                 push @long_arguments, "--$option";
                 next;
-            }
-
-            if ($arg =~ /.=/) {
-                my ($argument, $value) = $option =~ /^(.*?)=(.*)/;
-
-                if (exists $lconfig{$argument}) {
-                    $lconfig{$argument} = $value;
-                    next;
-                }
             }
         }
 
@@ -707,7 +709,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
         q{ },
         do {
             my %seen;
-            grep { !$seen{$_}++ } map { quotemeta($_) } $lconfig{pacman_command}, @cmd;
+            ($lconfig{pacman_command}, grep { !$seen{$_}++ } map { quotemeta($_) } @cmd);
           }
     );
 
@@ -738,11 +740,12 @@ sub execute_pacman_command ($needs_root, @cmd) {
 }
 
 sub is_available_in_pacman_repo ($pkgname) {
-    $pkgname =~ /^\w/ or return 0;
-    system "/usr/bin/pacman -Sp \Q$pkgname\E &> /dev/null";
+
+    system "$lconfig{pacman_command} -Sp \Q$pkgname\E &> /dev/null";
+
     my $exit_code = $?;
     $? = 0;
-    return $exit_code ? 0 : 1;
+    return ($exit_code ? 0 : 1);
 }
 
 sub package_is_installed ($pkgname, $strict = 1) {
@@ -783,7 +786,7 @@ sub package_is_installed ($pkgname, $strict = 1) {
         }
 
         if (not keys(%$installed_packages)) {
-            %$installed_packages = map { split(' ', $_) } `/usr/bin/pacman -Q`;
+            %$installed_packages = map { split(' ', $_) } `$lconfig{pacman_command} -Q`;
         }
 
         # Cache the installed packages
@@ -1552,7 +1555,7 @@ sub install_package ($pkg) {
             # Check to see if the dependency is already provided by some other installed package.
             if (not defined($local_version)) {    # dependency is not installed
 
-                chomp(my $deptest = `/usr/bin/pacman -T \Q$pkgname\E`);
+                chomp(my $deptest = `$lconfig{pacman_command} -T \Q$pkgname\E`);
 
                 if ($deptest eq '') {
                     msg(":: Dependency <<$name>> is provided by other package -- skipping") if $lconfig{debug};
@@ -1716,7 +1719,7 @@ sub update_local_packages () {
         execute_pacman_command(1, get_pacman_arguments(1, qw(sync sysupgrade noconfirm force quiet refresh)));
     }
 
-    my %packages = map { split(' ', $_) } `/usr/bin/pacman -Qm`;
+    my %packages = map { split(' ', $_) } `$lconfig{pacman_command} -Qm`;
 
     # Get info only for a random subset of 150 packages to avoid the "Request-URI too large" error.
     my @subset = do {

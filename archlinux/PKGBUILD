@@ -2,7 +2,7 @@
 
 _pkgname=trizen
 pkgname=trizen-git
-pkgver=1.35.5.gd4250fd
+pkgver=1.36
 pkgrel=1
 pkgdesc="Trizen AUR Package Manager: A lightweight wrapper for AUR (-git version)."
 arch=('any')
@@ -15,6 +15,7 @@ conflicts=('trizen')
 depends=(
          'git'
          'diffutils'
+         'pacutils'
          'perl>=5.20.0'
          'perl-libwww'
          'perl-term-ui'
@@ -25,9 +26,8 @@ depends=(
         )
 
 optdepends=(
-            'pacutils: support for ignored packages'
             'perl-json-xs: faster JSON deserialization'
-            'perl-term-readline-gnu: for better STDIN support'
+            'perl-term-readline-gnu: better STDIN support'
            )
 
 source=("git://github.com/trizen/${_pkgname}.git")
