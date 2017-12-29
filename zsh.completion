@@ -62,6 +62,7 @@ _trizen_opts_common=(
     '--clone-dir[Alternate package cache location]:cache_location:_files -/'
     '--debug[Activate the debug/verbose mode]'
     '--noconfirm[Do not ask for confirmation]'
+    {-r,--regular}'[Use only the regular repositories]'
 )
 
 # options for passing to _arguments: options for --upgrade commands
