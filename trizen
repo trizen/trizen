@@ -274,7 +274,8 @@ EOT
     $dumped_config =~ s{
         ^\s*($names_re)(\s*=>\s*.*)
     }{
-        sprintf("  %s %*s # %s", $1.$2, $max_width - length($1.$2), ' ', sprintf('%5s -- %s', $table{$1}{type}, $table{$1}{desc}))
+        sprintf("  %s %*s # %s", $1.$2, $max_width - length($1.$2), ' ',
+            sprintf('%5s -- %s', $table{$1}{type}, $table{$1}{desc}))
     }gxme;
 
     print $config_fh $config_header, $dumped_config;
@@ -763,9 +764,17 @@ EOC
     return @comments;
 }
 
-sub get_pacman_arguments ($full, @options) {
+sub get_pacman_arguments ($type, @options) {
 
-    my @args = ($full ? (@leftover_short_arguments, @leftover_long_arguments) : ());
+    my @args;
+
+    if ($type eq 'short' or $type eq 'all') {
+        push @args, @leftover_short_arguments;
+    }
+
+    if ($type eq 'long' or $type eq 'all') {
+        push @args, @leftover_long_arguments;
+    }
 
     foreach my $option (@options) {
         push(@args, '--' . $option) if $lconfig{$option};
@@ -1481,7 +1490,7 @@ sub install_package ($pkg) {
 
         msg(":: Package <<$pkg>> is available in pacman's repository...") if $lconfig{debug};
 
-        my @args = ('-S', get_pacman_arguments(0, qw(noconfirm force needed quiet)), @leftover_long_arguments);
+        my @args = ('-S', get_pacman_arguments('long', qw(noconfirm force needed quiet)));
 
         if ($lconfig{asdeps}) {
             push @args, '--asdeps';
@@ -1526,7 +1535,7 @@ sub install_package ($pkg) {
     msg(":: Package: $info->{Name}");
     msg(":: AUR URL: " . sprintf($aur_package_id_url, $info->{ID}));
 
-    my @args = get_pacman_arguments(0, qw(noconfirm force needed));
+    my @args = get_pacman_arguments('long', qw(noconfirm force needed));
 
     # Package will be installed as dependency
     if ($lconfig{asdeps}) {
@@ -1657,7 +1666,7 @@ sub install_package ($pkg) {
 sub clean_cache () {
 
     if (!$lconfig{aur}) {
-        execute_pacman_command(1, get_pacman_arguments(1, qw(sync clean noconfirm force quiet)));
+        execute_pacman_command(1, get_pacman_arguments('all', qw(sync clean noconfirm force quiet)));
     }
 
     opendir(my $dir_h, $lconfig{clone_dir})
@@ -1763,7 +1772,7 @@ sub print_aur_results (@results) {
 sub search_aur_packages (@keywords) {
 
     if (not $lconfig{aur}) {
-        execute_pacman_command(0, get_pacman_arguments(1, qw(sync quiet search)), @keywords);
+        execute_pacman_command(0, get_pacman_arguments('all', qw(sync quiet search)), @keywords);
     }
 
     my @all_results;
@@ -1808,7 +1817,7 @@ sub list_aur_maintainer_packages ($maintainer) {
 sub update_local_packages () {
 
     if (not $lconfig{aur}) {
-        execute_pacman_command(1, get_pacman_arguments(1, qw(sync sysupgrade noconfirm force quiet refresh)));
+        execute_pacman_command(1, get_pacman_arguments('all', qw(sync sysupgrade noconfirm force quiet refresh)));
     }
 
     my %packages = map { split(' ', $_) } `$lconfig{pacman_command} -Qm`;
@@ -2245,7 +2254,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
     }
 
     my @packages;
-    my @args = get_pacman_arguments(0, qw(asdeps asexplicit noconfirm force needed));
+    my @args = get_pacman_arguments('all', qw(asdeps asexplicit noconfirm force needed));
 
     foreach my $pkg (@keyword_arguments) {
         if ($pkg =~ /$pkg_suffix_re/o and -f $pkg) {    # install from current dir
@@ -2260,7 +2269,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
         }
     }
 
-    execute_pacman_command(1, qw(-U), @args, @packages);
+    execute_pacman_command(1, qw(-U), @args, @packages) if @packages;
 }
 elsif ($lconfig{R} or $lconfig{remove}) {               # -R
 
@@ -2269,7 +2278,7 @@ elsif ($lconfig{R} or $lconfig{remove}) {               # -R
         main_quit();
     }
 
-    execute_pacman_command(1, get_pacman_arguments(1, qw(remove noconfirm)), @keyword_arguments);
+    execute_pacman_command(1, get_pacman_arguments('all', qw(remove noconfirm)), @keyword_arguments);
 }
 elsif ($lconfig{D} or $lconfig{database}) {             # -D
 
@@ -2278,7 +2287,7 @@ elsif ($lconfig{D} or $lconfig{database}) {             # -D
         main_quit();
     }
 
-    my @args = (get_pacman_arguments(1, qw(database asdeps asexplicit check noconfirm)), @keyword_arguments);
+    my @args = (get_pacman_arguments('all', qw(database asdeps asexplicit check noconfirm)), @keyword_arguments);
 
     if ($lconfig{k} or $lconfig{check}) {
         execute_pacman_command(0, @args);
@@ -2294,7 +2303,7 @@ elsif ($lconfig{F} or $lconfig{files}) {    # -F
         main_quit();
     }
 
-    my @args = (get_pacman_arguments(1, qw(files quiet search refresh noconfirm)), @keyword_arguments);
+    my @args = (get_pacman_arguments('all', qw(files quiet search refresh noconfirm)), @keyword_arguments);
 
     if ($lconfig{y} or $lconfig{refresh}) {
         execute_pacman_command(1, @args);
@@ -2310,7 +2319,7 @@ elsif ($lconfig{Q} or $lconfig{query}) {    # -Q
         main_quit();
     }
 
-    execute_pacman_command(0, get_pacman_arguments(1, qw(query check search info quiet noconfirm)), @keyword_arguments);
+    execute_pacman_command(0, get_pacman_arguments('all', qw(query check search info quiet noconfirm)), @keyword_arguments);
 }
 elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
 
@@ -2319,7 +2328,7 @@ elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
         main_quit();
     }
 
-    execute_pacman_command(0, get_pacman_arguments(1, qw(deptest noconfirm)), @keyword_arguments);
+    execute_pacman_command(0, get_pacman_arguments('all', qw(deptest noconfirm)), @keyword_arguments);
 }
 elsif ($lconfig{h} or $lconfig{help}) {
     help();
