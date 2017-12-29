@@ -40,7 +40,7 @@ use warnings;
 
 use experimental qw(signatures);
 
-use List::Util qw(first any);
+use List::Util qw(first any max);
 use Encode qw(decode_utf8);
 use Getopt::Std qw(getopts);
 use URI::Escape qw(uri_escape_utf8);
@@ -50,7 +50,7 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.36';
+my $version  = '1.37';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -136,11 +136,13 @@ my %CONFIG = (
               sudo_autorepeat              => 0,
               sudo_autorepeat_at_runtime   => 0,
               sudo_autorepeat_interval     => 180,
-              makepkg_command              => '/usr/bin/makepkg --syncdeps --force --clean',
+              makepkg_command              => '/usr/bin/makepkg -scf',
               movepkg_dir                  => '/var/cache/pacman/pkg',
               pacman_local_dir             => '/var/lib/pacman/local',
               pacman_command               => '/usr/bin/pacman',
               show_build_files_content     => 1,
+              aur_results_sort_by          => 'name',
+              aur_results_sort_order       => 'ascending',
               aur_results_votes            => 1,
               aur_results_popularity       => 1,
               aur_results_last_modified    => 1,
@@ -191,7 +193,11 @@ my %lconfig = (
     version       => \&version,
               );
 
-my $config_header = <<"EOH";
+our $CONFIG;
+
+sub dump_configuration ($config, $configuration_file) {
+
+    my $config_header = <<"EOH";
 #!/usr/bin/perl
 
 # $execname configuration file
@@ -199,14 +205,78 @@ my $config_header = <<"EOH";
 
 EOH
 
-our $CONFIG;
+    my $config_options_help = <<"EOT";
+aur_results_last_modified    => bool    Show the date in AUR results when the package was last updated.
+aur_results_popularity       => bool    Show the popularity score in AUR results.
+aur_results_show_installed   => bool    Show when a package is installed in AUR results.
+aur_results_sort_by          => str     Sort AUR results by: "name", "votes", "popularity" or "date"
+aur_results_sort_order       => str     Sort the AUR results in "ascending" or "descending" order.
+aur_results_votes            => bool    Show the number of votes in AUR results.
+clone_dir                    => str     Absolute path to the directory where to clone and build packages.
+debug                        => bool    Verbose mode.
+force                        => bool    Pass the `--force` flag to `pacman`.
+git_clone_depth              => int     Passes the `--depth` flag to `git clone`. (0 means no limit)
+install_built_with_noconfirm => bool    Install built packages with `--noconfirm`.
+lwp_env_proxy                => bool    Use proxy settings available in `env` (if any).
+lwp_show_progress            => bool    Show the HTTPS requests made by LWP::UserAgent to the AUR servers.
+lwp_timeout                  => int     Seconds after which an HTTPS connection is aborted.
+makepkg_command              => str     The `makepkg` command that is used internally in building a package.
+movepkg                      => bool    Move built packages in the directory `movepkg_dir`.
+movepkg_dir                  => str     Absolute path to the directory where to move built packages.
+nocolors                     => bool    Disable output colors for `$execname`.
+noedit                       => bool    Do not prompt to edit files when installing a package.
+noinfo                       => bool    Do not display package information when installing a package.
+noinstall                    => bool    Do not install built packages -- builds only.
+nopull                       => bool    Do not `git pull` new changes from the AUR git server.
+packages_in_stats            => int     The number of packages to display in `--stats`
+pacman_command               => str     The `pacman` command that is used internally for pacman operations.
+pacman_local_dir             => str     Absolute path to the pacman's local directory.
+quiet                        => bool    Do not display any warnings.
+recompute_deps               => bool    Recompute the dependencies of a package after its build files are inspected.
+show_build_files_content     => bool    Show the content of the build files of a package before building it.
+show_comments                => bool    Show AUR comments for a package before building it.
+show_inexistent              => bool    Warn about packages that do not exist in AUR, during -Su.
+show_ood                     => bool    Warn about out-of-date marked packages, during -Su.
+show_unmaintained            => bool    Warn about unmaintained packages, during -Su.
+skipinteg                    => bool    Pass the `--skipinteg` argument to `makepkg`.
+split_packages               => bool    Ask about installing the other parts of a split package.
+ssl_verify_hostname          => bool    Ensure LWP::UserAgent connects to servers that have a valid certificate.
+su_command                   => str     Command used when special permissions are required and `use_sudo` is set to a false value.
+sudo_autorepeat              => bool    Automatically repeat `sudo -v` in the background after a `sudo` command was first executed.
+sudo_autorepeat_at_runtime   => bool    Execute `sudo -v` when `$execname` is first executed and apply the behavior of `sudo_autorepeat`.
+sudo_autorepeat_interval     => int     Interval, in seconds, after which `sudo -v` executed in background (with `sudo_autorepeat`).
+sudo_command                 => str     Command used when special permissions are required and `use_sudo` is set to a true value.
+use_sudo                     => bool    Use the `sudo` command when special permissions are required.
+VERSION                      => float   The current version number of `$execname`.
+EOT
 
-sub dump_configuration ($config, $configuration_file) {
+    my %table;
+    foreach my $line (split(/\n/, $config_options_help)) {
+        if ($line =~ /^(\w+)\s*=>\s*(\w+)\s+(.+)/) {
+            my ($name, $type, $desc) = ($1, $2, $3);
+
+            $table{$name} = {
+                             type => $type,
+                             desc => $desc,
+                            };
+        }
+    }
 
     open my $config_fh, '>:utf8', $configuration_file or return;
 
     require Data::Dump;
     my $dumped_config = q{our $CONFIG = } . Data::Dump::dump($config) . "\n";
+
+    my $names_re = join('|', keys %table);
+    my $max_width = max(map { length($_) } split(/\n/, $dumped_config));
+
+    # Add description after each configuration option
+    $dumped_config =~ s{
+        ^\s*($names_re)(\s*=>\s*.*)
+    }{
+        sprintf("  %s %*s # %s", $1.$2, $max_width - length($1.$2), ' ', sprintf('%5s -- %s', $table{$1}{type}, $table{$1}{desc}))
+    }gxme;
+
     print $config_fh $config_header, $dumped_config;
     close $config_fh;
 }
@@ -228,7 +298,7 @@ if (-e $config_file and (-s _) > 1) {
         }
     }
     else {
-        note("Invalid config file: " . ($! || "\$CONFIG must be a HASH ref!\n"));
+        note(":: Invalid config file: {!" . ($! || "\$CONFIG must be a HASH ref!\n") . '!}');
         $lconfig{update_config} = 1;
     }
 }
@@ -1620,7 +1690,28 @@ sub clean_cache () {
 
 sub print_aur_results (@results) {
 
-    foreach my $result (sort { $a->{Name} cmp $b->{Name} } @results) {
+    # Sort the results
+    if ($lconfig{aur_results_sort_by} =~ /popularity/i) {
+        @results = sort { $a->{Popularity} <=> $b->{Popularity} } @results;
+    }
+    elsif ($lconfig{aur_results_sort_by} =~ /votes/i) {
+        @results = sort { $a->{NumVotes} <=> $b->{NumVotes} } @results;
+    }
+    elsif ($lconfig{aur_results_sort_by} =~ /date/i) {
+        @results = sort { $a->{LastModified} <=> $b->{LastModified} } @results;
+    }
+    else {
+        @results = sort { $a->{Name} cmp $b->{Name} } @results;
+    }
+
+    if ($lconfig{aur_results_sort_order} =~ /ascending/i) {
+        ## already in ascending order
+    }
+    else {
+        @results = reverse(@results);
+    }
+
+    foreach my $result (@results) {
 
         if ($lconfig{quiet}) {
             say $result->{Name};
@@ -1799,24 +1890,8 @@ sub update_local_packages () {
         }
     }
 
-    my $max_pkgname_width = 0;
-    my $max_version_width = 0;
-
-    foreach my $package (@packages_for_update) {
-
-        my $pkgname = $package->{name};
-
-        my $pkgname_len = length($pkgname);
-        my $version_len = length($packages{$pkgname});
-
-        if ($pkgname_len > $max_pkgname_width) {
-            $max_pkgname_width = $pkgname_len;
-        }
-
-        if ($version_len > $max_version_width) {
-            $max_version_width = $version_len;
-        }
-    }
+    my $max_pkgname_width = max(map { length($_->{name}) } @packages_for_update);
+    my $max_version_width = max(map { length($packages{$_->{name}}) } @packages_for_update);
 
     my %for_update;
 
