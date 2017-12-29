@@ -25,10 +25,11 @@
 # https://github.com/trizen/trizen
 
 # Contributors:
-#   notramo - https://github.com/notramo
-#   ccl2of4 - https://github.com/ccl2of4
-#   nl6720  - https://github.com/nl6720
-#   JJK96   - https://github.com/JJK96
+#   notramo  - https://github.com/notramo
+#   ccl2of4  - https://github.com/ccl2of4
+#   nl6720   - https://github.com/nl6720
+#   JJK96    - https://github.com/JJK96
+#   nicman23 - https://github.com/nicman23
 
 eval 'exec perl -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
@@ -2102,6 +2103,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
 }
 elsif ($lconfig{C} or $lconfig{comments}) {          # -C
+
     foreach my $pkg (@keyword_arguments) {
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
         my $info = info_for_package($pkg) // do {
@@ -2167,20 +2169,23 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
         main_quit();
     }
 
+    my @packages;
     my @args = get_pacman_arguments(0, qw(asdeps asexplicit noconfirm force needed));
 
     foreach my $pkg (@keyword_arguments) {
-        if ($pkg =~ /$pkg_suffix_re/o and -e $pkg) {    # install from current dir
-            execute_pacman_command(1, qw(-U), @args, $pkg);
+        if ($pkg =~ /$pkg_suffix_re/o and -f $pkg) {    # install from current dir
+            push @packages, $pkg;
         }
         else {                                          # install from cache dir
             foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
                 my $tarball = find_local_package($pkg, $dir) // next;
-                msg(":: Installing: $tarball");
-                execute_pacman_command(1, qw(-U), @args, $tarball);
+                msg(":: Found tarball: $tarball");
+                push @packages, $tarball;
             }
         }
     }
+
+    execute_pacman_command(1, qw(-U), @args, @packages);
 }
 elsif ($lconfig{R} or $lconfig{remove}) {               # -R
 
