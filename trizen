@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 28 December 2017
+# Latest edit: 30 December 2017
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -300,7 +300,7 @@ if (-e $config_file and (-s _) > 1) {
         }
     }
     else {
-        note(":: Invalid config file: {!" . ($! || "\$CONFIG must be a HASH ref!\n") . '!}');
+        note(":: Invalid config file: {!" . ($! || '$CONFIG must be a HASH ref!') . '!}');
         $lconfig{update_config} = 1;
     }
 }
@@ -1824,6 +1824,10 @@ sub update_local_packages () {
 
     if (not $lconfig{aur}) {
         execute_pacman_command(1, get_pacman_arguments('all', qw(sync sysupgrade noconfirm force quiet refresh)));
+    }
+
+    if ($lconfig{r} or $lconfig{regular}) {
+        return 1;
     }
 
     my %packages = map { split(' ', $_) } `$lconfig{pacman_command} -Qm`;
