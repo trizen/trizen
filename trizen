@@ -1360,7 +1360,7 @@ sub install_built_package ($pkg, @args) {
     }
 
     # Install the package
-    install_local_package($pkg, q{-U}, @args) || return;
+    install_local_package($pkg, q{-Ud}, @args) || return;
 
     # Don't ask for split packages in `--noinstall` mode
     # or when `split_packages` is set to a false value.
@@ -1406,7 +1406,7 @@ sub install_built_package ($pkg, @args) {
 
             # Install the selected packages
             foreach my $name (@reply) {
-                install_local_package($name, q{-U}, @args);
+                install_local_package($name, q{-Ud}, @args);
             }
         }
     }
