@@ -140,6 +140,7 @@ my %CONFIG = (
               movepkg_dir                  => '/var/cache/pacman/pkg',
               pacman_local_dir             => '/var/lib/pacman/local',
               pacman_command               => '/usr/bin/pacman',
+              packages_to_be_update_eval   => '/usr/bin/pacman -Qm',
               show_build_files_content     => 1,
               aur_results_sort_by          => 'name',
               aur_results_sort_order       => 'ascending',
@@ -1830,7 +1831,7 @@ sub update_local_packages () {
         return 1;
     }
 
-    my %packages = map { split(' ', $_) } `$lconfig{pacman_command} -Qm`;
+    my %packages = map { split(' ', $_) } `$lconfig{packages_to_be_update_eval}`;
 
     # Get info only for a random subset of 150 packages to avoid the "Request-URI too large" error.
     my @subset = do {
