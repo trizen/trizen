@@ -1980,7 +1980,7 @@ sub update_local_packages () {
         }
     }
     else {
-        msg(":: No AUR updates found!");
+        msg(":: No AUR updates found...");
         return 1;
     }
 
