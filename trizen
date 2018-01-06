@@ -21,15 +21,16 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 03 January 2018
+# Latest edit: 06 January 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
-#   notramo  - https://github.com/notramo
-#   ccl2of4  - https://github.com/ccl2of4
-#   nl6720   - https://github.com/nl6720
-#   JJK96    - https://github.com/JJK96
-#   nicman23 - https://github.com/nicman23
+#   notramo       - https://github.com/notramo
+#   ccl2of4       - https://github.com/ccl2of4
+#   nl6720        - https://github.com/nl6720
+#   JJK96         - https://github.com/JJK96
+#   nicman23      - https://github.com/nicman23
+#   DragoonAethis - https://github.com/DragoonAethis
 
 eval 'exec perl -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
@@ -50,7 +51,7 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.37';
+my $version  = '1.38';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -122,6 +123,7 @@ my %CONFIG = (
               noinfo                       => 0,
               skipinteg                    => 0,
               force                        => 0,
+              ask_for_retry                => 1,
               lwp_show_progress            => 0,
               lwp_env_proxy                => 1,
               lwp_timeout                  => 60,
@@ -213,6 +215,7 @@ aur_results_show_installed   => bool    Show when a package is installed in AUR 
 aur_results_sort_by          => str     Sort the AUR results by: "name", "votes", "popularity" or "date"
 aur_results_sort_order       => str     Sort the AUR results in "ascending" or "descending" order.
 aur_results_votes            => bool    Show the number of votes in AUR results.
+ask_for_retry                => bool    When `makepkg` fails to build a package, offer the option for trying again.
 clone_dir                    => str     Absolute path to the directory where to clone and build packages.
 debug                        => bool    Verbose mode.
 force                        => bool    Pass the `--force` flag to `pacman`.
@@ -1306,6 +1309,12 @@ sub run_makepkg_command ($pkg, @args) {
 
     if ($?) {
         note(":: Unable to build <<$pkg>> - makepkg exited with code: " . exit_code());
+
+        if (not $lconfig{ask_for_retry}) {
+            exit(65) if $lconfig{asdeps};
+            return;
+        }
+
         if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
             local $lconfig{nopull} = 1;
             delete $seen_package{$pkg};
