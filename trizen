@@ -390,7 +390,6 @@ $c{bbgreen}Main options:$c{reset}
 
 $c{bbgreen}Other options:$c{reset}
 
-
     $c{bold}-q$c{reset}, $c{bold}--quiet$c{reset}     : do not display any warnings
     $c{bold}-r$c{reset}, $c{bold}--regular$c{reset}   : use only the regular repositories
         $c{bold}--stats$c{reset}     : show stats about the installed packages
