@@ -82,12 +82,10 @@ binmode(STDOUT, ':utf8');
 
 #----------------------- COLORS -----------------------#
 my %c = (
-         cblack  => (ON_BLACK),
          byellow => (BOLD YELLOW),
          bpurple => (BOLD MAGENTA),
          bblue   => (BOLD BLUE),
          bgreen  => (BOLD GREEN),
-         bbgreen => (BOLD GREEN ON_BLACK),
          bold    => (BOLD),
          bred    => (BOLD RED),
          reset   => (RESET),
@@ -372,11 +370,11 @@ sub main_quit () {
 sub help {
     print <<"HELP";
 
-========================== $c{bbgreen}Trizen AUR Package Manager$c{reset} ==========================
+========================== $c{bgreen}Trizen AUR Package Manager$c{reset} ==========================
 
 $c{bold}usage:$c{reset} $execname [options] [pkgname] [pkgname] [...]
 
-$c{bbgreen}Main options:$c{reset}
+$c{bgreen}Main options:$c{reset}
 
     $c{bold}-S$c{reset}, $c{bold}--sync$c{reset}      : install packages (see: $execname -Sh)
     $c{bold}-C$c{reset}, $c{bold}--comments$c{reset}  : display AUR comments for a package
@@ -388,7 +386,7 @@ $c{bbgreen}Main options:$c{reset}
     $c{bold}-T$c{reset}, $c{bold}--deptest$c{reset}   : check dependencies (see: pacman -Th)
     $c{bold}-U$c{reset}, $c{bold}--upgrade$c{reset}   : install built packages from $lconfig{clone_dir} or `pwd`
 
-$c{bbgreen}Other options:$c{reset}
+$c{bgreen}Other options:$c{reset}
 
     $c{bold}-q$c{reset}, $c{bold}--quiet$c{reset}     : do not display any warnings
     $c{bold}-r$c{reset}, $c{bold}--regular$c{reset}   : use only the regular repositories
@@ -398,7 +396,7 @@ $c{bbgreen}Other options:$c{reset}
         $c{bold}--help$c{reset}      : print this message and exit
         $c{bold}--version$c{reset}   : print version and exit
 
-$c{bbgreen}See also:$c{reset}
+$c{bgreen}See also:$c{reset}
 
     $c{bold}$execname -Sh$c{reset}
     $c{bold}$execname -Gh$c{reset}
@@ -413,7 +411,7 @@ sub sync_help {
     print <<"SYNC_HELP";
 $c{bold}usage:$c{reset} $execname {-S --sync} [options] [package(s)]
 
-$c{bbgreen}Main options:$c{reset}
+$c{bgreen}Main options:$c{reset}
 
   $c{bold}-s$c{reset}, $c{bold}--search$c{reset}        : search for packages
   $c{bold}-i$c{reset}, $c{bold}--info$c{reset}          : show info for packages
@@ -425,7 +423,7 @@ $c{bbgreen}Main options:$c{reset}
   $c{bold}-c$c{reset}, $c{bold}--clean$c{reset}         : clean the cache directory of `$execname` and `pacman`
   $c{bold}-a$c{reset}, $c{bold}--aur$c{reset}           : only AUR operations (with: -c, -u, -s, -i)
 
-$c{bbgreen}Other options:$c{reset}
+$c{bgreen}Other options:$c{reset}
 
       $c{bold}--devel$c{reset}         : update VCS packages during -Su
       $c{bold}--show-ood$c{reset}      : show out-of-date flagged packages during -Su
@@ -445,7 +443,7 @@ $c{bbgreen}Other options:$c{reset}
       $c{bold}--clone-dir=s$c{reset}   : directory where to clone and build packages
       $c{bold}--ignore=s$c{reset}      : space-separated list of packages to ignore during -Su
 
-$c{bbgreen}Examples:$c{reset}
+$c{bgreen}Examples:$c{reset}
 
     $c{bold}$execname -S  <package>$c{reset}     # install <package>
     $c{bold}$execname -Ss <keyword>$c{reset}     # search for <keyword>
@@ -460,11 +458,11 @@ sub get_help {
     print <<"GET_HELP";
 $c{bold}usage:$c{reset} $execname {-G --get} [options] [package(s)]
 
-$c{bbgreen}Main options:$c{reset}
+$c{bgreen}Main options:$c{reset}
 
     $c{bold}-d$c{reset}, $c{bold}--with-deps$c{reset}     : clones a package with all needed AUR dependencies
 
-$c{bbgreen}Examples:$c{reset}
+$c{bgreen}Examples:$c{reset}
 
     $c{bold}$execname -G  <package>$c{reset}     # clones <package>
     $c{bold}$execname -Gd <package>$c{reset}     # clones <package> along with its AUR dependencies
@@ -560,7 +558,7 @@ sub parse_arguments (@arguments) {
 parse_arguments(@ARGV);
 
 if ($lconfig{as_root}) {
-    warn "\n\t\t$c{bred}!!! You are running $c{bbgreen}${execname}$c{reset}$c{bred} as root !!!$c{reset}\n\n" if $lconfig{S};
+    warn "\n\t\t$c{bred}!!! You are running $c{bgreen}${execname}$c{reset}$c{bred} as root !!!$c{reset}\n\n" if $lconfig{S};
 }
 
 if ($lconfig{ignore}) {
@@ -654,7 +652,7 @@ sub format_line ($string, $color) {
         my $substr  = $1;
         my $new_str = $color . '::' . $c{reset} . ' ' . $c{bold};
 
-        $substr =~ s/<<(.*?)>>/$c{bbgreen}$1$c{reset}$c{bold}/gs;
+        $substr =~ s/<<(.*?)>>/$c{bgreen}$1$c{reset}$c{bold}/gs;
         $substr =~ s/\{!(.*?)!\}/$c{bred}$1$c{reset}$c{bold}/gs;
 
         if ($substr =~ /^(.+?: )(.+)/) {
@@ -765,7 +763,7 @@ sub get_comments ($id) {
         $comment =~ s/\h{2,}/ /g;
 
         unshift @comments, <<"EOC"
-$c{cblack}$c{byellow}Comment by: $c{bbgreen}$author$c{reset}$c{cblack}$c{byellow} on $date$c{reset}
+$c{bold}Comment by $c{bgreen}$author$c{reset}$c{bold} on $date$c{reset}
 $comment
 EOC
     }
@@ -1114,7 +1112,7 @@ sub show_info ($info) {
       ["License         : %s\n", indent_array(array_ref_or_string($info->{License}))],
       ["Votes           : %s\n", $info->{NumVotes}],
       ["Popularity      : %s\n", sprintf("%.2g%%", $info->{Popularity})],
-      ["Installed       : %s\n", package_is_installed($info->{Name}) ? "$c{bbgreen}Yes$c{reset}" : 'No'],
+      ["Installed       : %s\n", package_is_installed($info->{Name}) ? "$c{bgreen}Yes$c{reset}" : 'No'],
       ["Out Of Date     : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
       ["Depends On      : %s\n", indent_array(array_ref_or_string($info->{Depends}))],
       ["Make Deps       : %s\n", indent_array(array_ref_or_string($info->{MakeDepends}))],
@@ -1571,7 +1569,8 @@ sub install_package ($pkg) {
     }
 
     if ($lconfig{show_comments}) {
-        say "\n", join("\n", get_comments($info->{ID}));
+        my @comments = get_comments($info->{ID});
+        print "\n", join("\n", @comments) if @comments;
     }
 
     # Edit PKGBUILD and other -T files
@@ -1948,7 +1947,7 @@ sub update_local_packages () {
         else {
 #<<<
             printf(
-                "$c{bblue}%2s$c{reset}. $c{bold}%*s$c{reset}: $c{bred}%*s$c{reset} $c{bold}==>$c{reset} $c{bbgreen}%s$c{reset}\n",
+                "$c{bblue}%2s$c{reset}. $c{bold}%*s$c{reset}: $c{bred}%*s$c{reset} $c{bold}==>$c{reset} $c{bgreen}%s$c{reset}\n",
                 $i + 1, $max_pkgname_width, $pkgname, $max_version_width, $packages{$pkgname}, $version
             );
 #>>>
