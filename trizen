@@ -51,7 +51,7 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.38';
+my $version  = '1.39';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -141,6 +141,7 @@ my %CONFIG = (
               movepkg_dir                  => '/var/cache/pacman/pkg',
               pacman_local_dir             => '/var/lib/pacman/local',
               pacman_command               => '/usr/bin/pacman',
+              show_diff_only               => 0,
               show_build_files_content     => 1,
               aur_results_sort_by          => 'name',
               aur_results_sort_order       => 'ascending',
@@ -237,6 +238,7 @@ pacman_local_dir             => str     Absolute path to the pacman's local dire
 quiet                        => bool    Do not display any warnings.
 recompute_deps               => bool    Recompute the dependencies of a package after its build files are inspected.
 show_build_files_content     => bool    Show the content of the build files of a package before building it.
+show_diff_only               => bool    When the build files of a package already exist locally, show the diff only.
 show_comments                => bool    Show AUR comments for a package before building it.
 show_inexistent              => bool    Warn about packages that do not exist in AUR, during -Su.
 show_ood                     => bool    Warn about out-of-date marked packages, during -Su.
@@ -1026,18 +1028,7 @@ sub download_package ($pkgname, $path) {
 
     if ((-d $dir_name) and (-d catdir($dir_name, '.git'))) {
 
-        my $pkgbuild_prev = catfile($dir_name, '.git', '.PKGBUILD');
-        my $pkgbuild_curr = catfile($dir_name, 'PKGBUILD');
-
-        my $old_pkgbuild_content = do {
-            if (open my $fh, '<', $pkgbuild_curr) {
-                local $/;
-                <$fh>;
-            }
-            else {
-                undef;
-            }
-        };
+        chomp(my $old_commit_hash = `/usr/bin/git -C \Q$dir_name\E rev-parse HEAD`);
 
         if (!$lconfig{nopull}) {
 #<<<
@@ -1046,19 +1037,9 @@ sub download_package ($pkgname, $path) {
 #>>>
         }
 
-        if (defined($old_pkgbuild_content) and open(my $fh, '>', $pkgbuild_prev)) {
+        $info->{_exists_in_cache} = 1;
 
-            print {$fh} $old_pkgbuild_content;
-            close $fh;
-
-            chomp(my $diff = `/usr/bin/diff --color=always -w -B -a -d \Q$pkgbuild_prev\E \Q$pkgbuild_curr\E`);
-
-            if ($diff ne '') {
-                say '';
-                msg(":: PKGBUILD diff for <<$info->{Name}>>");
-                say decode_utf8($diff);
-            }
-        }
+        print decode_utf8(scalar `/usr/bin/git -C \Q$dir_name\E diff $old_commit_hash --color=always ':!.SRCINFO'`);
     }
     else {
 
@@ -1267,6 +1248,10 @@ sub recompute_dependencies ($info) {
 
 sub edit_text_files ($info) {
 
+    if (!$lconfig{show_build_files_content}) {
+        print "\n";
+    }
+
     foreach my $file (sort grep { -f and not -z _ } glob('*')) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
@@ -1283,7 +1268,12 @@ sub edit_text_files ($info) {
         }
 
         if ($lconfig{show_build_files_content}) {
-            output_file_content($file);
+            if ($lconfig{show_diff_only} and $info->{_exists_in_cache}) {
+                print "\n";
+            }
+            else {
+                output_file_content($file);
+            }
         }
 
         if ($term->ask_yn(prompt => "=>> Do you want to edit $file?", default => 'n')) {
