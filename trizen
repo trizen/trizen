@@ -79,6 +79,7 @@ if (-x '/usr/bin/pacconf') {
 
 # UTF-8 output
 binmode(STDOUT, ':utf8');
+binmode(STDERR, ':utf8');
 
 #----------------------- COLORS -----------------------#
 my %c = (
