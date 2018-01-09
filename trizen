@@ -60,15 +60,15 @@ my $aur_base_url       = 'https://aur.archlinux.org';
 my $aur_rpc_base_url   = "$aur_base_url/rpc.php";
 my $aur_package_id_url = "$aur_base_url/packages.php?ID=%s";
 
-# Configuration dir/file
-my $config_dir = (
-                    $ENV{XDG_CONFIG_HOME}
-                  ? $ENV{XDG_CONFIG_HOME}
-                  : ($ENV{HOME} || $ENV{LOGDIR} || (getpwuid $<)[7] || `echo -n ~`) . '/.config'
-                 )
-  . "/$execname";
+# Home directory
+my $home_dir = $ENV{HOME} || $ENV{LOGDIR} || (getpwuid $<)[7] || `echo -n ~`;
 
+# Configuration directory
+my $config_dir = catdir($ENV{XDG_CONFIG_HOME} || catdir($home_dir, '.config'), $execname);
+
+# Configuration file
 my $config_file = catfile($config_dir, "$execname.conf");
+
 my $user = (getpwuid $<)[0] || substr(`/usr/bin/whoami`, 0, -1);
 my $arch = substr(`/usr/bin/uname -m`, 0, -1);
 
@@ -271,6 +271,10 @@ EOT
 
     require Data::Dump;
     my $dumped_config = q{our $CONFIG = } . Data::Dump::dump($config) . "\n";
+
+    if ($home_dir eq $ENV{HOME}) {
+        $dumped_config =~ s/\Q$home_dir\E/\$ENV{HOME}/g;
+    }
 
     my $names_re = join('|', keys %table);
     my $max_width = max(map { length($_) } split(/\n/, $dumped_config));
