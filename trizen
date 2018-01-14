@@ -1750,7 +1750,7 @@ sub print_aur_results (@results) {
           : q{};
 
         # Formatting string
-        my $result_string = "$c{bpurple}aur$c{reset}/$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s\n    %s\n";
+        my $result_string = "$c{bpurple}aur/$c{reset}$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s\n    %s\n";
 
         # Normalize the popularity percentage
         $result->{Popularity} = sprintf("%.2g", $result->{Popularity});
