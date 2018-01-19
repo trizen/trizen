@@ -1206,17 +1206,19 @@ sub edit_text_files ($info) {
         print "\n";
     }
 
-    foreach my $file (sort grep { -f and not -z _ } glob('*')) {
+    my $source_files_edited = 0;
+
+    foreach my $file ('PKGBUILD', sort grep { $_ ne 'PKGBUILD' and -f and not -z _ } glob('*')) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
         next if substr($file, -4) eq q{.bak};    # ignore backup (.bak) files
         next if substr($file, 0, 1) eq q{.};     # ignore hidden files
 
-        # Ignore files larger than 50 KB, and are not PKGBUILD or *.install
+        # Ignore files larger than 50 KB that are not PKGBUILD or *.install
         if (
             ((-s $file) > 50 * 1024 or not -T _)
             and not(   $file eq 'PKGBUILD'
-                    or $file =~ /(?:^|\.)install\z/)
+                    or $file =~ /\.install\z/)
           ) {
             next;
         }
@@ -1232,14 +1234,29 @@ sub edit_text_files ($info) {
 
         if ($term->ask_yn(prompt => "=>> Do you want to edit $file?", default => 'n')) {
 
-            my $abs_file = rel2abs($file);
+            my $abs_file  = rel2abs($file);
+            my $old_mtime = -M $abs_file;
+
             system "$editor \Q$abs_file\E";
+
+            my $new_mtime = -M $abs_file;
+
+            if (    $file ne 'PKGBUILD'
+                and $file !~ /\.install\z/
+                and $old_mtime != $new_mtime) {
+                $source_files_edited = 1;
+            }
 
             if ($?) {
                 note(":: $editor exited with code: " . exit_code());
-                return;
+                next;
             }
         }
+    }
+
+    if ($source_files_edited) {
+        msg(":: Updating source checksums...");
+        system('/usr/bin/updpkgsums');
     }
 
     return 1;
