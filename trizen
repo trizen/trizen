@@ -1203,8 +1203,6 @@ sub edit_text_files ($info) {
         print "\n";
     }
 
-    my $source_files_edited = 0;
-
     foreach my $file ('PKGBUILD', sort grep { $_ ne 'PKGBUILD' and -f and not -z _ } glob('*')) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
@@ -1235,56 +1233,11 @@ sub edit_text_files ($info) {
           ) {
 
             my $abs_file  = rel2abs($file);
-            my $old_mtime = -M $abs_file;
-
             system "$editor \Q$abs_file\E";
-
-            my $new_mtime = -M $abs_file;
-
-            if (    $file ne 'PKGBUILD'
-                and $file !~ /\.install\z/
-                and $old_mtime > $new_mtime) {
-                $source_files_edited = 1;
-            }
 
             if ($?) {
                 note(":: $editor exited with code: " . exit_code());
                 next;
-            }
-        }
-    }
-
-    if ($source_files_edited) {
-        print "\n";
-        msg(":: Source files were edited...");
-        print "\n";
-
-        my $proceed =
-
-#<<<
-            $term->ask_yn(
-                prompt  => "$c{reset}$c{bold}=>> Do you want to run `$c{bgreen}/usr/bin/updpkgsums$c{reset}$c{bold}` to update the checksums?$c{reset}",
-                default => 'y'
-            );
-#>>>
-
-        if ($proceed) {
-            print "\n";
-
-            my $really_proceed =
-
-#<<<
-            $term->ask_yn(
-                prompt  => "$c{reset}$c{bold}=>> Are you $c{bred}REALLY$c{reset}$c{bold} sure?$c{reset}",
-                default => 'n'
-            );
-#>>>
-
-            if ($really_proceed) {
-                print "\n";
-                msg(":: Updating source checksums...");
-                system('/usr/bin/updpkgsums');
-                print "\n";
             }
         }
     }
