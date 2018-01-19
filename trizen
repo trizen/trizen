@@ -136,6 +136,8 @@ my %CONFIG = (
               git_clone_depth              => 0,
               split_packages               => 1,
               recompute_deps               => 1,
+              pager_mode                   => 0,
+              pager_command                => '/usr/bin/less',
               use_sudo                     => ((-x '/usr/bin/sudo') ? 1 : 0),
               su_command                   => '/usr/bin/su -c',
               sudo_command                 => '/usr/bin/sudo',
@@ -240,6 +242,8 @@ nopull                       => bool    Do not `git pull` new changes from the A
 packages_in_stats            => int     The number of packages to display in `--stats`
 pacman_command               => str     The `pacman` command that is used internally for pacman operations.
 pacman_local_dir             => str     Absolute path to the pacman's local directory.
+pager_command                => str     Pager command for viewing build files when `pager_mode` is set to 1.
+pager_mode                   => bool    Show the build files in pager mode using the pager specified in `pager_command`.
 quiet                        => bool    Do not display any warnings.
 recompute_deps               => bool    Recompute the dependencies of a package after its build files are inspected.
 show_build_files_content     => bool    Show the content of the build files of a package before building it.
@@ -1130,31 +1134,6 @@ sub move_built_package ($pkg) {
     }
 }
 
-sub output_file_content ($file) {
-
-    open my $fh, '<:utf8', $file or do {
-        note(":: Unable to open <<$file>> for read: {!$!!}");
-        return;
-    };
-
-    say '';
-    msg(":: Content of <<$file>>");
-    say '';
-
-    eval {
-        local $/ = undef;
-        my $content = <$fh>;
-        $content = reverse($content);
-        $content =~ s/^\s+//;
-        say scalar reverse($content) . "\n";
-    };
-
-    $@ && return;
-
-    close $fh;
-    return 1;
-}
-
 sub recompute_dependencies ($info) {
 
     msg(":: Recomputing dependencies...") if $lconfig{debug};
@@ -1197,6 +1176,37 @@ sub recompute_dependencies ($info) {
     return 1;
 }
 
+sub output_file_content ($file) {
+
+    if ($lconfig{pager_mode}) {
+        print "\n";
+        system("$lconfig{pager_command} \Q$file\E");
+        return 1;
+    }
+
+    open my $fh, '<:utf8', $file or do {
+        note(":: Unable to open <<$file>> for read: {!$!!}");
+        return;
+    };
+
+    say '';
+    msg(":: Content of <<$file>>");
+    say '';
+
+    eval {
+        local $/ = undef;
+        my $content = <$fh>;
+        $content = reverse($content);
+        $content =~ s/^\s+//;
+        say scalar reverse($content) . "\n";
+    };
+
+    $@ && return;
+
+    close $fh;
+    return 1;
+}
+
 sub edit_text_files ($info) {
 
     if (!$lconfig{show_build_files_content}) {
@@ -1218,21 +1228,26 @@ sub edit_text_files ($info) {
             next;
         }
 
+        my $abs_file = rel2abs($file);
+
         if ($lconfig{show_build_files_content}) {
             if ($lconfig{show_diff_only} and $info->{_exists_in_cache}) {
                 print "\n";
             }
             else {
-                output_file_content($file);
+                output_file_content($abs_file);
             }
         }
 
-        if (
-            $term->ask_yn(prompt  => "$c{reset}$c{bold}=>> Do you want to edit $c{bgreen}$file$c{reset}$c{bold} ?$c{reset}",
-                          default => 'n')
-          ) {
+#<<<
+        my $edit = $term->ask_yn(
+            prompt => "$c{reset}$c{bold}=>> Do you want to edit $c{bgreen}$file$c{reset}$c{bold} ?$c{reset}",
+            default => 'n'
+        );
+#>>>
 
-            my $abs_file  = rel2abs($file);
+        if ($edit) {
+
             system "$editor \Q$abs_file\E";
 
             if ($?) {
