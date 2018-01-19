@@ -92,9 +92,14 @@ my %c = (
          reset   => (RESET),
         );
 
-@ARGV = map { decode_utf8($_) } @ARGV;
-
 my $stdout_on_tty = -t STDOUT;
+my $stdin_on_tty  = -t STDIN;
+
+if (not $stdin_on_tty and any { $_ eq '-' } @ARGV) {
+    push @ARGV, split(' ', join(' ', <STDIN>));
+}
+
+@ARGV = map { decode_utf8($_) } @ARGV;
 
 # Disable colors
 if (not $stdout_on_tty or (any { $_ eq '--nocolors' } @ARGV)) {
