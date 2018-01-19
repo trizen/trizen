@@ -116,7 +116,6 @@ if (not -d $config_dir) {
 my $editor = $ENV{VISUAL} || $ENV{EDITOR} || 'nano';
 
 my %CONFIG = (
-              VERSION                      => $version,
               show_comments                => 0,
               quiet                        => 0,
               debug                        => 0,
@@ -258,7 +257,6 @@ sudo_autorepeat_at_runtime   => bool    Execute `sudo -v` when `$execname` is fi
 sudo_autorepeat_interval     => int     Interval, in seconds, after which `sudo -v` is executed in background (with `sudo_autorepeat`).
 sudo_command                 => str     Command used when special permissions are required and `use_sudo` is set to 1.
 use_sudo                     => bool    Use the `sudo` command when special permissions are required.
-VERSION                      => float   The current version number of `$execname`.
 EOT
 
     my %table;
@@ -290,7 +288,7 @@ EOT
         ^\s*($names_re)(\s*=>\s*.*)
     }{
         sprintf("  %s %*s # %s", $1.$2, $max_width - length($1.$2), ' ',
-            sprintf('%5s -- %s', $table{$1}{type}, $table{$1}{desc}))
+            sprintf('%4s -- %s', $table{$1}{type}, $table{$1}{desc}))
     }gxme;
 
     print $config_fh $config_header, $dumped_config;
@@ -305,13 +303,12 @@ if (-e $config_file and (-s _) > 1) {
 
         $CONFIG->{clone_dir} //= $CONFIG{clone_dir};
 
+        if (join(' ', sort keys %CONFIG) ne join(' ', sort keys %$CONFIG)) {
+            $lconfig{update_config} = 1;
+        }
+
         @CONFIG{@valid_keys}  = @{$CONFIG}{@valid_keys};
         @lconfig{@valid_keys} = @{$CONFIG}{@valid_keys};
-
-        if ($CONFIG{VERSION} != $version) {
-            $lconfig{update_config} = 1;
-            $CONFIG{VERSION}        = $version;
-        }
     }
     else {
         note(":: Invalid config file: {!" . ($! || '$CONFIG must be a HASH ref!') . '!}');
@@ -2188,6 +2185,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
                 $? = 1;
                 next;
             };
+
             open my $fh, '<:utf8', 'PKGBUILD'
               or do {
                 note(":: Cannot open PKGBUILD of package <<$pkg>>: {!$!!}");
