@@ -829,7 +829,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
         system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
         if ($? and $needs_root) {
             note(":: Exit code: " . exit_code()) if $lconfig{debug};
-            $term->ask_yn(prompt => "=>> Try again?", default => 'n') and redo;
+            $term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n') and redo;
         }
     }
     return $? ? 0 : 1;
@@ -955,8 +955,8 @@ sub info_for_package ($pkgname) {
         my @packages = map { $_->{Name} } @{$info->{results}};
         my %table = (map { $packages[$_] => $_ } 0 .. $#packages);
         my $reply = $term->get_reply(
-                                     print_me => "\n=>> Select which packages to install",
-                                     prompt   => 'Select',
+                                     print_me => "\n$c{bold}=>> Select a package$c{reset}",
+                                     prompt   => "$c{bold}Select$c{reset}",
                                      choices  => \@packages,
                                      default  => $packages[0],
                                     );
@@ -1119,7 +1119,7 @@ sub move_built_package ($pkg) {
 
             if ($?) {
                 note(":: Unable to move package <<$pkg>> into <<$lconfig{movepkg_dir}>> -- exit code: " . exit_code());
-                if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
+                if ($term->ask_yn(prompt => "$c{bold}=>> Do you want to try again?$c{reset}", default => 'n')) {
                     move_built_package($pkg);
                 }
             }
@@ -1229,7 +1229,10 @@ sub edit_text_files ($info) {
             }
         }
 
-        if ($term->ask_yn(prompt => "=>> Do you want to edit $file?", default => 'n')) {
+        if (
+            $term->ask_yn(prompt  => "$c{reset}$c{bold}=>> Do you want to edit $c{bgreen}$file$c{reset}$c{bold} ?$c{reset}",
+                          default => 'n')
+          ) {
 
             my $abs_file  = rel2abs($file);
             my $old_mtime = -M $abs_file;
@@ -1240,7 +1243,7 @@ sub edit_text_files ($info) {
 
             if (    $file ne 'PKGBUILD'
                 and $file !~ /\.install\z/
-                and $old_mtime != $new_mtime) {
+                and $old_mtime > $new_mtime) {
                 $source_files_edited = 1;
             }
 
@@ -1252,8 +1255,38 @@ sub edit_text_files ($info) {
     }
 
     if ($source_files_edited) {
-        msg(":: Updating source checksums...");
-        system('/usr/bin/updpkgsums');
+        print "\n";
+        msg(":: Source files were edited...");
+        print "\n";
+
+        my $proceed =
+
+#<<<
+            $term->ask_yn(
+                prompt  => "$c{reset}$c{bold}=>> Do you want to run `$c{bgreen}/usr/bin/updpkgsums$c{reset}$c{bold}` to update the checksums?$c{reset}",
+                default => 'y'
+            );
+#>>>
+
+        if ($proceed) {
+            print "\n";
+
+            my $really_proceed =
+
+#<<<
+            $term->ask_yn(
+                prompt  => "$c{reset}$c{bold}=>> Are you $c{bred}REALLY$c{reset}$c{bold} sure?$c{reset}",
+                default => 'n'
+            );
+#>>>
+
+            if ($really_proceed) {
+                print "\n";
+                msg(":: Updating source checksums...");
+                system('/usr/bin/updpkgsums');
+                print "\n";
+            }
+        }
     }
 
     return 1;
@@ -1271,13 +1304,13 @@ sub run_makepkg_command ($pkg, @args) {
             return;
         }
 
-        if ($term->ask_yn(prompt => "=>> Do you want to try again?", default => 'n')) {
+        if ($term->ask_yn(prompt => "$c{bold}=>> Do you want to try again?$c{reset}", default => 'n')) {
             local $lconfig{nopull} = 1;
             delete $seen_package{$pkg};
             install_package($pkg);
         }
         else {
-            if ($term->ask_yn(prompt => "=>> Do you want to exit now?", default => 'y')) {
+            if ($term->ask_yn(prompt => "$c{bold}=>> Do you want to exit now?$c{reset}", default => 'y')) {
                 exit 65;    # Package not installed
             }
             else {
@@ -1359,12 +1392,12 @@ sub install_built_package ($pkg, @args) {
         say "\n" . join("\n", map { "   $_" } @packages), "\n";
 
         if (
-            $term->ask_yn(prompt  => '=>> Do you want to install more packages from this group?',
+            $term->ask_yn(prompt  => "$c{bold}=>> Do you want to install more packages from this group?$c{reset}",
                           default => 'n')
           ) {
             my @reply = $term->get_reply(
-                                         print_me => "\n=>> Select which packages to install",
-                                         prompt   => 'Install',
+                                         print_me => "\n$c{bold}=>> Select which packages to install$c{reset}",
+                                         prompt   => "$c{bold}Install$c{reset}",
                                          choices  => \@packages,
                                          default  => \@packages,
                                          multi    => 1,
@@ -1646,9 +1679,14 @@ sub clean_cache () {
       or error(":: Cannot access the AUR clone directory: {!$!!}");
 
     if ($lconfig{clone_dir} !~ m{^/tmp/}) {
-        $term->ask_yn(prompt  => "=> Do you want to remove the content of $c{bold}$lconfig{clone_dir}$c{reset}?",
-                      default => 'n')
-          || return;
+
+#<<<
+        $term->ask_yn(
+            prompt  => "$c{reset}$c{bold}=>> Do you want to remove the content of $c{reset}$c{bgreen}$lconfig{clone_dir}$c{reset}$c{bold}?$c{reset}",
+            default => 'n'
+        ) || return;
+#>>>
+
     }
 
     msg(":: Removing the content of <<$lconfig{clone_dir}>>...");
