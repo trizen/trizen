@@ -1656,6 +1656,49 @@ sub clean_cache () {
     msg(":: Done!");
 }
 
+sub format_aur_package ($package) {
+
+    # Compare installed version with AUR version
+    my $is_installed_string = $lconfig{aur_results_show_installed}
+      ? do {
+        my $installed_version = package_is_installed($package->{Name}, 0);
+
+        defined($installed_version)
+          ? versioncmp($installed_version, $package->{Version}) >= 0
+              ? " [$c{bgreen}installed$c{reset}]"
+              : " [$c{bold}installed$c{reset}: $c{bred}$installed_version$c{reset}]"
+          : q{};
+      }
+      : q{};
+
+    # Formatting string
+    my $result_string = "$c{bpurple}aur/$c{reset}$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s";
+
+    # Normalize the popularity percentage
+    $package->{Popularity} = sprintf("%.2g", $package->{Popularity});
+
+#<<<
+    return (
+        sprintf($result_string,
+          $package->{Name},
+          $package->{Version},
+          $is_installed_string,
+          ($package->{OutOfDate}             ? " [$c{bred}out-of-date$c{reset}]"            : q{}),
+          (!$package->{Maintainer}           ? " [$c{bred}unmaintained$c{reset}]"           : q{}),
+          ($lconfig{aur_results_votes}      ? " [$c{bold}$package->{NumVotes}+$c{reset}]"   : q{}),
+          ($lconfig{aur_results_popularity} ? " [$c{bold}$package->{Popularity}%$c{reset}]" : q{}),
+          (
+            $lconfig{aur_results_last_modified}
+            ? localtime($package->{LastModified}) =~ /^\w+ (\w+)\s+(\d+)\s+.+? (\d+)$/ && " [$c{bold}$2 $1 $3$c{reset}]"
+            : q{}
+          )
+        ),
+
+        $package->{Description} // 'No description available...'
+    );
+#>>>
+}
+
 sub print_aur_results (@results) {
 
     # Sort the results
@@ -1679,50 +1722,14 @@ sub print_aur_results (@results) {
         @results = reverse(@results);
     }
 
-    foreach my $result (@results) {
+    foreach my $package (@results) {
 
         if ($lconfig{quiet}) {
-            say $result->{Name};
+            say $package->{Name};
             next;
         }
 
-        # Compare installed version with AUR version
-        my $is_installed_string = $lconfig{aur_results_show_installed}
-          ? do {
-            my $installed_version = package_is_installed($result->{Name}, 0);
-
-            defined($installed_version)
-              ? versioncmp($installed_version, $result->{Version}) >= 0
-                  ? " [$c{bgreen}installed$c{reset}]"
-                  : " [$c{bold}installed$c{reset}: $c{bred}$installed_version$c{reset}]"
-              : q{};
-          }
-          : q{};
-
-        # Formatting string
-        my $result_string = "$c{bpurple}aur/$c{reset}$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s\n    %s\n";
-
-        # Normalize the popularity percentage
-        $result->{Popularity} = sprintf("%.2g", $result->{Popularity});
-
-#<<<
-        # Print formatted output
-        printf $result_string,
-          $result->{Name},
-          $result->{Version},
-          $is_installed_string,
-          ($result->{OutOfDate}             ? " [$c{bred}out-of-date$c{reset}]"            : q{}),
-          (!$result->{Maintainer}           ? " [$c{bred}unmaintained$c{reset}]"           : q{}),
-          ($lconfig{aur_results_votes}      ? " [$c{bold}$result->{NumVotes}+$c{reset}]"   : q{}),
-          ($lconfig{aur_results_popularity} ? " [$c{bold}$result->{Popularity}%$c{reset}]" : q{}),
-          (
-            $lconfig{aur_results_last_modified}
-            ? localtime($result->{LastModified}) =~ /^\w+ (\w+)\s+(\d+)\s+.+? (\d+)$/ && " [$c{bold}$2 $1 $3$c{reset}]"
-            : q{}
-          ),
-          ($result->{Description} // 'No description available...'),
-        ;
-#>>>
+        printf("%s\n    %s\n", format_aur_package($package));
     }
 
     return 1;
@@ -1762,7 +1769,44 @@ sub search_aur_packages (@keywords) {
     }
 
     $? = 0 if @matched_results;
-    print_aur_results(@matched_results);
+    return @matched_results;
+}
+
+sub interactive_search_and_install (@keywords) {
+
+    my @aur_results = do {
+        local $lconfig{aur} = 1;
+        search_aur_packages(@keywords);
+    };
+
+    my $index_width = 1 + int(log(scalar @aur_results) / log(10));
+
+    foreach my $i (0 .. $#aur_results) {
+        my $package = $aur_results[$i];
+
+        if ($lconfig{quiet}) {
+            printf("$c{bold}%*d$c{reset} %s\n", $index_width, $i + 1, $package->{Name});
+            next;
+        }
+
+#<<<
+        my ($name, $description) = format_aur_package($package);
+        printf("$c{bgreen}%*d$c{reset} %s\n%s%s\n", $index_width, $i + 1, $name =~ s{aur/}{}r, ' ' x ($index_width + 3), $description);
+#>>>
+    }
+
+    my $reply = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ");
+
+    foreach my $package (
+                         map { $aur_results[$_ - 1] }
+                         grep { $_ > 0 and $_ < @aur_results }
+                         split(' ', $reply)
+      ) {
+        msg(":: Installing: $package->{Name}");
+        install_package($package->{Name});
+    }
+
+    return 1;
 }
 
 sub list_aur_maintainer_packages ($maintainer) {
@@ -1912,7 +1956,7 @@ sub update_local_packages () {
         my $reply = (
                      $lconfig{noconfirm}
                      ? 'all'
-                     : $term->readline("\n=>> Select packages for upgrade (default: all)\n>$c{reset} ")
+                     : $term->readline("\n$c{bold}=>> Select packages for upgrade (default: all)$c{reset}\n> ")
                     );
 
         if ($reply eq 'all' or $reply eq '') {
@@ -2070,7 +2114,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
 
     if ($lconfig{s} or $lconfig{search}) {        # -Ss
-        search_aur_packages(splice @keyword_arguments);
+        print_aur_results(search_aur_packages(splice @keyword_arguments));
     }
 
     if ($lconfig{i} or $lconfig{info}) {          # -Si
@@ -2299,6 +2343,9 @@ elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
 }
 elsif ($lconfig{h} or $lconfig{help}) {
     help();
+}
+elsif (@keyword_arguments) {
+    interactive_search_and_install(@keyword_arguments);
 }
 
 main_quit();
