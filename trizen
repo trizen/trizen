@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 06 January 2018
+# Latest edit: 19 January 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -894,63 +894,7 @@ sub package_is_installed ($pkgname, $strict = 1) {
 }
 
 sub versioncmp ($v1, $v2) {
-
-    # Support for `epoch`
-    my ($e1) = $v1 =~ s/^([0-9]+)://;
-    my ($e2) = $v2 =~ s/^([0-9]+)://;
-
-    $e1 ||= 0;
-    $e2 ||= 0;
-
-    if ($e1 != $e2) {
-        return ($e1 <=> $e2);
-    }
-
-    # Code from Sort::Versions
-    # http://search.cpan.org/~edavis/Sort-Versions-1.5/Versions.pm
-
-    my (@A) = $v1 =~ /([-.]|\d+|[^-.\d]+)/g;
-    my (@B) = $v2 =~ /([-.]|\d+|[^-.\d]+)/g;
-
-    my ($A, $B);
-    while (@A and @B) {
-        $A = shift @A;
-        $B = shift @B;
-
-        if ($A eq q{-} and $B eq q{-}) {
-            next;
-        }
-        elsif ($A eq q{-}) {
-            return -1;
-        }
-        elsif ($B eq q{-}) {
-            return 1;
-        }
-        elsif ($A eq q{.} and $B eq q{.}) {
-            next;
-        }
-        elsif ($A eq q{.}) {
-            return -1;
-        }
-        elsif ($B eq q{.}) {
-            return 1;
-        }
-        elsif ($A =~ /^\d+$/ and $B =~ /^\d+$/) {
-            if ($A =~ /^0/ or $B =~ /^0/) {
-                return $A cmp $B if $A cmp $B;
-            }
-            else {
-                return $A <=> $B if $A <=> $B;
-            }
-        }
-        else {
-            $A = uc $A;
-            $B = uc $B;
-            return $A cmp $B if $A cmp $B;
-        }
-    }
-
-    return @A <=> @B;
+    `/usr/bin/vercmp \Q$v1\E \Q$v2\E` + 0;
 }
 
 sub array_ref_or_string ($data) {
