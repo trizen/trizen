@@ -97,6 +97,7 @@ my $stdin_on_tty  = -t STDIN;
 
 if (not $stdin_on_tty and any { $_ eq '-' } @ARGV) {
     push @ARGV, split(' ', join(' ', <STDIN>));
+    close STDIN;
 }
 
 @ARGV = map { decode_utf8($_) } @ARGV;
