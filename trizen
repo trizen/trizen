@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 19 January 2018
+# Latest edit: 20 January 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -51,7 +51,7 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.39';
+my $version  = '1.40';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
@@ -1719,9 +1719,8 @@ sub format_aur_package ($package) {
 #>>>
 }
 
-sub print_aur_results (@results) {
+sub sort_aur_results (@results) {
 
-    # Sort the results
     if ($lconfig{aur_results_sort_by} =~ /popularity/i) {
         @results = sort { $a->{Popularity} <=> $b->{Popularity} } @results;
     }
@@ -1741,6 +1740,11 @@ sub print_aur_results (@results) {
     else {
         @results = reverse(@results);
     }
+
+    return @results;
+}
+
+sub print_aur_results (@results) {
 
     foreach my $package (@results) {
 
@@ -1789,7 +1793,8 @@ sub search_aur_packages (@keywords) {
     }
 
     $? = 0 if @matched_results;
-    return @matched_results;
+
+    return sort_aur_results(@matched_results);
 }
 
 sub interactive_search_and_install (@keywords) {
@@ -1834,7 +1839,7 @@ sub list_aur_maintainer_packages ($maintainer) {
     ref($results->{results}) eq 'ARRAY' or return;
     my @maintainers_packages = @{$results->{results}};
     @maintainers_packages || return;
-    print_aur_results(@maintainers_packages);
+    print_aur_results(sort_aur_results(@maintainers_packages));
 }
 
 sub update_local_packages () {
