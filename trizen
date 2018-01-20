@@ -1804,6 +1804,15 @@ sub interactive_search_and_install (@keywords) {
         search_aur_packages(@keywords);
     };
 
+#<<<
+    # TODO: add support for pacman results.
+    #~ my @pacman_results = do {
+        #~ my $keywords = join(' ', @keywords);
+        #~ my @lines = `$lconfig{pacman_command} -Ss \Q$keywords\E`;
+
+    #~ };
+#>>>
+
     if (!@aur_results) {
         note(":: No AUR packages found...");
         return;
@@ -1829,8 +1838,8 @@ sub interactive_search_and_install (@keywords) {
 
     foreach my $package (
                          map { $aur_results[$_ - 1] }
-                         grep { $_ =~ /^\d+$/ and $_ > 0 and $_ <= @aur_results }
-                         split(' ', $reply)
+                         grep { /^[0-9]+\z/ and $_ > 0 and $_ <= @aur_results }
+                         split(/[\s,]+/, $reply)
       ) {
         msg(":: Installing: $package->{Name}");
         install_package($package->{Name});
