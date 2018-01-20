@@ -1824,7 +1824,7 @@ sub interactive_search_and_install (@keywords) {
 
     foreach my $package (
                          map { $aur_results[$_ - 1] }
-                         grep { $_ > 0 and $_ <= @aur_results }
+                         grep { $_ =~ /^\d+$/ and $_ > 0 and $_ <= @aur_results }
                          split(' ', $reply)
       ) {
         msg(":: Installing: $package->{Name}");
