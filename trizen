@@ -1804,6 +1804,11 @@ sub interactive_search_and_install (@keywords) {
         search_aur_packages(@keywords);
     };
 
+    if (!@aur_results) {
+        note(":: No AUR packages found...");
+        return;
+    }
+
     my $index_width = 1 + int(log(scalar @aur_results) / log(10));
 
     foreach my $i (0 .. $#aur_results) {
