@@ -649,7 +649,10 @@ require LWP::UserAgent;
 require HTTP::Message;
 
 # Initializing module objects
-my $term = Term::ReadLine->new("$execname $version");
+my $term;
+if ($stdout_on_tty) {
+    $term = Term::ReadLine->new("$execname $version");
+}
 
 my $lwp = LWP::UserAgent->new(
                               env_proxy     => $lconfig{lwp_env_proxy},
