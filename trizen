@@ -1869,44 +1869,50 @@ sub update_local_packages () {
     }
 
     my %packages = map { split(' ', $_) } `$lconfig{pacman_command} -Qm`;
-
-    # Get info only for a random subset of 150 packages to avoid the "Request-URI too large" error.
-    my @subset = do {
-        my @list = keys %packages;
-        sort splice(@list, 0, 150);
-    };
+    my @pkgnames = sort keys %packages;
 
     my %exists_in_aur;
-    @exists_in_aur{@subset} = ();
+    @exists_in_aur{@pkgnames} = ();
 
-    my $pkgs_query = join('&', map { 'arg[]=' . uri_escape_utf8($_) } @subset);
+    my @aur_results;
 
-    my $multiinfo = json2perl(
-        get("$aur_rpc_base_url?v=$AUR_V&type=multiinfo&$pkgs_query") // do {
-            note(":: Unable to get info for local packages...");
-            $? = 1;
-            return;
-          }
-    );
+    while (@pkgnames) {
 
-    ref($multiinfo->{results}) eq 'ARRAY' or return;
+        my $url = "$aur_rpc_base_url?v=$AUR_V&type=multiinfo";
+
+        while (length($url) < 4000 and @pkgnames) {
+            $url .= '&arg[]=' . uri_escape_utf8(shift(@pkgnames));
+        }
+
+        my $multiinfo = json2perl(
+            get($url) // do {
+                note(":: Unable to get info for local packages...");
+                $? = 1;
+                return;
+              }
+        );
+
+        ref($multiinfo->{results}) eq 'ARRAY' or return;
+
+        push @aur_results, @{$multiinfo->{results}};
+    }
 
     my @packages_for_update;
 
-    foreach my $hash_ref (@{$multiinfo->{results}}) {
+    foreach my $result (@aur_results) {
 
-        ref($hash_ref) eq 'HASH' or next;
+        ref($result) eq 'HASH' or next;
 
-        my $pkgname = $hash_ref->{Name};
-        my $version = $hash_ref->{Version};
+        my $pkgname = $result->{Name};
+        my $version = $result->{Version};
 
         $exists_in_aur{$pkgname} = 1;
 
-        if ($lconfig{show_ood} and $hash_ref->{OutOfDate}) {
+        if ($lconfig{show_ood} and $result->{OutOfDate}) {
             note(":: Package <<$pkgname>> has been flagged {!out-of-date!}!");
         }
 
-        if ($lconfig{show_unmaintained} and not $hash_ref->{Maintainer}) {
+        if ($lconfig{show_unmaintained} and not $result->{Maintainer}) {
             note(":: Package <<$pkgname>> is {!unmaintained!}!");
         }
 
@@ -1940,7 +1946,7 @@ sub update_local_packages () {
     # Notify when a package is not found in AUR
     # https://github.com/trizen/trizen/issues/24
     if ($lconfig{show_inexistent}) {
-        foreach my $pkgname (@subset) {
+        foreach my $pkgname (sort keys %exists_in_aur) {
             if (not $exists_in_aur{$pkgname}) {
                 note(":: Package <<$pkgname>> was {!not found!} in AUR -- skipping");
             }
