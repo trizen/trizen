@@ -32,6 +32,12 @@
 #   nicman23      - https://github.com/nicman23
 #   DragoonAethis - https://github.com/DragoonAethis
 
+# Full list of contributors:
+#   https://github.com/trizen/trizen/graphs/contributors
+
+# Sincere thanks to everyone who helped and contributed in improving
+# this program through pull-requests, feature-requests and bug-reports.
+
 eval 'exec perl -S $0 ${1+"$@"}'
   if 0;    # not running under some shell
 
@@ -114,8 +120,6 @@ if (not -d $config_dir) {
 }
 
 #----------------------- GLOBAL VARIABLES -----------------------#
-my $editor = $ENV{VISUAL} || $ENV{EDITOR} || 'nano';
-
 my %CONFIG = (
               show_comments                => 0,
               quiet                        => 0,
@@ -203,6 +207,8 @@ my %lconfig = (
     stats         => \&show_stats,
     version       => \&version,
               );
+
+$lconfig{editor} = $ENV{VISUAL} || $ENV{EDITOR} || 'nano';
 
 our $CONFIG;
 
@@ -456,6 +462,7 @@ $c{bgreen}Other options:$c{reset}
       $c{bold}--movepkg$c{reset}       : move built packages into pacman's cache directory
       $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (with --movepkg)
       $c{bold}--clone-dir=s$c{reset}   : directory where to clone and build packages
+      $c{bold}--editor=s$c{reset}      : editor command used to edit build files
       $c{bold}--ignore=s$c{reset}      : space-separated list of packages to ignore during -Su
 
 $c{bgreen}Examples:$c{reset}
@@ -1254,10 +1261,10 @@ sub edit_text_files ($info) {
 
         if ($edit) {
 
-            system "$editor \Q$abs_file\E";
+            system "$lconfig{editor} \Q$abs_file\E";
 
             if ($?) {
-                note(":: $editor exited with code: " . exit_code());
+                note(":: $lconfig{editor} exited with code: " . exit_code());
                 next;
             }
         }
