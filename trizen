@@ -1693,24 +1693,27 @@ sub format_aur_package ($package) {
       }
       : q{};
 
+    my $repo = $package->{Repository} // 'aur';
+
     # Formatting string
-    my $result_string = "$c{bpurple}aur/$c{reset}$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s";
+    my $result_string = "$c{bpurple}$repo/$c{reset}$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s%s";
 
     # Normalize the popularity percentage
-    $package->{Popularity} = sprintf("%.2g", $package->{Popularity});
+    $package->{Popularity} = sprintf("%.2g", $package->{Popularity} // 0);
 
 #<<<
     return (
         sprintf($result_string,
           $package->{Name},
           $package->{Version},
+          ($repo ne 'aur' && $package->{Group}                ? " [$c{bold}$package->{Group}$c{reset}]"       : q{}),
           $is_installed_string,
-          ($package->{OutOfDate}             ? " [$c{bred}out-of-date$c{reset}]"            : q{}),
-          (!$package->{Maintainer}           ? " [$c{bred}unmaintained$c{reset}]"           : q{}),
-          ($lconfig{aur_results_votes}      ? " [$c{bold}$package->{NumVotes}+$c{reset}]"   : q{}),
-          ($lconfig{aur_results_popularity} ? " [$c{bold}$package->{Popularity}%$c{reset}]" : q{}),
+          ($repo eq 'aur' && $package->{OutOfDate}            ? " [$c{bred}out-of-date$c{reset}]"             : q{}),
+          ($repo eq 'aur' && !$package->{Maintainer}          ? " [$c{bred}unmaintained$c{reset}]"            : q{}),
+          ($repo eq 'aur' && $lconfig{aur_results_votes}      ? " [$c{bold}$package->{NumVotes}+$c{reset}]"   : q{}),
+          ($repo eq 'aur' && $lconfig{aur_results_popularity} ? " [$c{bold}$package->{Popularity}%$c{reset}]" : q{}),
           (
-            $lconfig{aur_results_last_modified}
+            $repo eq 'aur' && $lconfig{aur_results_last_modified}
             ? localtime($package->{LastModified}) =~ /^\w+ (\w+)\s+(\d+)\s+.+? (\d+)$/ && " [$c{bold}$2 $1 $3$c{reset}]"
             : q{}
           )
@@ -1801,29 +1804,55 @@ sub search_aur_packages (@keywords) {
 
 sub interactive_search_and_install (@keywords) {
 
-    my @aur_results = do {
+    my @results;
+
+    if (!$lconfig{aur}) {
+        my $keywords = join(' ', @keywords);
+        my @lines = split(/\R/, decode_utf8(scalar `$lconfig{pacman_command} -Ss \Q$keywords\E`));
+
+        while (@lines) {
+            my $pkgline = shift(@lines);
+
+            my $description = shift(@lines);
+            while (@lines and $lines[0] =~ /^\s/) {
+                $description .= shift(@lines);
+            }
+
+            $description = join(' ', split(' ', $description));
+
+            if ($pkgline =~ m{^(\S+)/(\S+) (\S+)(?: \((.*?)\))?(?: \[(.*?)\])?\s*\z}) {
+                push @results,
+                  {
+                    Repository  => $1,
+                    Name        => $2,
+                    Version     => $3,
+                    Group       => $4,
+                    Installed   => $5,
+                    Description => $description,
+                  };
+            }
+            else {
+                note(":: Unable to parse pacman result: $pkgline");
+            }
+        }
+    }
+
+    if (!$lconfig{regular}) {
         local $lconfig{aur} = 1;
-        search_aur_packages(@keywords);
-    };
+        push @results, search_aur_packages(@keywords);
+    }
 
-#<<<
-    # TODO: add support for pacman results.
-    #~ my @pacman_results = do {
-        #~ my $keywords = join(' ', @keywords);
-        #~ my @lines = `$lconfig{pacman_command} -Ss \Q$keywords\E`;
-
-    #~ };
-#>>>
-
-    if (!@aur_results) {
-        note(":: No AUR packages found...");
+    if (!@results) {
+        note(":: No packages found...");
         return;
     }
 
-    my $index_width = 1 + int(log(scalar @aur_results) / log(10));
+    my $index_width = length(scalar @results);
 
-    foreach my $i (0 .. $#aur_results) {
-        my $package = $aur_results[$i];
+    foreach my $i (0 .. $#results) {
+        my $package = $results[$i];
+
+        $package->{Repository} //= 'aur';
 
         if ($lconfig{quiet}) {
             printf("$c{bold}%*d$c{reset} %s\n", $index_width, $i + 1, $package->{Name});
@@ -1832,15 +1861,15 @@ sub interactive_search_and_install (@keywords) {
 
 #<<<
         my ($name, $description) = format_aur_package($package);
-        printf("$c{bgreen}%*d$c{reset} %s\n%s%s\n", $index_width, $i + 1, $name =~ s{aur/}{}r, ' ' x ($index_width + 3), $description);
+        printf("$c{bgreen}%*d$c{reset} %s\n%s%s\n", $index_width, $i + 1, $name, ' ' x ($index_width + 3), $description);
 #>>>
     }
 
     my $reply = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ");
 
     foreach my $package (
-                         map { $aur_results[$_ - 1] }
-                         grep { /^[0-9]+\z/ and $_ > 0 and $_ <= @aur_results }
+                         map { $results[$_ - 1] }
+                         grep { /^[0-9]+\z/ and $_ > 0 and $_ <= @results }
                          split(/[\s,]+/, $reply)
       ) {
         msg(":: Installing: $package->{Name}");
