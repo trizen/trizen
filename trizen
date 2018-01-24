@@ -89,6 +89,7 @@ my %c = (
          bgreen  => (BOLD GREEN),
          bold    => (BOLD),
          bred    => (BOLD RED),
+         bcyan   => (BOLD CYAN),
          reset   => (RESET),
         );
 
@@ -1706,7 +1707,7 @@ sub format_aur_package ($package) {
         sprintf($result_string,
           $package->{Name},
           $package->{Version},
-          ($repo ne 'aur' && $package->{Group}                ? " [$c{bold}$package->{Group}$c{reset}]"       : q{}),
+          ($repo ne 'aur' && $package->{Group}                ? " [$c{bcyan}$package->{Group}$c{reset}]"      : q{}),
           $is_installed_string,
           ($repo eq 'aur' && $package->{OutOfDate}            ? " [$c{bred}out-of-date$c{reset}]"             : q{}),
           ($repo eq 'aur' && !$package->{Maintainer}          ? " [$c{bred}unmaintained$c{reset}]"            : q{}),
@@ -1764,22 +1765,60 @@ sub print_aur_results (@results) {
     return 1;
 }
 
-sub search_aur_packages (@keywords) {
+sub search_repo_packages (@keywords) {
 
-    if (not $lconfig{aur}) {
-        execute_pacman_command(0, get_pacman_arguments('all', qw(sync quiet search)), @keywords);
+    my $keywords = join(' ', @keywords);
+    my @lines = split(/\R/, decode_utf8(scalar `$lconfig{pacman_command} -Ss \Q$keywords\E`));
+
+    my @results;
+
+    while (@lines) {
+        my $pkgline = shift(@lines);
+
+        my $description = shift(@lines);
+        while (@lines and $lines[0] =~ /^\s/) {
+            $description .= shift(@lines);
+        }
+
+        $description = join(' ', split(' ', $description));
+
+        if ($pkgline =~ m{^(\S+)/(\S+) (\S+)(?: \((.*?)\))?(?: \[(.*?)\])?\s*\z}) {
+            push @results,
+              {
+                Repository  => $1,
+                Name        => $2,
+                Version     => $3,
+                Group       => $4,
+                Installed   => $5,
+                Description => $description,
+              };
+        }
+        else {
+            note(":: Unable to parse pacman result: $pkgline");
+        }
     }
 
-    my @all_results;
+    return @results;
+}
+
+sub search_aur_packages (@keywords) {
+
+    my @repo_results;
+
+    if (not $lconfig{aur}) {
+        push @repo_results, search_repo_packages(@keywords);
+    }
+
+    my @aur_results;
     foreach my $key (map { uri_escape_utf8($_) } grep { length() > 1 } @keywords) {
-        push @all_results, json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=search&arg=$key") // next);
+        push @aur_results, json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=search&arg=$key") // next);
     }
 
     my %seen;
     my @keys_re = map { qr/\Q$_\E/i } @keywords;
 
-    my @matched_results;
-    foreach my $results (@all_results) {
+    my @matched_aur_results;
+    foreach my $results (@aur_results) {
 
         ref($results->{results}) eq 'ARRAY' or next;
 
@@ -1793,13 +1832,13 @@ sub search_aur_packages (@keywords) {
             } @keys_re;
 #>>>
 
-            push @matched_results, $result;
+            push @matched_aur_results, $result;
         }
     }
 
-    $? = 0 if @matched_results;
+    $? = 0 if @matched_aur_results;
 
-    return sort_aur_results(@matched_results);
+    return (@repo_results, sort_aur_results(@matched_aur_results));
 }
 
 sub interactive_search_and_install (@keywords) {
@@ -1807,34 +1846,7 @@ sub interactive_search_and_install (@keywords) {
     my @results;
 
     if (!$lconfig{aur}) {
-        my $keywords = join(' ', @keywords);
-        my @lines = split(/\R/, decode_utf8(scalar `$lconfig{pacman_command} -Ss \Q$keywords\E`));
-
-        while (@lines) {
-            my $pkgline = shift(@lines);
-
-            my $description = shift(@lines);
-            while (@lines and $lines[0] =~ /^\s/) {
-                $description .= shift(@lines);
-            }
-
-            $description = join(' ', split(' ', $description));
-
-            if ($pkgline =~ m{^(\S+)/(\S+) (\S+)(?: \((.*?)\))?(?: \[(.*?)\])?\s*\z}) {
-                push @results,
-                  {
-                    Repository  => $1,
-                    Name        => $2,
-                    Version     => $3,
-                    Group       => $4,
-                    Installed   => $5,
-                    Description => $description,
-                  };
-            }
-            else {
-                note(":: Unable to parse pacman result: $pkgline");
-            }
-        }
+        push @results, search_repo_packages(@keywords);
     }
 
     if (!$lconfig{regular}) {
@@ -1872,7 +1884,9 @@ sub interactive_search_and_install (@keywords) {
                          grep { /^[0-9]+\z/ and $_ > 0 and $_ <= @results }
                          split(/[\s,]+/, $reply)
       ) {
+        print "\n";
         msg(":: Installing: $package->{Name}");
+        print "\n";
         install_package($package->{Name});
     }
 
