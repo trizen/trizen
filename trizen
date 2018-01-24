@@ -1443,6 +1443,19 @@ sub is_vcs_package ($pkg) {
     $pkg =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/;
 }
 
+sub install_packages_from_repo (@pkgs) {
+    my @args = ('-S', get_pacman_arguments('long', qw(noconfirm force needed quiet)));
+
+    if ($lconfig{asdeps}) {
+        push @args, '--asdeps';
+    }
+    elsif ($lconfig{asexplicit}) {
+        push @args, '--asexplicit';
+    }
+
+    return execute_pacman_command(1, @args, @pkgs);
+}
+
 sub install_package ($pkg) {
 
     # Avoid circular dependencies
@@ -1460,19 +1473,8 @@ sub install_package ($pkg) {
         msg(":: Package <<$pkg>> exists in AUR!") if $lconfig{debug};
     }
     elsif (not($lconfig{aur}) and is_available_in_pacman_repo($pkg)) {
-
         msg(":: Package <<$pkg>> is available in pacman's repository...") if $lconfig{debug};
-
-        my @args = ('-S', get_pacman_arguments('long', qw(noconfirm force needed quiet)));
-
-        if ($lconfig{asdeps}) {
-            push @args, '--asdeps';
-        }
-        elsif ($lconfig{asexplicit}) {
-            push @args, '--asexplicit';
-        }
-
-        return execute_pacman_command(1, @args, $pkg);
+        return install_packages_from_repo($pkg);
     }
     else {
         note(":: Package not found: $pkg");
@@ -2227,8 +2229,23 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         }
     }
 
+    my @aur_packages;
+    my @repo_packages;
+
     foreach my $pkg (splice @keyword_arguments) {    # -S only
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
+
+        if (!$lconfig{aur} and is_available_in_pacman_repo($pkg)) {
+            push @repo_packages, $pkg;
+        }
+        else {
+            push @aur_packages, $pkg;
+        }
+    }
+
+    install_packages_from_repo(@repo_packages) if @repo_packages;
+
+    foreach my $pkg (@aur_packages) {
         if (install_package($pkg)) {
             msg(":: Package <<$pkg>> has been successfully installed!") if $lconfig{debug};
         }
@@ -2237,7 +2254,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         }
     }
 }
-elsif ($lconfig{C} or $lconfig{comments}) {          # -C
+elsif ($lconfig{C} or $lconfig{comments}) {    # -C
 
     foreach my $pkg (@keyword_arguments) {
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
