@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 20 January 2018
+# Latest edit: 24 January 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -1147,6 +1147,8 @@ sub recompute_dependencies ($info) {
     }
 
     my %data;
+    my $current_pkgname = $info->{Name};
+
     foreach my $line (@srcinfo) {
         if ($line =~ /^\s*(\w+)\s*=\s*(.*\S)/) {
             my ($key, $value) = ($1, $2);
@@ -1154,9 +1156,12 @@ sub recompute_dependencies ($info) {
             # Build the package (again)
             if ($key eq 'pkgname') {
                 $already_built{$value} = 0;
+                $current_pkgname = $value;
             }
 
-            push @{$data{$key}}, $value;
+            if ($current_pkgname eq $info->{Name}) {
+                push @{$data{$key}}, $value;
+            }
         }
     }
 
@@ -1768,7 +1773,7 @@ sub print_aur_results (@results) {
 sub search_repo_packages (@keywords) {
 
     my $keywords = join(' ', @keywords);
-    my @lines = split(/\R/, decode_utf8(scalar `$lconfig{pacman_command} -Ss \Q$keywords\E`));
+    my @lines = split(/\n/, decode_utf8(scalar `$lconfig{pacman_command} -Ss \Q$keywords\E`));
 
     my @results;
 
