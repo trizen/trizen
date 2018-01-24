@@ -1813,12 +1813,16 @@ sub search_repo_packages (@keywords) {
     return @results;
 }
 
-sub search_aur_packages (@keywords) {
+sub search_packages (@keywords) {
 
     my @repo_results;
 
     if (not $lconfig{aur}) {
         push @repo_results, search_repo_packages(@keywords);
+    }
+
+    if ($lconfig{regular}) {
+        return @repo_results;
     }
 
     my @aur_results;
@@ -1855,16 +1859,7 @@ sub search_aur_packages (@keywords) {
 
 sub interactive_search_and_install (@keywords) {
 
-    my @results;
-
-    if (!$lconfig{aur}) {
-        push @results, search_repo_packages(@keywords);
-    }
-
-    if (!$lconfig{regular}) {
-        local $lconfig{aur} = 1;
-        push @results, search_aur_packages(@keywords);
-    }
+    my @results = search_packages(@keywords);
 
     if (!@results) {
         note(":: No packages found...");
@@ -2216,7 +2211,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
 
     if ($lconfig{s} or $lconfig{search}) {        # -Ss
-        print_aur_results(search_aur_packages(splice @keyword_arguments));
+        print_aur_results(search_packages(splice @keyword_arguments));
     }
 
     if ($lconfig{i} or $lconfig{info}) {          # -Si
