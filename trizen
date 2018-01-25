@@ -142,7 +142,6 @@ my %CONFIG = (
               split_packages               => 1,
               recompute_deps               => 1,
               pager_mode                   => 0,
-              pager_command                => '/usr/bin/less',
               use_sudo                     => ((-x '/usr/bin/sudo') ? 1 : 0),
               su_command                   => '/usr/bin/su -c',
               sudo_command                 => '/usr/bin/sudo',
@@ -209,6 +208,7 @@ my %lconfig = (
               );
 
 $lconfig{editor} = $ENV{VISUAL} || $ENV{EDITOR} || 'nano';
+$lconfig{pager_command} = $ENV{PAGER} || 'less';
 
 our $CONFIG;
 
@@ -249,8 +249,7 @@ nopull                       => bool    Do not `git pull` new changes from the A
 packages_in_stats            => int     The number of packages to display in `--stats`
 pacman_command               => str     The `pacman` command that is used internally for pacman operations.
 pacman_local_dir             => str     Absolute path to the pacman's local directory.
-pager_command                => str     Pager command for viewing build files when `pager_mode` is set to 1.
-pager_mode                   => bool    Show the build files in pager mode using the pager specified in `pager_command`.
+pager_mode                   => bool    Show the build files in pager mode using pager.
 quiet                        => bool    Do not display any warnings.
 recompute_deps               => bool    Recompute the dependencies of a package after its build files are inspected.
 show_build_files_content     => bool    Show the content of the build files of a package before building it.
