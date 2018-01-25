@@ -1779,8 +1779,10 @@ sub print_aur_results (@results) {
 
 sub search_repo_packages (@keywords) {
 
-    my $keywords = join(' ', @keywords);
-    my @lines = split(/\n/, decode_utf8(scalar `$lconfig{pacman_command} -Ss \Q$keywords\E`));
+    @keywords = map { quotemeta($_) } @keywords;
+
+    my @pacman_args = get_pacman_arguments('long');
+    my @lines = split(/\n/, decode_utf8(scalar `$lconfig{pacman_command} -Ss @pacman_args @keywords`));
 
     my @results;
 
