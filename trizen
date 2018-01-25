@@ -1002,7 +1002,7 @@ sub download_package ($pkgname, $path) {
 
         $info->{_exists_in_cache} = 1;
 
-        print decode_utf8(scalar `/usr/bin/git -C \Q$dir_name\E diff $old_commit_hash --color=always ':!.SRCINFO'`);
+        print decode_utf8(scalar `/usr/bin/git -C \Q$dir_name\E diff --no-ext-diff $old_commit_hash --color=always ':!.SRCINFO'`);
     }
     else {
 
