@@ -1254,7 +1254,7 @@ sub edit_text_files ($info) {
 
 #<<<
         my $edit = $term->ask_yn(
-            prompt => "$c{reset}$c{bold}=>> Do you want to edit $c{bgreen}$file$c{reset}$c{bold}?$c{reset}",
+            prompt => "$c{bold}=>> Edit $file?$c{reset}",
             default => 'n'
         );
 #>>>
@@ -1665,7 +1665,7 @@ sub clean_cache () {
 
 #<<<
         $term->ask_yn(
-            prompt  => "$c{reset}$c{bold}=>> Do you want to remove the content of $c{reset}$c{bgreen}$lconfig{clone_dir}$c{reset}$c{bold}?$c{reset}",
+            prompt  => "$c{bold}=>> Remove the content of $lconfig{clone_dir}$c{reset}?",
             default => 'n'
         ) || return;
 #>>>
