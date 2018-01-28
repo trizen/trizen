@@ -1694,7 +1694,9 @@ sub clean_cache () {
     msg(":: Done!");
 }
 
-sub format_aur_package ($package) {
+sub format_package_result ($package) {
+
+    my $repo = $package->{Repository} // 'aur';
 
     # Compare installed version with AUR version
     my $is_installed_string = $lconfig{aur_results_show_installed}
@@ -1702,14 +1704,12 @@ sub format_aur_package ($package) {
         my $installed_version = package_is_installed($package->{Name}, 0);
 
         defined($installed_version)
-          ? versioncmp($installed_version, $package->{Version}) >= 0
+          ? ($repo ne 'aur' or versioncmp($installed_version, $package->{Version}) >= 0)
               ? " [$c{bgreen}installed$c{reset}]"
               : " [$c{bold}installed$c{reset}: $c{bred}$installed_version$c{reset}]"
           : q{};
       }
       : q{};
-
-    my $repo = $package->{Repository} // 'aur';
 
     # Formatting string
     my $result_string = "$c{bpurple}$repo/$c{reset}$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s%s";
@@ -1765,7 +1765,7 @@ sub sort_aur_results (@results) {
     return @results;
 }
 
-sub print_aur_results (@results) {
+sub print_package_results (@results) {
 
     foreach my $package (@results) {
 
@@ -1774,7 +1774,7 @@ sub print_aur_results (@results) {
             next;
         }
 
-        printf("%s\n    %s\n", format_aur_package($package));
+        printf("%s\n    %s\n", format_package_result($package));
     }
 
     return 1;
@@ -1888,7 +1888,7 @@ sub interactive_search_and_install (@keywords) {
         }
 
 #<<<
-        my ($name, $description) = format_aur_package($package);
+        my ($name, $description) = format_package_result($package);
         printf("$c{bgreen}%*d$c{reset} %s\n%s%s\n", $index_width, $i + 1, $name, ' ' x ($index_width + 3), $description);
 #>>>
     }
@@ -1914,7 +1914,7 @@ sub list_aur_maintainer_packages ($maintainer) {
     ref($results->{results}) eq 'ARRAY' or return;
     my @maintainers_packages = @{$results->{results}};
     @maintainers_packages || return;
-    print_aur_results(sort_aur_results(@maintainers_packages));
+    print_package_results(sort_aur_results(@maintainers_packages));
 }
 
 sub update_local_packages () {
@@ -2220,7 +2220,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
 
     if ($lconfig{s} or $lconfig{search}) {        # -Ss
-        print_aur_results(search_packages(splice @keyword_arguments));
+        print_package_results(search_packages(splice @keyword_arguments));
     }
 
     if ($lconfig{i} or $lconfig{info}) {          # -Si
