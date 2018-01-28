@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 25 January 2018
+# Latest edit: 28 January 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -160,6 +160,7 @@ my %CONFIG = (
               aur_results_popularity       => 1,
               aur_results_last_modified    => 1,
               aur_results_show_installed   => 1,
+              flip_repo_results            => 0,
               show_ood                     => 0,
               show_inexistent              => 1,
               show_unmaintained            => 1,
@@ -223,15 +224,16 @@ sub dump_configuration ($config, $configuration_file) {
 EOH
 
     my $config_options_help = <<"EOT";
-aur_results_last_modified    => bool    Show the date in AUR results when the package was last updated.
+aur_results_last_modified    => bool    Show the date when the packages were last updated in AUR results.
 aur_results_popularity       => bool    Show the popularity score in AUR results.
 aur_results_show_installed   => bool    Show when a package is installed in AUR results.
-aur_results_sort_by          => str     Sort the AUR results by: "name", "votes", "popularity" or "date"
+aur_results_sort_by          => str     Sort the AUR results by "name", "votes", "popularity" or "date".
 aur_results_sort_order       => str     Sort the AUR results in "ascending" or "descending" order.
 aur_results_votes            => bool    Show the number of votes in AUR results.
 ask_for_retry                => bool    When `makepkg` fails to build a package, offer the option for trying again.
 clone_dir                    => str     Absolute path to the directory where to clone and build packages.
 debug                        => bool    Verbose mode.
+flip_repo_results            => bool    Show the repository search results in reverse order.
 force                        => bool    Pass the `--force` flag to `pacman`.
 git_clone_depth              => int     Pass the `--depth int` flag to `git clone`. (0 means no limit)
 install_built_with_noconfirm => bool    Install built packages with `--noconfirm`.
@@ -1001,7 +1003,9 @@ sub download_package ($pkgname, $path) {
 
         $info->{_exists_in_cache} = 1;
 
+#<<<
         print decode_utf8(scalar `/usr/bin/git -C \Q$dir_name\E diff --no-ext-diff $old_commit_hash --color=always ':!.SRCINFO'`);
+#>>>
     }
     else {
 
@@ -1809,6 +1813,10 @@ sub search_repo_packages (@keywords) {
         else {
             note(":: Unable to parse pacman result: $pkgline");
         }
+    }
+
+    if ($lconfig{flip_repo_results}) {
+        @results = reverse(@results);
     }
 
     return @results;
