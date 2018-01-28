@@ -160,7 +160,8 @@ my %CONFIG = (
               aur_results_popularity       => 1,
               aur_results_last_modified    => 1,
               aur_results_show_installed   => 1,
-              flip_repo_results            => 0,
+              flip_results                 => 0,
+              flip_indices                 => 0,
               show_ood                     => 0,
               show_inexistent              => 1,
               show_unmaintained            => 1,
@@ -233,7 +234,8 @@ aur_results_votes            => bool    Show the number of votes in AUR results.
 ask_for_retry                => bool    When `makepkg` fails to build a package, offer the option for trying again.
 clone_dir                    => str     Absolute path to the directory where to clone and build packages.
 debug                        => bool    Verbose mode.
-flip_repo_results            => bool    Show the repository search results in reverse order.
+flip_indices                 => bool    In search+install mode, show the indices of packages in reverse order.
+flip_results                 => bool    Show the search results in reverse order.
 force                        => bool    Pass the `--force` flag to `pacman`.
 git_clone_depth              => int     Pass the `--depth int` flag to `git clone`. (0 means no limit)
 install_built_with_noconfirm => bool    Install built packages with `--noconfirm`.
@@ -1820,10 +1822,6 @@ sub search_repo_packages (@keywords) {
         }
     }
 
-    if ($lconfig{flip_repo_results}) {
-        @results = reverse(@results);
-    }
-
     return @results;
 }
 
@@ -1868,7 +1866,13 @@ sub search_packages (@keywords) {
 
     $? = 0 if @matched_aur_results;
 
-    return (@repo_results, sort_aur_results(@matched_aur_results));
+    my @results = (@repo_results, sort_aur_results(@matched_aur_results));
+
+    if ($lconfig{flip_results}) {
+        @results = reverse(@results);
+    }
+
+    return @results;
 }
 
 sub interactive_search_and_install (@keywords) {
@@ -1882,7 +1886,14 @@ sub interactive_search_and_install (@keywords) {
 
     my $index_width = length(scalar @results);
 
-    foreach my $i (0 .. $#results) {
+    my @indices = (0 .. $#results);
+
+    if ($lconfig{flip_indices}) {
+        @results = reverse(@results);
+        @indices = reverse(@indices);
+    }
+
+    foreach my $i (@indices) {
         my $package = $results[$i];
 
         $package->{Repository} //= 'aur';
