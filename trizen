@@ -1701,7 +1701,12 @@ sub format_package_result ($package) {
     # Compare installed version with AUR version
     my $is_installed_string = $lconfig{aur_results_show_installed}
       ? do {
-        my $installed_version = package_is_installed($package->{Name}, 0);
+
+        my $installed_version = (
+                                   $package->{Installed}
+                                 ? $package->{Version}
+                                 : package_is_installed($package->{Name}, 0)
+                                );
 
         defined($installed_version)
           ? ($repo ne 'aur' or versioncmp($installed_version, $package->{Version}) >= 0)
