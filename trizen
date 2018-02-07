@@ -1749,6 +1749,8 @@ sub format_package_result ($package) {
 
 sub sort_aur_results (@results) {
 
+    @results = sort { $a->{Name} cmp $b->{Name} } @results;
+
     if ($lconfig{aur_results_sort_by} =~ /popularity/i) {
         @results = sort { $a->{Popularity} <=> $b->{Popularity} } @results;
     }
@@ -1757,9 +1759,6 @@ sub sort_aur_results (@results) {
     }
     elsif ($lconfig{aur_results_sort_by} =~ /date/i) {
         @results = sort { $a->{LastModified} <=> $b->{LastModified} } @results;
-    }
-    else {
-        @results = sort { $a->{Name} cmp $b->{Name} } @results;
     }
 
     if ($lconfig{aur_results_sort_order} =~ /ascending/i) {
