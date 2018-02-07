@@ -852,7 +852,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
 
 sub is_available_in_pacman_repo ($pkgname) {
 
-    system "$lconfig{pacman_command} -Sp \Q$pkgname\E &> /dev/null";
+    system "$lconfig{pacman_command} -Sp \Q$pkgname\E > /dev/null 2>&1";
 
     my $exit_code = $?;
     $? = 0;
