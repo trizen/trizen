@@ -2072,6 +2072,7 @@ sub update_local_packages () {
 
     # Handle `-Qua` mode
     if ($lconfig{show_upgrades_only}) {
+        $? = 1 if not @packages_for_update;
         return 1;
     }
 
@@ -2484,8 +2485,9 @@ elsif ($lconfig{Q} or $lconfig{query}) {    # -Q
         update_local_packages();
     }
     else {
-        execute_pacman_command(0, get_pacman_arguments('all', qw(query check search info quiet noconfirm upgrades)),
-                               @keyword_arguments);
+#<<<
+        execute_pacman_command(0, get_pacman_arguments('all', qw(query check search info quiet noconfirm upgrades)), @keyword_arguments);
+#>>>
     }
 }
 elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
