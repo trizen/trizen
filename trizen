@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 28 January 2018
+# Latest edit: 13 February 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -2042,7 +2042,13 @@ sub update_local_packages () {
         $for_update{$i + 1} = $pkgname;
         $for_update{$pkgname} = $pkgname;
 
-        if ($package->{is_vcs} and $package->{local_vcmp} >= 0) {
+        if ($lconfig{show_upgrades_only}) {
+            $lconfig{quiet}
+              ? printf("%s\n", $pkgname)
+              : printf("$c{bold}%s$c{reset} $c{bgreen}%s$c{reset} -> $c{bgreen}%s$c{reset}\n",
+                       $pkgname, $packages{$pkgname}, $version);
+        }
+        elsif ($package->{is_vcs} and $package->{local_vcmp} >= 0) {
 
             my $aur_color   = $package->{local_vcmp} == 0 ? $c{bgreen} : $c{byellow};
             my $local_color = $package->{local_vcmp} == 0 ? $c{bgreen} : $c{bblue};
@@ -2062,6 +2068,11 @@ sub update_local_packages () {
             );
 #>>>
         }
+    }
+
+    # Handle `-Qua` mode
+    if ($lconfig{show_upgrades_only}) {
+        return 1;
     }
 
     # When piped in interactive mode, just return.
@@ -2467,7 +2478,15 @@ elsif ($lconfig{Q} or $lconfig{query}) {    # -Q
         main_quit();
     }
 
-    execute_pacman_command(0, get_pacman_arguments('all', qw(query check search info quiet noconfirm)), @keyword_arguments);
+    if ($lconfig{aur} and ($lconfig{u} or $lconfig{upgrades})) {
+        local $lconfig{aur}                = 1;
+        local $lconfig{show_upgrades_only} = 1;
+        update_local_packages();
+    }
+    else {
+        execute_pacman_command(0, get_pacman_arguments('all', qw(query check search info quiet noconfirm upgrades)),
+                               @keyword_arguments);
+    }
 }
 elsif ($lconfig{T} or $lconfig{deptest}) {    # -T
 
