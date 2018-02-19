@@ -2088,16 +2088,32 @@ sub update_local_packages () {
 
         my $reply = (
                      $lconfig{noconfirm}
-                     ? 'all'
+                     ? ''
                      : $term->readline("\n$c{bold}=>> Select packages for upgrade (default: all)$c{reset}\n> ")
                     );
 
-        if ($reply eq 'all' or $reply eq '') {
+        my @indices = (
+                       map { /^(-?[0-9]{1,3})(?:\.\.|-)(-?[0-9]{1,3})\z/ ? ($1 > $2 ? reverse($2 .. $1) : ($1 .. $2)) : $_ }
+                         split(/[,\s]+/, $reply)
+                      );
+
+        my %unselected = (
+                       map { ($for_update{$_} => 1) }
+                       grep { exists $for_update{$_} }
+                       map  { abs($_) }
+                       grep { /^-[0-9]+\z/ } @indices
+                      );
+
+        @selected_packages = (
+                              map  { $for_update{$_} }
+                              grep { exists $for_update{$_} } @indices
+                             );
+
+        if (!@selected_packages and not any { /^[0-9]+\z/ } @indices) {
             @selected_packages = map { $_->{name} } @packages_for_update;
         }
-        else {
-            @selected_packages = map { $for_update{$_} } grep { exists $for_update{$_} } split(/[,\s]+/, $reply);
-        }
+
+        @selected_packages = grep { not exists $unselected{$_} } @selected_packages;
     }
     else {
         msg(":: No AUR updates found...");
