@@ -1935,7 +1935,9 @@ sub list_aur_maintainer_packages ($maintainer) {
 sub update_local_packages () {
 
     if (not $lconfig{aur}) {
-        execute_pacman_command(1, get_pacman_arguments('all', qw(sync sysupgrade noconfirm force quiet refresh)));
+        execute_pacman_command(1,
+                               get_pacman_arguments('all', qw(sync sysupgrade noconfirm force quiet refresh)),
+                               map { "--ignore=$_" } keys(%ignored_pkgs));
     }
 
     if ($lconfig{r} or $lconfig{regular}) {
@@ -2098,11 +2100,11 @@ sub update_local_packages () {
                       );
 
         my %unselected = (
-                       map { ($for_update{$_} => 1) }
-                       grep { exists $for_update{$_} }
-                       map  { abs($_) }
-                       grep { /^-[0-9]+\z/ } @indices
-                      );
+                          map { ($for_update{$_} => 1) }
+                          grep { exists $for_update{$_} }
+                          map  { abs($_) }
+                          grep { /^-[0-9]+\z/ } @indices
+                         );
 
         @selected_packages = (
                               map  { $for_update{$_} }
