@@ -1682,7 +1682,7 @@ sub clean_cache () {
     foreach my $name (readdir($dir_h)) {
 
         next if substr($name, 0, 1) eq '.';    # skip dot files
-        next if $name !~ /^[a-z0-9\-_+]+\z/;   # validate directory name
+        next if $name !~ /^[a-zA-Z0-9\-_+]+\z/;    # validate directory name
 
         my $dir = catdir($lconfig{clone_dir}, $name);
 
