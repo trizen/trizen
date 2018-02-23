@@ -769,12 +769,10 @@ sub get_comments ($id) {
         $content =~ m{
             <h4\b.*?>\s*
                 (\S(?-s:.*?))\ commented\ on\ (\d\d\d\d-\d\d-\d\d\ \d\d:\d\d)
-         \s*</h4>\s*
-        <div\b.*?class="article-content">\s*
-            <div>\s*
-                <p>\s*(.*?)\s*</p>\s*
-            </div>\s*
-        </div>
+             \s*</h4>\s*
+            <div\b.*?class="article-content">\s*
+                <div> \s* (.*?) </div>\s*
+            </div>
         }gsix
       ) {
 
@@ -785,9 +783,10 @@ sub get_comments ($id) {
         $comment =~ s{<.*?>}{}gs;
         $author =~ s{<.*?>}{}gs;
         $comment = HTML::Entities::decode_entities($comment);
-        $comment =~ s/\h{2,}/ /g;
+        #$comment =~ s/\h{2,}/ /g;
+        $comment = strip_space($comment);
 
-        unshift @comments, <<"EOC"
+        unshift @comments, <<"EOC";
 $c{bold}Comment by $c{bgreen}$author$c{reset}$c{bold} on $date$c{reset}
 $comment
 EOC
