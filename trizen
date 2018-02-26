@@ -340,7 +340,7 @@ if (not -d $lconfig{clone_dir}) {
       or error(":: Unable to create clone directory <<$lconfig{clone_dir}>>: {!$!!}");
 }
 
-my $short_arguments = 'TDFCUNQRSGabcdefghiklmnopqrstuvwy';
+my $short_arguments = 'TDFCUNQRSGabcdefghiklmnopqrstuvwxy';
 
 my @package_suffices = qw(
   .tar.7z
