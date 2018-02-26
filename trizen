@@ -191,6 +191,7 @@ my %lconfig = (
     deptest       => 0,                           # -T
     upgrade       => 0,                           # -U
     get           => 0,
+    regex         => 0,                           # -x
     refresh       => 0,                           # -y
     upgrades      => 0,                           # -u
     check         => 0,                           # -k
@@ -783,6 +784,7 @@ sub get_comments ($id) {
         $comment =~ s{<.*?>}{}gs;
         $author =~ s{<.*?>}{}gs;
         $comment = HTML::Entities::decode_entities($comment);
+
         #$comment =~ s/\h{2,}/ /g;
         $comment = strip_space($comment);
 
@@ -2480,7 +2482,7 @@ elsif ($lconfig{F} or $lconfig{files}) {    # -F
         main_quit();
     }
 
-    my @args = (get_pacman_arguments('all', qw(files quiet search refresh noconfirm)), @keyword_arguments);
+    my @args = (get_pacman_arguments('all', qw(files quiet search refresh noconfirm regex)), @keyword_arguments);
 
     if ($lconfig{y} or $lconfig{refresh}) {
         execute_pacman_command(1, @args);
