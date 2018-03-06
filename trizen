@@ -464,7 +464,7 @@ $c{bgreen}Other options:$c{reset}
       $c{bold}--skipinteg$c{reset}     : pass the `--skipinteg` argument to `makepkg`
       $c{bold}--noconfirm$c{reset}     : do not ask for any confirmation
       $c{bold}--movepkg$c{reset}       : move built packages into pacman's cache directory
-      $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (with --movepkg)
+      $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (implies --movepkg)
       $c{bold}--clone-dir=s$c{reset}   : directory where to clone and build packages
       $c{bold}--editor=s$c{reset}      : editor command used to edit build files
       $c{bold}--ignore=s$c{reset}      : space-separated list of packages to ignore during -Su
@@ -539,6 +539,12 @@ sub parse_arguments (@arguments) {
 
             if (exists $lconfig{$option}) {
                 $lconfig{$option} = $value;
+
+                # --movepkg_dir implies --movepkg
+                if ($option eq 'movepkg_dir') {
+                    $lconfig{movepkg} = 1;
+                }
+
                 next;
             }
         }

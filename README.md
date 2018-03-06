@@ -4,6 +4,7 @@ trizen
 trizen is a lightweight wrapper for AUR, written in Perl.
 
 Main features include:
+
 * Installation of packages from the AUR
 * Search support for AUR packages
 * Reading AUR comments for packages
@@ -65,7 +66,8 @@ Main options:
 
 Other options:
 
-        --quiet     : do not display any warnings
+    -q, --quiet     : do not display any warnings
+    -r, --regular   : use only the regular repositories
         --stats     : show stats about the installed packages
         --nocolors  : disable text colors
         --debug     : activate the debug/verbose mode
@@ -87,12 +89,12 @@ usage: trizen {-S --sync} [options] [package(s)]
 
 Main options:
 
-  -s, --search        : searches for packages
-  -i, --info          : outputs info for packages
-  -m, --maintainer    : outputs packages maintained by [...]
-  -p, --pkgbuild      : outputs PKGBUILD only
-  -l, --local         : builds and installs packages from `pwd`
-  -u, --sysupgrade    : upgrades installed packages
+  -s, --search        : search for packages
+  -i, --info          : show info for packages
+  -m, --maintainer    : show packages maintained by <username>
+  -p, --pkgbuild      : show PKGBUILD only
+  -l, --local         : build and install packages from `pwd`
+  -u, --sysupgrade    : upgrade installed packages
   -y, --refresh       : refresh package databases (with: -u)
   -c, --clean         : clean the cache directory of `trizen` and `pacman`
   -a, --aur           : only AUR operations (with: -c, -u, -s, -i)
@@ -107,14 +109,16 @@ Other options:
       --nobuild       : do not build packages (implies --noedit)
       --noinstall     : do not install packages after building
       --needed        : do not reinstall up-to-date packages
-      --asdeps        : installs packages as dependencies
-      --asexplicit    : installs packages as explicitly installed
+      --asdeps        : install packages as non-explicitly installed
+      --asexplicit    : install packages as explicitly installed
       --force         : pass the `--force` argument to `pacman`
       --skipinteg     : pass the `--skipinteg` argument to `makepkg`
       --noconfirm     : do not ask for any confirmation
       --movepkg       : move built packages into pacman's cache directory
-      --movepkg-dir=s : move built packages in this directory (with --movepkg)
+      --movepkg-dir=s : move built packages in this directory (implies --movepkg)
       --clone-dir=s   : directory where to clone and build packages
+      --editor=s      : editor command used to edit build files
+      --ignore=s      : space-separated list of packages to ignore during -Su
 
 Examples:
 
