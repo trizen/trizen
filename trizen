@@ -1226,7 +1226,7 @@ sub output_file_content ($file) {
     return 1;
 }
 
-sub edit_text_files ($info) {
+sub show_and_edit_text_files ($info) {
 
     if (!$lconfig{show_build_files_content}) {
         print "\n";
@@ -1258,21 +1258,23 @@ sub edit_text_files ($info) {
             }
         }
 
-#<<<
-        my $edit = $term->ask_yn(
-            prompt => "$c{bold}=>> Edit $file?$c{reset}",
-            default => 'n'
-        );
-#>>>
+        if (!$lconfig{noedit}) {
+        #<<<
+                my $edit = $term->ask_yn(
+                    prompt => "$c{bold}=>> Edit $file?$c{reset}",
+                    default => 'n'
+                );
+        #>>>
 
-        if ($edit) {
+                if ($edit) {
 
-            system "$lconfig{editor} \Q$abs_file\E";
+                    system "$lconfig{editor} \Q$abs_file\E";
 
-            if ($?) {
-                note(":: $lconfig{editor} exited with code: " . exit_code());
-                next;
-            }
+                    if ($?) {
+                        note(":: $lconfig{editor} exited with code: " . exit_code());
+                        next;
+                    }
+                }
         }
     }
 
@@ -1554,11 +1556,11 @@ sub install_package ($pkg) {
         print "\n", join("\n", @comments) if @comments;
     }
 
-    # Edit PKGBUILD and other -T files
-    if (not $lconfig{noedit}) {
-        edit_text_files($info);
+    # Show and edit PKGBUILD and other -T files if needed
+    if (!(($lconfig{noedit}) && (!$lconfig{show_build_files_content}))) {
+        show_and_edit_text_files($info);
     }
-
+    
     say '';
 
     # Recompute dependencies
