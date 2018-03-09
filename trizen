@@ -1670,6 +1670,10 @@ sub clean_cache () {
         execute_pacman_command(1, get_pacman_arguments('all', qw(sync clean noconfirm force quiet)));
     }
 
+    if ($lconfig{regular} or $lconfig{r}) {
+        return 1;
+    }
+
     opendir(my $dir_h, $lconfig{clone_dir})
       or error(":: Cannot access the AUR clone directory: {!$!!}");
 
@@ -1839,7 +1843,7 @@ sub search_packages (@keywords) {
         push @repo_results, search_repo_packages(@keywords);
     }
 
-    if ($lconfig{regular}) {
+    if ($lconfig{regular} or $lconfig{r}) {
         return @repo_results;
     }
 
@@ -1947,7 +1951,7 @@ sub update_local_packages () {
                                map { "--ignore=$_" } keys(%ignored_pkgs));
     }
 
-    if ($lconfig{r} or $lconfig{regular}) {
+    if ($lconfig{regular} or $lconfig{r}) {
         return 1;
     }
 
