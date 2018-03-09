@@ -1926,10 +1926,18 @@ sub interactive_search_and_install (@keywords) {
                          grep { /^[0-9]+\z/ and $_ > 0 and $_ <= @results }
                          split(/[\s,]+/, $reply)
       ) {
+
         print "\n";
         msg(":: Installing: $package->{Name}");
         print "\n";
-        install_package($package->{Name});
+
+        local $lconfig{aur} = 1 if $package->{Repository} eq 'aur';
+
+        install_package(
+                          $package->{Repository} eq 'aur'
+                        ? $package->{Name}
+                        : "$package->{Repository}/$package->{Name}"
+                       );
     }
 
     return 1;
