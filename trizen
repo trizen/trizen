@@ -682,10 +682,10 @@ sub format_line ($string, $color) {
     if ($string =~ /^:: (.*)/) {
 
         my $substr  = $1;
-        my $new_str = $color . '::' . $c{reset} . ' ' . $c{bold};
+        my $new_str = $color . '::' . $c{reset} . ' ';
 
-        $substr =~ s/<<(.*?)>>/$c{bgreen}$1$c{reset}$c{bold}/gs;
-        $substr =~ s/\{!(.*?)!\}/$c{bred}$1$c{reset}$c{bold}/gs;
+        $substr =~ s/<<(.*?)>>/$c{bgreen}$c{bold}$1$c{reset}/gs;
+        $substr =~ s/\{!(.*?)!\}/$c{bred}$c{bold}$1$c{reset}/gs;
 
         if ($substr =~ /^(.+?: )(.+)/) {
             $substr = $1 . $c{bgreen} . $2;
