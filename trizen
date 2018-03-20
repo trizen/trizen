@@ -850,6 +850,10 @@ sub execute_pacman_command ($needs_root, @cmd) {
     {
         system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
         if ($? and $needs_root) {
+            if (not $lconfig{ask_for_retry}) {
+                exit($?);
+                return;
+            }
             note(":: Exit code: " . exit_code()) if $lconfig{debug};
             $term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n') and redo;
         }
