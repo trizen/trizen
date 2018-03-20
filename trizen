@@ -1499,38 +1499,38 @@ sub install_package ($pkg) {
 
     my $info = download_package($pkg, $lconfig{clone_dir});
     if (ref($info) eq 'HASH') {
-        msg(":: Package <<$pkg>> exists in AUR!") if $lconfig{debug};
+        msg(":: <<$pkg>> exists in AUR!") if $lconfig{debug};
     }
     elsif (not($lconfig{aur}) and is_available_in_pacman_repo($pkg)) {
-        msg(":: Package <<$pkg>> is available in pacman's repository...") if $lconfig{debug};
+        msg(":: <<$pkg>> is available in pacman's repository...") if $lconfig{debug};
         return install_packages_from_repo($pkg);
     }
     else {
-        note(":: Package not found: $pkg");
+        note(":: <<$pkg>> not found.");
         $? = 1;
         return;
     }
 
     if (my $version = package_is_installed($pkg)) {
 
-        msg(":: Package <<$pkg>> is already installed!") if $lconfig{debug};
+        msg(":: <<$pkg>> is already installed!") if $lconfig{debug};
 
         if ($lconfig{needed}) {
 
             # Ignore the `--needed` flag when `--devel` is used and the package is a VCS package
             if ($lconfig{devel} and is_vcs_package($pkg)) {
-                msg(":: Package <<$pkg>> is a VCS package -- installing");
+                msg(":: <<$pkg>> is a VCS package -- installing.");
             }
 
             # Compare the local version against the AUR version
             elsif (versioncmp($version, $info->{Version}) >= 0) {
-                msg(":: Package <<$pkg>> is installed and up-to-date -- skipping");
+                msg(":: <<$pkg>> is installed and up-to-date -- skipping.");
                 return 1;    # package is installed and up-to-date
             }
 
             # Package seems to be out-of-date
             else {
-                note(":: Package <<$pkg>> seems to be {!out-of-date!} -- installing") if $lconfig{debug};
+                note(":: <<$pkg>> seems to be {!out-of-date!} -- installing.") if $lconfig{debug};
             }
         }
     }
@@ -1543,19 +1543,19 @@ sub install_package ($pkg) {
 
     # Package will be installed as dependency
     if ($lconfig{asdeps}) {
-        msg(":: Package <<$pkg>> will be installed as dependency...") if $lconfig{debug};
+        msg(":: <<$pkg>> will be installed as dependency...") if $lconfig{debug};
         push @args, '--asdeps';
     }
 
     # Package will be explicitly installed
     elsif ($lconfig{asexplicit}) {
-        msg(":: Package <<$pkg>> will be explicitly installed...") if $lconfig{debug};
+        msg(":: <<$pkg>> will be explicitly installed...") if $lconfig{debug};
         push @args, '--asexplicit';
     }
 
     # When a package is already built, install it without building it again.
     if ($already_built{$pkg}) {
-        msg(":: Package <<$pkg>> is already built -- installing") if $lconfig{debug};
+        msg(":: <<$pkg>> is already built -- installing.") if $lconfig{debug};
         return install_built_package($pkg, @args);
     }
 
@@ -2004,11 +2004,11 @@ sub update_local_packages () {
         $exists_in_aur{$pkgname} = 1;
 
         if ($lconfig{show_ood} and $result->{OutOfDate}) {
-            note(":: Package <<$pkgname>> has been flagged {!out-of-date!}!");
+            note(":: <<$pkgname>> has been flagged {!out-of-date!}!");
         }
 
         if ($lconfig{show_unmaintained} and not $result->{Maintainer}) {
-            note(":: Package <<$pkgname>> is {!unmaintained!}!");
+            note(":: <<$pkgname>> is {!unmaintained!}!");
         }
 
         my $is_vcs_package = is_vcs_package($pkgname);
@@ -2017,7 +2017,7 @@ sub update_local_packages () {
         if ($local_vcmp < 0 or ($lconfig{devel} and $is_vcs_package)) {
 
             if (exists $ignored_pkgs{$pkgname}) {
-                note(  ":: <<$pkgname>> -- ignoring package upgrade ({!$packages{$pkgname}!} => <<"
+                note(  ":: <<$pkgname>> -- ignoring upgrade ({!$packages{$pkgname}!} => <<"
                      . (($is_vcs_package && $local_vcmp >= 0) ? 'latest' : $version)
                      . ">>)");
                 next;
@@ -2032,7 +2032,7 @@ sub update_local_packages () {
               };
         }
         elsif ($version ne $packages{$pkgname}) {
-            note(  ":: Package <<$pkgname>> has a different version in AUR!"
+            note(  ":: <<$pkgname>> has a different version in AUR!"
                  . " ({!$packages{$pkgname}!} != <<$version$c{reset}>>)")
               if $lconfig{debug};
         }
@@ -2043,7 +2043,7 @@ sub update_local_packages () {
     if ($lconfig{show_inexistent}) {
         foreach my $pkgname (sort keys %exists_in_aur) {
             if (not $exists_in_aur{$pkgname}) {
-                note(":: Package <<$pkgname>> was {!not found!} in AUR -- skipping");
+                note(":: <<$pkgname>> was {!not found!} in AUR -- skipping.");
             }
         }
     }
@@ -2143,10 +2143,10 @@ sub update_local_packages () {
 
     foreach my $pkgname (@selected_packages) {
         if (install_package($pkgname)) {
-            msg(":: Package <<$pkgname>> has been upgraded!") if $lconfig{debug};
+            msg(":: <<$pkgname>> has been upgraded!") if $lconfig{debug};
         }
         else {
-            note(":: Package <<$pkgname>> has {!NOT!} been upgraded!");
+            note(":: <<$pkgname>> has {!NOT!} been upgraded!");
         }
     }
 
@@ -2297,7 +2297,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             }
             else {
                 my $info = info_for_package($pkg) // do {
-                    note(":: Package not found: $pkg");
+                    note(":: <<$pkg>> not found.");
                     $? = 1;
                     next;
                 };
@@ -2312,7 +2312,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             local $lconfig{clone_dir} = $curdir;
             local $lconfig{nopull}    = 1;
             if (!install_package($pkg)) {
-                note(":: Package not found: $pkg");
+                note(":: <<$pkg>> not found.");
                 $? = 1;
                 next;
             }
@@ -2337,7 +2337,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
 
             download_package($pkg, $lconfig{clone_dir}) or do {
-                note(":: Package not found: $pkg");
+                note(":: <<$pkg>> not found.");
                 $? = 1;
                 next;
             };
@@ -2376,7 +2376,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
 
     foreach my $pkg (@aur_packages) {
         if (install_package($pkg)) {
-            msg(":: Package <<$pkg>> has been successfully installed!") if $lconfig{debug};
+            msg(":: <<$pkg>> has been successfully installed!") if $lconfig{debug};
         }
         else {
             note(":: Cannot install package: $pkg") if $lconfig{debug};
@@ -2388,7 +2388,7 @@ elsif ($lconfig{C} or $lconfig{comments}) {    # -C
     foreach my $pkg (@keyword_arguments) {
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
         my $info = info_for_package($pkg) // do {
-            note(":: Package not found: $pkg");
+            note(":: <<$pkg>> not found.");
             $? = 1;
             next;
         };
@@ -2425,7 +2425,7 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
             local $lconfig{recompute_deps} = 0;
 
             if (!install_package($pkg)) {
-                note(":: Package not found: $pkg");
+                note(":: <<$pkg>> not found.");
                 $? = 1;
                 next;
             }
@@ -2436,7 +2436,7 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
             msg(":: Cloning package: $pkg") if $lconfig{debug};
             if (!download_package($pkg, rel2abs(curdir()))) {
-                note(":: Package not found: $pkg");
+                note(":: <<$pkg>> not found.");
                 $? = 1;
                 next;
             }
