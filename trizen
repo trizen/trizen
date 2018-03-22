@@ -1955,10 +1955,10 @@ sub list_aur_maintainer_packages ($maintainer) {
     print_package_results(sort_aur_results(@maintainers_packages));
 }
 
-sub update_local_packages () {
+sub update_local_packages (@repo_packages) {
 
     if (not $lconfig{aur}) {
-        execute_pacman_command(1,
+        execute_pacman_command(1, @repo_packages,
                                get_pacman_arguments('all', qw(sync sysupgrade noconfirm force quiet refresh)),
                                map { "--ignore=$_" } keys(%ignored_pkgs));
     }
@@ -2036,8 +2036,7 @@ sub update_local_packages () {
               };
         }
         elsif ($version ne $packages{$pkgname}) {
-            note(  ":: <<$pkgname>> has a different version in AUR!"
-                 . " ({!$packages{$pkgname}!} != <<$version$c{reset}>>)")
+            note(":: <<$pkgname>> has a different version in AUR!" . " ({!$packages{$pkgname}!} != <<$version$c{reset}>>)")
               if $lconfig{debug};
         }
     }
@@ -2279,19 +2278,11 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         clean_cache();
     }
 
-    if ($lconfig{u} or $lconfig{sysupgrade}) {    # -Su
-        update_local_packages();
-    }
-
-    elsif ($lconfig{y} or $lconfig{refresh}) {    # -Sy
-        execute_pacman_command(1, get_pacman_arguments('all', qw(sync refresh force quiet noconfirm)));
-    }
-
-    if ($lconfig{s} or $lconfig{search}) {        # -Ss
+    if ($lconfig{s} or $lconfig{search}) {    # -Ss
         print_package_results(search_packages(splice @keyword_arguments));
     }
 
-    if ($lconfig{i} or $lconfig{info}) {          # -Si
+    if ($lconfig{i} or $lconfig{info}) {      # -Si
         foreach my $pkg (splice @keyword_arguments) {
 
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
@@ -2338,6 +2329,12 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     if ($lconfig{p} or $lconfig{pkgbuild}) {      # -Sp
         foreach my $pkg (splice @keyword_arguments) {
 
+            # For repo packages, display the download URL only
+            if (is_available_in_pacman_repo($pkg)) {
+                execute_pacman_command(0, qw(-Sp), $pkg);
+                next;
+            }
+
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
 
             download_package($pkg, $lconfig{clone_dir}) or do {
@@ -2365,7 +2362,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     my @aur_packages;
     my @repo_packages;
 
-    foreach my $pkg (splice @keyword_arguments) {    # -S only
+    foreach my $pkg (splice @keyword_arguments) {
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
 
         if (!$lconfig{aur} and is_available_in_pacman_repo($pkg)) {
@@ -2376,9 +2373,17 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         }
     }
 
+    if ($lconfig{u} or $lconfig{sysupgrade}) {    # -Su
+        update_local_packages(splice(@repo_packages));
+    }
+
+    elsif ($lconfig{y} or $lconfig{refresh}) {    # -Sy
+        execute_pacman_command(1, splice(@repo_packages), get_pacman_arguments('all', qw(sync refresh force quiet noconfirm)));
+    }
+
     install_packages_from_repo(@repo_packages) if @repo_packages;
 
-    foreach my $pkg (@aur_packages) {
+    foreach my $pkg (@aur_packages) {             # -S only
         if (install_package($pkg)) {
             msg(":: <<$pkg>> has been successfully installed!") if $lconfig{debug};
         }
@@ -2387,7 +2392,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         }
     }
 }
-elsif ($lconfig{C} or $lconfig{comments}) {    # -C
+elsif ($lconfig{C} or $lconfig{comments}) {       # -C
 
     foreach my $pkg (@keyword_arguments) {
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
