@@ -2284,7 +2284,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
 
     elsif ($lconfig{y} or $lconfig{refresh}) {    # -Sy
-        execute_pacman_command(1, get_pacman_arguments('all', qw(refresh force quiet noconfirm)));
+        execute_pacman_command(1, get_pacman_arguments('all', qw(sync refresh force quiet noconfirm)));
     }
 
     if ($lconfig{s} or $lconfig{search}) {        # -Ss
