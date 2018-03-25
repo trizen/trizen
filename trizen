@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 09 March 2018
+# Latest edit: 25 March 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -383,12 +383,12 @@ sub exit_code ($code = $?) {
 }
 
 # Main quit
-sub main_quit () {
+sub main_quit ($code = undef) {
     if ($lconfig{update_config}) {
         dump_configuration(\%CONFIG, $config_file);
     }
     kill('TERM', $sudo_autorepeat_pid) if $sudo_autorepeat_pid;
-    exit(exit_code());
+    exit($code // exit_code());
 }
 
 #----------------------- USAGE -----------------------#
@@ -847,23 +847,30 @@ sub execute_pacman_command ($needs_root, @cmd) {
                               );
 
     msg(":: Pacman command: " . ($user_pacman_command =~ s/\\(.)/$1/gr)) if $lconfig{debug};
-    {
-        system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
-        if ($? and $needs_root) {
-            if (not $lconfig{ask_for_retry}) {
-                exit($?);
-                return;
-            }
-            note(":: Exit code: " . exit_code()) if $lconfig{debug};
-            $term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n') and redo;
+
+    system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
+
+    if ($? and $needs_root) {
+
+        if (not $lconfig{ask_for_retry}) {
+            main_quit();
         }
+
+        note(":: Exit code: " . exit_code()) if $lconfig{debug};
+        $term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n') and redo;
     }
+
     return $? ? 0 : 1;
 }
 
 sub is_available_in_pacman_repo ($pkgname) {
 
-    system "$lconfig{pacman_command} -Sp \Q$pkgname\E > /dev/null 2>&1";
+    my $output = `$lconfig{pacman_command} -Sp \Q$pkgname\E > /dev/stdout 2>&1`;
+
+    # In repo if the output has at least two lines
+    if ($output =~ /.\R./) {
+        return 1;
+    }
 
     my $exit_code = $?;
     $? = 0;
@@ -1301,7 +1308,7 @@ sub run_makepkg_command ($pkg, @args) {
         note(":: Unable to build <<$pkg>> - makepkg exited with code: " . exit_code());
 
         if (not $lconfig{ask_for_retry}) {
-            exit(65) if $lconfig{asdeps};
+            main_quit(65) if $lconfig{asdeps};
             return;
         }
 
@@ -1312,7 +1319,7 @@ sub run_makepkg_command ($pkg, @args) {
         }
         else {
             if ($term->ask_yn(prompt => "$c{bold}=>> Do you want to exit now?$c{reset}", default => 'y')) {
-                exit 65;    # Package not installed
+                main_quit(65);    # Package not installed
             }
             else {
                 return;
