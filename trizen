@@ -2277,7 +2277,11 @@ sub _parse_pkgname ($pkgref) {
 
 if ($lconfig{S} or $lconfig{sync}) {    # -S
 
-    if ($lconfig{h} or $lconfig{help}) {    # -Sh
+    if ($lconfig{l} or $lconfig{local}) {    # -Sl
+        $lconfig{clone_dir} = rel2abs(curdir());
+    }
+
+    if ($lconfig{h} or $lconfig{help}) {     # -Sh
         sync_help();
     }
 
@@ -2304,19 +2308,6 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
                     next;
                 };
                 show_info($info);
-            }
-        }
-    }
-
-    if ($lconfig{l} or $lconfig{local}) {    # -Sl
-        my $curdir = rel2abs(curdir());
-        foreach my $pkg (splice @keyword_arguments) {
-            local $lconfig{clone_dir} = $curdir;
-            local $lconfig{nopull}    = 1;
-            if (!install_package($pkg)) {
-                note(":: <<$pkg>> not found.");
-                $? = 1;
-                next;
             }
         }
     }
