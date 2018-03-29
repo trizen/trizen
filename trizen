@@ -1952,9 +1952,12 @@ sub interactive_search_and_install (@keywords) {
         @indices = reverse(@indices);
     }
 
+    my %items;
+
     foreach my $i (@indices) {
         my $package = $results[$i];
 
+        $items{$i + 1} = $package;
         $package->{Repository} //= 'aur';
 
         if ($lconfig{quiet}) {
@@ -1968,13 +1971,10 @@ sub interactive_search_and_install (@keywords) {
 #>>>
     }
 
-    my $input = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ");
-
-    my %items;
-    @items{map { $_ + 1 } @indices}                              = @results;
-    @items{map { $_->{Name} } @results}                          = @results;
+    @items{map { $_->{Name} } @results} = @results;
     @items{map { $_->{Repository} . '/' . $_->{Name} } @results} = @results;
 
+    my $input = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ");
     my @selected_packages = select_packages_from_input($input, \%items, \@results);
 
     my @aur_packages;
