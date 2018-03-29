@@ -1718,6 +1718,44 @@ sub clean_cache () {
     msg(":: Done!");
 }
 
+sub select_packages_from_input ($input, $items, $default = [], $empty_for_all = 0) {
+
+    my $number = qr/[0-9]{1,4}/;
+
+    my @indices = (
+        map {
+                /^\^($number)(?:\.\.|-)($number)\z/ ? (map { -$_ } ($1 > $2 ? reverse($2 .. $1) : ($1 .. $2)))
+              : /^(-?$number)(?:\.\.|-)(-?$number)\z/ ? ($1 > $2 ? reverse($2 .. $1) : ($1 .. $2))
+              : $_
+          }
+          split(/[,\s]+/, $input)
+    );
+
+    my %unselected = (
+                      map { ($items->{$_} => 1) }
+                      grep { exists $items->{$_} }
+                      map { substr($_, 1) }
+                      grep { /^[-^]./ } @indices
+                     );
+
+    my @selected_packages = (
+                             map  { $items->{$_} }
+                             grep { exists $items->{$_} } @indices
+                            );
+
+    if (!@selected_packages and keys %unselected) {
+        @selected_packages = @$default;
+    }
+
+    if (!@selected_packages and $empty_for_all and not any { /^[^^-]/ } @indices) {
+        @selected_packages = @$default;
+    }
+
+    @selected_packages = grep { not exists $unselected{$_} } @selected_packages;
+
+    return @selected_packages;
+}
+
 sub format_package_result ($package) {
 
     my $repo = $package->{Repository} // 'aur';
@@ -1930,25 +1968,32 @@ sub interactive_search_and_install (@keywords) {
 #>>>
     }
 
-    my $reply = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ");
+    my $input = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ");
 
-    foreach my $package (
-                         map { $results[$_ - 1] }
-                         grep { /^[0-9]+\z/ and $_ > 0 and $_ <= @results }
-                         split(/[\s,]+/, $reply)
-      ) {
+    my %items;
+    @items{map { $_ + 1 } @indices}                              = @results;
+    @items{map { $_->{Name} } @results}                          = @results;
+    @items{map { $_->{Repository} . '/' . $_->{Name} } @results} = @results;
 
-        print "\n";
-        msg(":: Installing: $package->{Name}");
-        print "\n";
+    my @selected_packages = select_packages_from_input($input, \%items, \@results);
 
-        local $lconfig{aur} = 1 if $package->{Repository} eq 'aur';
+    my @aur_packages;
+    my @repo_packages;
 
-        install_package(
-                          $package->{Repository} eq 'aur'
-                        ? $package->{Name}
-                        : "$package->{Repository}/$package->{Name}"
-                       );
+    foreach my $package (@selected_packages) {
+        if ($package->{Repository} eq 'aur') {
+            push @aur_packages, $package;
+        }
+        else {
+            push @repo_packages, "$package->{Repository}/$package->{Name}";
+        }
+    }
+
+    install_packages_from_repo(@repo_packages) if @repo_packages;
+
+    foreach my $package (@aur_packages) {
+        local $lconfig{aur} = 1;
+        install_package($package->{Name});
     }
 
     return 1;
@@ -2113,43 +2158,18 @@ sub update_local_packages (@repo_packages) {
         return 1;
     }
 
-    my @selected_packages;
-
-    if (keys %for_update) {
-
-        my $reply = (
-                     $lconfig{noconfirm}
-                     ? ''
-                     : $term->readline("\n$c{bold}=>> Select packages for upgrade (default: all)$c{reset}\n> ")
-                    );
-
-        my @indices = (
-                       map { /^(-?[0-9]{1,3})(?:\.\.|-)(-?[0-9]{1,3})\z/ ? ($1 > $2 ? reverse($2 .. $1) : ($1 .. $2)) : $_ }
-                         split(/[,\s]+/, $reply)
-                      );
-
-        my %unselected = (
-                          map { ($for_update{$_} => 1) }
-                          grep { exists $for_update{$_} }
-                          map  { abs($_) }
-                          grep { /^-[0-9]+\z/ } @indices
-                         );
-
-        @selected_packages = (
-                              map  { $for_update{$_} }
-                              grep { exists $for_update{$_} } @indices
-                             );
-
-        if (!@selected_packages and not any { /^[0-9]+\z/ } @indices) {
-            @selected_packages = map { $_->{name} } @packages_for_update;
-        }
-
-        @selected_packages = grep { not exists $unselected{$_} } @selected_packages;
-    }
-    else {
+    if (not keys %for_update) {
         msg(":: No AUR updates found...");
         return 1;
     }
+
+    my $input = (
+                 $lconfig{noconfirm}
+                 ? ''
+                 : $term->readline("\n$c{bold}=>> Select packages for upgrade (default: all)$c{reset}\n> ")
+                );
+
+    my @selected_packages = select_packages_from_input($input, \%for_update, [map { $_->{name} } @packages_for_update], 1);
 
     foreach my $pkgname (@selected_packages) {
         if (install_package($pkgname)) {
