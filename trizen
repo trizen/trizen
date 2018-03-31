@@ -2166,7 +2166,7 @@ sub update_local_packages (@repo_packages) {
     my $input = (
                  $lconfig{noconfirm}
                  ? ''
-                 : $term->readline("\n$c{bold}=>> Select packages for upgrade (default: all)$c{reset}\n> ")
+                 : $term->readline("\n$c{bold}=>> Select packages for upgrade (<ENTER> for all)$c{reset}\n> ")
                 );
 
     my @selected_packages = select_packages_from_input($input, \%for_update, [map { $_->{name} } @packages_for_update], 1);
