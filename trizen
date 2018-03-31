@@ -676,7 +676,7 @@ my $lwp = LWP::UserAgent->new(
                               env_proxy     => $lconfig{lwp_env_proxy},
                               show_progress => $lconfig{lwp_show_progress},
                               timeout       => $lconfig{lwp_timeout},
-                              ssl_opts      => {verify_hostname => $lconfig{ssl_verify_hostname}},
+                              ssl_opts      => {verify_hostname => $lconfig{ssl_verify_hostname}, SSL_version => 'TLSv1_2'},
                               agent         => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
                              );
 
