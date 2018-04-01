@@ -851,16 +851,18 @@ sub execute_pacman_command ($needs_root, @cmd) {
 
     msg(":: Pacman command: " . ($user_pacman_command =~ s/\\(.)/$1/gr)) if $lconfig{debug};
 
-    system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
+    {
+        system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
 
-    if ($? and $needs_root) {
+        if ($? and $needs_root) {
 
-        if (not $lconfig{ask_for_retry}) {
-            main_quit();
+            if (not $lconfig{ask_for_retry}) {
+                main_quit();
+            }
+
+            note(":: Exit code: " . exit_code()) if $lconfig{debug};
+            $term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n') and redo;
         }
-
-        note(":: Exit code: " . exit_code()) if $lconfig{debug};
-        $term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n') and redo;
     }
 
     return $? ? 0 : 1;
