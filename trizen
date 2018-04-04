@@ -872,9 +872,9 @@ sub is_available_in_pacman_repo ($pkgname) {
 
     my $output = `$lconfig{pacman_command} -Sp \Q$pkgname\E > /dev/stdout 2>&1`;
 
-    # Maybe in repo if the output has at least two lines
-    if ($output =~ /.\R./) {
-        `$lconfig{pacman_command} -Si \Q$pkgname\E > /dev/stdout 2>&1`;
+    # In repo if the output has at least two lines
+    if ($output =~ /.\R:: /) {
+        return 1;
     }
 
     my $exit_code = $?;
