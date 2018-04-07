@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 01 April 2018
+# Latest edit: 07 April 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -1765,9 +1765,11 @@ sub format_package_result ($package) {
 
     my $repo = $package->{Repository} // 'aur';
 
-    # Compare installed version with AUR version
     my $is_installed_string = $lconfig{aur_results_show_installed}
       ? do {
+
+        my $up_to_date     = 1;
+        my $installed_text = $package->{Installed} // 'installed';
 
         my $installed_version = (
                                    $package->{Installed}
@@ -1775,10 +1777,19 @@ sub format_package_result ($package) {
                                  : package_is_installed($package->{Name}, 0)
                                 );
 
+        if ($package->{Installed} and $installed_text =~ /^(.+?): (.+)/) {
+            $up_to_date        = 0;
+            $installed_text    = $1;
+            $installed_version = $2;
+        }
+        elsif (defined($installed_version) and $repo eq 'aur') {
+            $up_to_date = versioncmp($installed_version, $package->{Version}) >= 0;
+        }
+
         defined($installed_version)
-          ? ($repo ne 'aur' or versioncmp($installed_version, $package->{Version}) >= 0)
-              ? " [$c{bgreen}installed$c{reset}]"
-              : " [$c{bold}installed$c{reset}: $c{bred}$installed_version$c{reset}]"
+          ? $up_to_date
+              ? " [$c{bgreen}$installed_text$c{reset}]"
+              : " [$c{bgreen}$installed_text$c{reset}: $c{bred}$installed_version$c{reset}]"
           : q{};
       }
       : q{};
@@ -1787,7 +1798,7 @@ sub format_package_result ($package) {
     my $result_string = "$c{bpurple}$repo/$c{reset}$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s%s";
 
     # Normalize the popularity percentage
-    $package->{Popularity} = sprintf("%.2g", $package->{Popularity} // 0);
+    $package->{Popularity} = sprintf("%.2f", $package->{Popularity} // 0);
 
 #<<<
     return (
