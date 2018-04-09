@@ -1535,18 +1535,18 @@ sub install_package ($pkg) {
 
             # Ignore the `--needed` flag when `--devel` is used and the package is a VCS package
             if ($lconfig{devel} and is_vcs_package($pkg)) {
-                msg(":: <<$pkg>> is a VCS package -- installing.");
+                msg(":: <<$pkg>> is a VCS package -- installing");
             }
 
             # Compare the local version against the AUR version
             elsif (versioncmp($version, $info->{Version}) >= 0) {
-                msg(":: <<$pkg>> is installed and up-to-date -- skipping.");
+                msg(":: <<$pkg>> is installed and up-to-date -- skipping");
                 return 1;    # package is installed and up-to-date
             }
 
             # Package seems to be out-of-date
             else {
-                note(":: <<$pkg>> seems to be {!out-of-date!} -- installing.") if $lconfig{debug};
+                note(":: <<$pkg>> seems to be {!out-of-date!} -- installing") if $lconfig{debug};
             }
         }
     }
@@ -1571,7 +1571,7 @@ sub install_package ($pkg) {
 
     # When a package is already built, install it without building it again.
     if ($already_built{$pkg}) {
-        msg(":: <<$pkg>> is already built -- installing.") if $lconfig{debug};
+        msg(":: <<$pkg>> is already built -- installing") if $lconfig{debug};
         return install_built_package($pkg, @args);
     }
 
@@ -2025,11 +2025,14 @@ sub list_aur_maintainer_packages ($maintainer) {
 
 sub update_local_packages (@repo_packages) {
 
+#<<<
     if (not $lconfig{aur}) {
         execute_pacman_command(1, @repo_packages,
-                               get_pacman_arguments('all', qw(sync sysupgrade noconfirm force quiet refresh)),
-                               map { "--ignore=$_" } keys(%ignored_pkgs));
+            get_pacman_arguments('all', qw(sync needed asdeps asexplicit sysupgrade noconfirm force quiet refresh)),
+            map { "--ignore=$_" } keys(%ignored_pkgs)
+        );
     }
+#>>>
 
     if ($lconfig{regular} or $lconfig{r}) {
         return 1;
@@ -2114,7 +2117,7 @@ sub update_local_packages (@repo_packages) {
     if ($lconfig{show_inexistent}) {
         foreach my $pkgname (sort keys %exists_in_aur) {
             if (not $exists_in_aur{$pkgname}) {
-                note(":: <<$pkgname>> was {!not found!} in AUR -- skipping.");
+                note(":: <<$pkgname>> was {!not found!} in AUR -- skipping");
             }
         }
     }
@@ -2412,7 +2415,8 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
 
     elsif ($lconfig{y} or $lconfig{refresh}) {    # -Sy
-        execute_pacman_command(1, splice(@repo_packages), get_pacman_arguments('all', qw(sync refresh force quiet noconfirm)));
+        execute_pacman_command(1, splice(@repo_packages),
+                               get_pacman_arguments('all', qw(sync needed asdeps asexplicit refresh force quiet noconfirm)));
     }
 
     install_packages_from_repo(@repo_packages) if @repo_packages;
