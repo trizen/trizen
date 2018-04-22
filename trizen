@@ -1693,7 +1693,9 @@ sub clean_cache () {
     opendir(my $dir_h, $lconfig{clone_dir})
       or error(":: Cannot access the AUR clone directory: {!$!!}");
 
-    if ($lconfig{clone_dir} !~ m{^/tmp/}) {
+    my $tmp_clonedir = ($lconfig{clone_dir} =~ m{^/tmp/});
+
+    if (not $tmp_clonedir) {
 
 #<<<
         $term->ask_yn(
@@ -1709,11 +1711,19 @@ sub clean_cache () {
     foreach my $name (readdir($dir_h)) {
 
         next if substr($name, 0, 1) eq '.';    # skip dot files
-        next if $name !~ /^[a-zA-Z0-9\-_+]+\z/;    # validate directory name
+        next if $name !~ /^[a-zA-Z0-9\-_+@.]+\z/;    # validate directory name
 
         my $dir = catdir($lconfig{clone_dir}, $name);
 
         if (-d $dir and -d catdir($dir, '.git')) {
+
+            # When the directory does not contain a PKGBUILD file, ask the user about it
+            if (not $tmp_clonedir and not -f catfile($dir, 'PKGBUILD')) {
+                $term->ask_yn(prompt  => "$c{bold}=>> Remove the content of $dir?$c{reset}",
+                              default => 'n')
+                  || next;
+            }
+
             msg(":: Removing <<$dir>>...") if $lconfig{debug};
             rmtree($dir) or note(":: Cannot remove directory <<$dir>>: {!$!!}");
         }
