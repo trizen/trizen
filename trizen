@@ -2000,7 +2000,7 @@ sub interactive_search_and_install (@keywords) {
     @items{map { $_->{Name} } @results} = @results;
     @items{map { $_->{Repository} . '/' . $_->{Name} } @results} = @results;
 
-    my $input = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ");
+    my $input = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ") // return;
     my @selected_packages = select_packages_from_input($input, \%items, \@results);
 
     my @aur_packages;
@@ -2196,7 +2196,7 @@ sub update_local_packages (@repo_packages) {
                  $lconfig{noconfirm}
                  ? ''
                  : $term->readline("\n$c{bold}=>> Select packages for upgrade (<ENTER> for all)$c{reset}\n> ")
-                );
+                ) // return;
 
     my @selected_packages = select_packages_from_input($input, \%for_update, [map { $_->{name} } @packages_for_update], 1);
 
