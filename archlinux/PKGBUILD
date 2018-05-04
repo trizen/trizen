@@ -2,7 +2,7 @@
 
 _pkgname=trizen
 pkgname=trizen-git
-pkgver=1.38.3.ge8380f8
+pkgver=1.48.7.g31e5328
 pkgrel=1
 pkgdesc="Trizen AUR Package Manager: A lightweight wrapper for AUR (-git version)."
 arch=('any')
@@ -22,11 +22,12 @@ depends=(
          'perl-json'
          'perl-data-dump'
          'perl-lwp-protocol-https'
+         'perl-term-readline-gnu'
         )
 
 optdepends=(
             'perl-json-xs: faster JSON deserialization'
-            'perl-term-readline-gnu: better STDIN support'
+            #'perl-term-readline-gnu: better STDIN support'
            )
 
 source=("git://github.com/trizen/${_pkgname}.git")
