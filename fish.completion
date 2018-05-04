@@ -1,8 +1,6 @@
 # Completions for trizen
 
 set -l progname trizen
-complete -e -c $progname
-complete -c $progname -f
 
 set -l listinstalled "(pacman -Q | string replace ' ' \t)"
 # This might be an issue if another package manager is also installed (e.g. for containers)
@@ -10,7 +8,7 @@ set -l listall "(__fish_print_packages)"
 set -l listrepos "(__fish_print_pacman_repos)"
 set -l listgroups "(pacman -Sg)\t'Package Group'"
 
-set -l hasopt '__fish_contains_opt -s D database -s Q query -s R remove -s S sync -s U upgrade -s F files -s C comments -s G get stats'
+set -l hasopt '__fish_contains_opt -s S -s D -s Q -s R -s U -s T -s F -s C -s G database query sync remove upgrade deptest files comments get stats'
 set -l noopt "not $hasopt"
 
 set -l database '__fish_contains_opt -s D database'
@@ -22,10 +20,11 @@ set -l files '__fish_contains_opt -s F files'
 set -l comments '__fish_contains_opt -s C comments'
 set -l get '__fish_contains_opt -s G get'
 
-# HACK: We only need these three to coerce fish to stop file completion and complete options
+complete -c trizen -e
+complete -c trizen -f
+# HACK: We only need these two to coerce fish to stop file completion and complete options
 complete -c $progname -n $noopt -a "-D" -d "Modify the package database"
 complete -c $progname -n $noopt -a "-Q" -d "Query the package database"
-complete -c $progname -n $noopt -a "-C" -d "Manage .pac* files"
 # Primary operations
 complete -c $progname -s D -f -l database -n $noopt -d 'Modify the package database'
 complete -c $progname -s Q -f -l query -n $noopt -d 'Query the package database'
@@ -35,19 +34,14 @@ complete -c $progname -s T -f -l deptest -n $noopt -d 'Check dependencies'
 complete -c $progname -s U -f -l upgrade -n $noopt -d 'Upgrade or add a local package'
 complete -c $progname -s F -f -l files -n $noopt -d 'Query the files database'
 complete -c $progname -s V -f -l version -d 'Display version and exit'
+complete -c $progname -s h -f -l help -d 'Display help'
 complete -c $progname -s C -f -l comments -n $noopt -d 'Display AUR comments for packages'
 complete -c $progname -s G -f -l get -n $noopt -d 'Clone an AUR package in the current directory'
 complete -c $progname -f -l stats -n $noopt -d 'Show stats about installed packages'
-complete -c $progname -s h -f -l help -d 'Display help'
-# Trizen operations
-complete -c $progname -n $noopt -s s    -l search      -d "(AUR) Search for packages"
-complete -c $progname -n $noopt -s i    -l info        -d "(AUR) Show info for packages"
-complete -c $progname -n $noopt -s y    -l sync        -d "(AUR) Clone build files, build and install packages"
-complete -c $progname -n $noopt -s u    -l update      -d "(AUR) Update foreign packages"
 
 # General options
 # Only offer these once a command has been given so they get prominent display
-complete -c $progname -n $noopt -s b -l dbpath -d 'Alternative database location' -xa '(__fish_complete_directories)'
+complete -c $progname -n $hasopt -s b -l dbpath -d 'Alternative database location' -xa '(__fish_complete_directories)'
 complete -c $progname -n $hasopt -s r -l root -d 'Alternative installation root'
 complete -c $progname -n $hasopt -s v -l verbose -d 'Output more status messages'
 complete -c $progname -n $hasopt -l arch -d 'Alternate architecture' -f
@@ -59,7 +53,7 @@ complete -c $progname -n $hasopt -l hookdir -d 'Hook file directory'
 complete -c $progname -n $hasopt -l logfile -d 'Specify alternative log file'
 complete -c $progname -n $hasopt -l noconfirm -d 'Bypass any question' -f
 # Trizen specific
-complete -c $progname -n $hasopt -s r -l regular -d 'Apply only for regular repositories'
+complete -c $progname -n $hasopt -s r -l regular -d 'Apply only for regular repositories' -f
 
 # Transaction options (sync, remove, upgrade)
 for condition in sync remove upgrade
@@ -101,8 +95,8 @@ complete -c $progname -n $query -s e -l explicit -d 'List only explicitly instal
 complete -c $progname -n $query -s k -l check -d 'Check if all files owned by PACKAGE are present' -f
 complete -c $progname -n $query -s l -l list -d 'List all files owned by PACKAGE' -f
 complete -c $progname -n $query -s m -l foreign -d 'List all packages not in the database' -f
-complete -c $progname -n $query -s o -l owns -r -d 'Search for the package that owns FILE' -xa '' -f
-complete -c $progname -n $query -s p -l file -d 'Apply the query to a package file, not package' -xa '' -f
+complete -c $progname -n $query -s o -l owns -r -d 'Search for the package that owns FILE'
+complete -c $progname -n $query -s p -l file -d 'Apply the query to a package file, not package'
 complete -c $progname -n $query -s t -l unrequired -d 'List only unrequired packages' -f
 complete -c $progname -n $query -s u -l upgrades -d 'List only out-of-date packages' -f
 complete -c $progname -n "$query" -d 'Installed package' -xa $listinstalled -f
@@ -123,18 +117,18 @@ complete -c $progname -n $sync -s w -l downloadonly -d 'Only download the target
 complete -c $progname -n $sync -s y -l refresh -d 'Download fresh copy of the package list'
 complete -c $progname -n "$sync" -xa "$listall $listgroups"
 # Trizen specific
-complete -c $progname -n $hasopt -s a -l aur            -d 'Apply only for AUR targets'
-complete -c $progname -n $hasopt      -l devel          -d 'Update VCS packages'
-complete -c $progname -n $hasopt      -l show-ood       -d 'Show out-of-date packages'
-complete -c $progname -n $hasopt      -l noinfo         -d 'Do not display package info after cloning'
-complete -c $progname -n $hasopt      -l nopull         -d 'Do not pull new changes'
-complete -c $progname -n $hasopt      -l nobuild        -d 'Do not build packages (implies --noedit)'
-complete -c $progname -n $hasopt      -l noinstall      -d 'Do not install packages after building'
-complete -c $progname -n $hasopt      -l skipinteg      -d 'Pass --skipinteg to makepkg'
-complete -c $progname -n $hasopt      -l movepkg        -d 'Move built packages into pacman\'s cache directory'
-complete -c $progname -n $hasopt      -l movepkg-dir    -d 'Move built packages into this directory (implies --movepkg)'
-complete -c $progname -n $hasopt      -l clone-dir      -d 'Clone and build packages in this directory'
-complete -c $progname -n $hasopt      -l editor         -d 'Editor command to edit build files'
+complete -c $progname -n $hasopt -s a -l aur         -d 'Apply only for AUR targets'
+complete -c $progname -n $hasopt      -l devel       -d 'Update VCS packages'
+complete -c $progname -n $hasopt      -l show-ood    -d 'Show out-of-date packages'
+complete -c $progname -n $hasopt      -l noinfo      -d 'Do not display package info after cloning'
+complete -c $progname -n $hasopt      -l nopull      -d 'Do not pull new changes'
+complete -c $progname -n $hasopt      -l nobuild     -d 'Do not build packages (implies --noedit)'
+complete -c $progname -n $hasopt      -l noinstall   -d 'Do not install packages after building'
+complete -c $progname -n $hasopt      -l skipinteg   -d 'Pass --skipinteg to makepkg'
+complete -c $progname -n $hasopt      -l movepkg     -d 'Move built packages into pacman\'s cache directory'
+complete -c $progname -n $hasopt      -l movepkg-dir -d 'Move built packages into this directory (implies --movepkg)'
+complete -c $progname -n $hasopt      -l clone-dir   -d 'Clone and build packages in this directory'
+complete -c $progname -n $hasopt      -l editor      -d 'Editor command to edit build files'
 
 
 # Database options
@@ -153,9 +147,9 @@ complete -c $progname -n "$files; and not $has_file_opt" -xa -s -d 'Search packa
 complete -c $progname -n "$files" -s y -l refresh -d 'Refresh the files database' -f
 complete -c $progname -n "$files" -s l -l list -d 'List files owned by given packages' -xa $listall
 complete -c $progname -n "$files" -s s -l search -d 'Search packages for matching files'
-complete -c $progname -n "$files" -s o -l owns -d 'Search for packages that include the given files'
+complete -c $progname -n "$files" -s o -l owns -d 'Search for packages that include the given files' -f
 complete -c $progname -n "$files" -s q -l quiet -d 'Show less information' -f
-complete -c $progname -n "$files" -l machinereadable -d 'Show in machine readable format' -f
+complete -c $progname -n "$files" -l machinereadable -d 'Show in machine readable format: repo\0pkgname\0pkgver\0path\n' -f
 
 # Upgrade options
 # Theoretically, pacman reads packages in all formats that libarchive supports
@@ -165,4 +159,4 @@ complete -c $progname -n "$upgrade" -xa '(__fish_complete_suffix pkg.tar.xz)' -d
 complete -c $progname -n "$upgrade" -xa '(__fish_complete_suffix pkg.tar.gz)' -d 'Package file'
 
 # Get options
-complete -c $progname -n $get -s d -l with-deps -d 'Clone packages with all needed AUR dependencies'
+complete -c $progname -n $get -s d -l with-deps -d 'Clone packages with all needed AUR dependencies' -f
