@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 04 May 2018
+# Latest edit: 26 May 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -898,7 +898,7 @@ sub package_is_installed ($pkgname, $strict = 1) {
                 my $dirs_string = '/' . join('/', readdir($dir_h)) . '/';
                 closedir($dir_h);
 
-                if ($dirs_string =~ m{/\Q$pkgname\E-([^-]+-\d+)/}) {
+                if ($dirs_string =~ m{/\Q$pkgname\E-([^-]+-\d+)/}i) {
                     return $1;
                 }
 
@@ -1111,7 +1111,7 @@ sub find_local_package ($pkgname, $dir) {
       };
 
     while (defined(my $file = readdir $dir_h)) {
-        if ($file =~ m{^\Q$pkgname\E$pkg_suffix_re}) {
+        if ($file =~ m{^\Q$pkgname\E$pkg_suffix_re}i) {
 
             # When there exists more than one built packages, get the latest one built
             if (defined $newest_package) {
@@ -1189,7 +1189,7 @@ sub recompute_dependencies ($info) {
 
             # Build the package (again)
             if ($key eq 'pkgname') {
-                $already_built{$value} = 0;
+                $already_built{lc $value} = 0;
                 $current_pkgname = $value;
             }
 
@@ -1318,7 +1318,7 @@ sub run_makepkg_command ($pkg, @args) {
 
         if ($term->ask_yn(prompt => "$c{bold}=>> Do you want to try again?$c{reset}", default => 'n')) {
             local $lconfig{nopull} = 1;
-            delete $seen_package{$pkg};
+            delete $seen_package{lc $pkg};
             install_package($pkg);
         }
         else {
@@ -1351,10 +1351,10 @@ sub install_local_package (@) {
         return 1;
     }
 
-    return 1 if $already_installed{$pkg};
+    return 1 if $already_installed{lc $pkg};
 
     if (execute_pacman_command(1, $pkg_tarball, @pacman_argvs)) {
-        $already_installed{$pkg} = 1;
+        $already_installed{lc $pkg} = 1;
         if ($lconfig{movepkg}) {
             move_built_package($pkg);
         }
@@ -1382,17 +1382,17 @@ sub install_built_package ($pkg, @args) {
 
     my @packages;
     foreach my $name (@packagelist) {
-        if ("$name.pkg.tar.gz" =~ /^(.*?)$pkg_suffix_re/o) {
+        if ("$name.pkg.tar.gz" =~ /^(.*?)$pkg_suffix_re/oi) {
             my $basename = $1;
-            next if $basename eq $pkg;
-            $already_built{$basename} = 1;
+            next if lc($basename) eq lc($pkg);
+            $already_built{lc $basename} = 1;
             push @packages, $basename;
         }
     }
 
     @packages = do {
         my %seen;
-        grep { !$seen{$_}++ } @packages;
+        grep { !$seen{lc $_}++ } @packages;
     };
 
     # If the list contains more built packages, then ask the user
@@ -1429,16 +1429,16 @@ sub build_and_install_package ($pkg, @args) {
 
     if ($lconfig{nobuild}) {
         if ($lconfig{noinstall}) {
-            $already_installed{$pkg} = 1;
+            $already_installed{lc $pkg} = 1;
             return 1;
         }
-        $already_built{$pkg} = 1;
+        $already_built{lc $pkg} = 1;
         return install_built_package($pkg, @args);
     }
 
     # Check to see if the current package was
     # already built, so we don't build it twice.
-    if ($already_built{$pkg}) {
+    if ($already_built{lc $pkg}) {
         return install_built_package($pkg, @args);
     }
 
@@ -1461,7 +1461,7 @@ sub build_and_install_package ($pkg, @args) {
     #~ }
 
     #~ if (run_makepkg_command($pkg, @args)) {
-        #~ $already_built{$pkg} = 1;
+        #~ $already_built{lc $pkg} = 1;
         #~ move_built_package($pkg) if $lconfig{movepkg};
         #~ return 1;
     #~ }
@@ -1469,7 +1469,7 @@ sub build_and_install_package ($pkg, @args) {
 
     # Build the package and install/move it
     if (run_makepkg_command($pkg)) {
-        $already_built{$pkg} = 1;    # mark the package as built
+        $already_built{lc $pkg} = 1;    # mark the package as built
         return install_built_package($pkg, @args);
     }
 
@@ -1478,13 +1478,13 @@ sub build_and_install_package ($pkg, @args) {
 
 sub is_lib32 ($pkg) {
     if ($arch ne 'x86_64') {
-        return 1 if $pkg =~ /^lib32-\w/;
+        return 1 if $pkg =~ /^lib32-\w/i;
     }
     return;
 }
 
 sub is_vcs_package ($pkg) {
-    $pkg =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/;
+    $pkg =~ /-(?:git|svn|bzr|cvs|hg|darcs|nightly(?:|[-_].+))\z/i;
 }
 
 sub install_packages_from_repo (@pkgs) {
@@ -1503,12 +1503,12 @@ sub install_packages_from_repo (@pkgs) {
 sub install_package ($pkg) {
 
     # Avoid circular dependencies
-    if ($seen_package{$pkg}) {
+    if ($seen_package{lc $pkg}) {
         return 1;
     }
 
     # Mark as seen
-    local $seen_package{$pkg} = 1;
+    local $seen_package{lc $pkg} = 1;
 
     msg(":: Current directory is: " . rel2abs(curdir())) if $lconfig{debug};
 
@@ -1569,7 +1569,7 @@ sub install_package ($pkg) {
     }
 
     # When a package is already built, install it without building it again.
-    if ($already_built{$pkg}) {
+    if ($already_built{lc $pkg}) {
         msg(":: <<$pkg>> is already built -- installing") if $lconfig{debug};
         return install_built_package($pkg, @args);
     }
@@ -1640,7 +1640,7 @@ sub install_package ($pkg) {
             }
         }
 
-        if ($already_installed{$name} or (defined($local_version) ? defined($version) ? $is_up_to_date : 1 : 0)) {
+        if ($already_installed{lc $name} or (defined($local_version) ? defined($version) ? $is_up_to_date : 1 : 0)) {
             msg(":: Dependency <<$name>> is already installed -- skipping") if $lconfig{debug};
         }
         elsif (is_available_in_pacman_repo($name)) {
@@ -1996,11 +1996,11 @@ sub interactive_search_and_install (@keywords) {
 #>>>
     }
 
-    @items{map { $_->{Name} } @results} = @results;
-    @items{map { $_->{Repository} . '/' . $_->{Name} } @results} = @results;
+    @items{map { lc($_->{Name}) } @results} = @results;
+    @items{map { lc($_->{Repository} . '/' . $_->{Name}) } @results} = @results;
 
     my $input = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ") // return;
-    my @selected_packages = select_packages_from_input($input, \%items, \@results);
+    my @selected_packages = select_packages_from_input(lc($input), \%items, \@results);
 
     my @aur_packages;
     my @repo_packages;
@@ -2144,7 +2144,7 @@ sub update_local_packages (@repo_packages) {
         my $version = $package->{version};
 
         $for_update{$i + 1} = $pkgname;
-        $for_update{$pkgname} = $pkgname;
+        $for_update{lc($pkgname)} = $pkgname;
 
         if ($lconfig{show_upgrades_only}) {
             $lconfig{quiet}
@@ -2197,7 +2197,7 @@ sub update_local_packages (@repo_packages) {
                  : $term->readline("\n$c{bold}=>> Select packages for upgrade (<ENTER> for all)$c{reset}\n> ")
                 ) // return;
 
-    my @selected_packages = select_packages_from_input($input, \%for_update, [map { $_->{name} } @packages_for_update], 1);
+    my @selected_packages = select_packages_from_input(lc($input), \%for_update, [map { $_->{name} } @packages_for_update], 1);
 
     foreach my $pkgname (@selected_packages) {
         if (install_package($pkgname)) {
@@ -2510,10 +2510,10 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
     my @args = get_pacman_arguments('all', qw(asdeps asexplicit noconfirm force needed));
 
     foreach my $pkg (@keyword_arguments) {
-        if ($pkg =~ /$pkg_suffix_re/o and -f $pkg) {    # install from current dir
+        if ($pkg =~ /$pkg_suffix_re/io and -f $pkg) {    # install from current dir
             push @packages, $pkg;
         }
-        else {                                          # install from cache dir
+        else {                                           # install from cache dir
             foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
                 my $tarball = find_local_package($pkg, $dir) // next;
                 msg(":: Found tarball: $tarball");
@@ -2524,7 +2524,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
 
     execute_pacman_command(1, qw(-U), @args, @packages) if @packages;
 }
-elsif ($lconfig{R} or $lconfig{remove}) {               # -R
+elsif ($lconfig{R} or $lconfig{remove}) {                # -R
 
     if ($lconfig{h} or $lconfig{help}) {
         execute_pacman_command(0, '-Rh');
@@ -2533,7 +2533,7 @@ elsif ($lconfig{R} or $lconfig{remove}) {               # -R
 
     execute_pacman_command(1, get_pacman_arguments('all', qw(remove noconfirm)), @keyword_arguments);
 }
-elsif ($lconfig{D} or $lconfig{database}) {             # -D
+elsif ($lconfig{D} or $lconfig{database}) {              # -D
 
     if ($lconfig{h} or $lconfig{help}) {
         execute_pacman_command(0, '-Dh');
