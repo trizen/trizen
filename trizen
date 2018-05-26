@@ -125,7 +125,6 @@ if (not -d $config_dir) {
 #----------------------- GLOBAL VARIABLES -----------------------#
 my %CONFIG = (
               show_comments                => 0,
-              quiet                        => 0,
               debug                        => 0,
               nocolors                     => 0,
               movepkg                      => 0,
@@ -175,6 +174,7 @@ $CONFIG{clone_dir} = catdir(tmpdir(), "$execname-$user");
 
 my %lconfig = (
     %CONFIG,
+    quiet         => 0,
     devel         => 0,
     needed        => 0,
     noconfirm     => 0,
@@ -258,7 +258,6 @@ packages_in_stats            => int     The number of packages to display in `--
 pacman_command               => str     The `pacman` command that is used internally for pacman operations.
 pacman_local_dir             => str     Absolute path to the pacman's local directory.
 pager_mode                   => bool    Show the build files in pager mode using pager.
-quiet                        => bool    Do not display any warnings.
 recompute_deps               => bool    Recompute the dependencies of a package after its build files are inspected.
 show_build_files_content     => bool    Show the content of the build files of a package before building it.
 show_diff_only               => bool    When the build files of a package already exist locally, show the diff only.
