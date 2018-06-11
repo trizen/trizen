@@ -1595,8 +1595,11 @@ sub install_package ($pkg) {
     foreach my $pkgname (
         grep { defined($_) && /^\w/ }
 
-        # Makedepends
+        # MakeDepends
         (exists($info->{MakeDepends}) ? @{$info->{MakeDepends}} : ()),
+
+        # CheckDepends
+        (exists($info->{CheckDepends}) ? @{$info->{CheckDepends}} : ()),
 
         # Depends
         (exists($info->{Depends}) ? @{$info->{Depends}} : ()),
