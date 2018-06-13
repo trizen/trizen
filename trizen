@@ -1131,8 +1131,7 @@ sub find_local_package ($pkgname, $dir) {
     return $newest_package;
 }
 
-sub move_built_package ($pkg) {
-    my $pkg_tarball = find_local_package($pkg, rel2abs(curdir())) // return;
+sub move_built_package ($tarball) {
 
     if (not -d $lconfig{movepkg_dir}) {
         make_path($lconfig{movepkg_dir})
@@ -1144,26 +1143,26 @@ sub move_built_package ($pkg) {
             require File::Copy;
             require File::Basename;
 
-            msg(":: Moving $pkg_tarball into $lconfig{movepkg_dir}") if $lconfig{debug};
-            File::Copy::move($pkg_tarball, catfile($lconfig{movepkg_dir}, File::Basename::basename($pkg_tarball)))
-              or note(":: Unable to move $pkg into $lconfig{movepkg_dir}: {!$!!}");
+            msg(":: Moving <<$tarball>> into <<$lconfig{movepkg_dir}>>") if $lconfig{debug};
+            File::Copy::move($tarball, catfile($lconfig{movepkg_dir}, File::Basename::basename($tarball)))
+              or note(":: Unable to move <<$tarball>> into <<$lconfig{movepkg_dir}>>: {!$!!}");
         }
         else {
-            msg(":: Moving `${pkg_tarball}' into `$lconfig{movepkg_dir}'");
+            msg(":: Moving <<${tarball}>> into <<$lconfig{movepkg_dir}>>");
 
             system($lconfig{use_sudo}
-                   ? "$lconfig{sudo_command} mv '${pkg_tarball}' '$lconfig{movepkg_dir}'"
-                   : qq{$lconfig{su_command} 'mv \Q$pkg_tarball\E \Q$lconfig{movepkg_dir}\E'}
+                   ? "$lconfig{sudo_command} mv '${tarball}' '$lconfig{movepkg_dir}'"
+                   : qq{$lconfig{su_command} 'mv \Q$tarball\E \Q$lconfig{movepkg_dir}\E'}
                   );
 
             if ($?) {
-                note(":: Unable to move package <<$pkg>> into <<$lconfig{movepkg_dir}>> -- exit code: " . exit_code());
-                if ($term->ask_yn(prompt => "$c{bold}=>> Do you want to try again?$c{reset}", default => 'n')) {
-                    move_built_package($pkg);
+                note(":: Unable to move <<$tarball>> into <<$lconfig{movepkg_dir}>> -- exit code: " . exit_code());
+                if ($term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n')) {
+                    move_built_package($tarball);
                 }
             }
             else {
-                msg(":: Package <<$pkg>> has been successfully moved into <<$lconfig{movepkg_dir}>>.");
+                msg(":: <<$tarball>> has been successfully moved into <<$lconfig{movepkg_dir}>>.");
             }
         }
     }
@@ -1316,13 +1315,13 @@ sub run_makepkg_command ($pkg, @args) {
             return;
         }
 
-        if ($term->ask_yn(prompt => "$c{bold}=>> Do you want to try again?$c{reset}", default => 'n')) {
+        if ($term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n')) {
             local $lconfig{nopull} = 1;
             delete $seen_package{lc $pkg};
             install_package($pkg);
         }
         else {
-            if ($term->ask_yn(prompt => "$c{bold}=>> Do you want to exit now?$c{reset}", default => 'y')) {
+            if ($term->ask_yn(prompt => "$c{bold}=>> Exit now?$c{reset}", default => 'y')) {
                 main_quit(65);    # Package not installed
             }
             else {
@@ -1334,29 +1333,23 @@ sub run_makepkg_command ($pkg, @args) {
     return 1;
 }
 
-sub install_local_package (@) {
-    my ($pkg, @pacman_argvs) = @_;
+sub install_local_package ($name, $tarball, @pacman_args) {
 
-    my $pkg_tarball = find_local_package($pkg, rel2abs(curdir())) // do {
-        note(":: Unable to find a built tarball for <<$pkg>>");
-        $? = 2;
-        return;
-    };
+    return 1 if $already_installed{lc $name};
 
     if ($lconfig{noinstall}) {
         if ($lconfig{movepkg}) {
-            move_built_package($pkg);
+            $already_installed{lc $name} = 1;
+            move_built_package($tarball);
             return 1;
         }
         return 1;
     }
 
-    return 1 if $already_installed{lc $pkg};
-
-    if (execute_pacman_command(1, $pkg_tarball, @pacman_argvs)) {
-        $already_installed{lc $pkg} = 1;
+    if (execute_pacman_command(1, $tarball, @pacman_args)) {
+        $already_installed{lc $name} = 1;
         if ($lconfig{movepkg}) {
-            move_built_package($pkg);
+            move_built_package($tarball);
         }
         return 1;
     }
@@ -1370,38 +1363,38 @@ sub install_built_package ($pkg, @args) {
         push @args, '--noconfirm';
     }
 
+    # Get the list of all built packages
+    chomp(my @packagelist = map { decode_utf8($_) } `/usr/bin/makepkg --packagelist`);
+
+    my %packages;
+    foreach my $path (@packagelist) {
+        if ($path =~ m{(?:.*/|^)(.*?)$pkg_suffix_re}oi) {
+            my $pkgname = $1;
+            $packages{$pkgname} = $path;
+            $already_built{lc $pkgname} = 1;
+        }
+    }
+
+    exists($packages{$pkg}) || do {
+        note(":: Unable to find a built tarball for <<$pkg>>");
+        $? = 2;
+        return;
+    };
+
     # Install the package
-    install_local_package($pkg, q{-Ud}, @args) || return;
+    install_local_package($pkg, delete($packages{$pkg}), q{-Ud}, @args) || return;
 
     # Don't ask for split packages in `--noinstall` mode
     # or when `split_packages` is set to a false value.
     ($lconfig{noinstall} || !$lconfig{split_packages}) && return 1;
 
-    # Get the list of all built packages
-    chomp(my @packagelist = map { decode_utf8($_) } `/usr/bin/makepkg --packagelist`);
-
-    my @packages;
-    foreach my $name (@packagelist) {
-        if ("$name.pkg.tar.gz" =~ /^(.*?)$pkg_suffix_re/oi) {
-            my $basename = $1;
-            next if lc($basename) eq lc($pkg);
-            $already_built{lc $basename} = 1;
-            push @packages, $basename;
-        }
-    }
-
-    @packages = do {
-        my %seen;
-        grep { !$seen{lc $_}++ } @packages;
-    };
-
     # If the list contains more built packages, then ask the user
-    # if he wants to install some other packages from this group.
-    if (@packages) {
+    # if they want to install some other packages from this group.
+    if (keys %packages) {
 
         say '';
-        msg(":: This group contains <<" . scalar(@packages) . ">> more packages:");
-        say "\n" . join("\n", map { "   $_" } @packages), "\n";
+        msg(":: This group contains <<" . scalar(keys %packages) . ">> more packages:");
+        say "\n" . join("\n", map { "   $_" } sort keys %packages), "\n";
 
         if (
             $term->ask_yn(prompt  => "$c{bold}=>> Do you want to install more packages from this group?$c{reset}",
@@ -1410,14 +1403,14 @@ sub install_built_package ($pkg, @args) {
             my @reply = $term->get_reply(
                                          print_me => "\n$c{bold}=>> Select which packages to install$c{reset}",
                                          prompt   => "$c{bold}Install$c{reset}",
-                                         choices  => \@packages,
-                                         default  => \@packages,
+                                         choices  => [sort keys %packages],
+                                         default  => [sort keys %packages],
                                          multi    => 1,
                                         );
 
             # Install the selected packages
-            foreach my $name (@reply) {
-                install_local_package($name, q{-Ud}, @args);
+            foreach my $pkgname (@reply) {
+                install_local_package($pkgname, $packages{$pkgname}, q{-Ud}, @args);
             }
         }
     }
@@ -2329,6 +2322,7 @@ sub _parse_pkgname ($pkgref) {
 if ($lconfig{S} or $lconfig{sync}) {    # -S
 
     if ($lconfig{l} or $lconfig{local}) {    # -Sl
+        $lconfig{nopull}    = 1;
         $lconfig{clone_dir} = rel2abs(curdir());
     }
 
