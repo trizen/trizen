@@ -2468,20 +2468,21 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
         get_help();
     }
 
-    if ($lconfig{d} or $lconfig{with_deps}) {    # -Gd
+    my $curdir = rel2abs(curdir());
 
-        my $curdir = rel2abs(curdir());
+    if ($lconfig{d} or $lconfig{with_deps}) {    # -Gd
 
         foreach my $pkg (@keyword_arguments) {
 
-            local $lconfig{aur}            = 1 if _parse_pkgname(\$pkg);
-            local $lconfig{clone_dir}      = $curdir;
-            local $lconfig{nobuild}        = 1;
-            local $lconfig{noinstall}      = 1;
-            local $lconfig{noconfirm}      = 1;
-            local $lconfig{noedit}         = 1;
-            local $lconfig{noinfo}         = 1;
-            local $lconfig{recompute_deps} = 0;
+            local $lconfig{aur}                      = 1 if _parse_pkgname(\$pkg);
+            local $lconfig{clone_dir}                = $curdir;
+            local $lconfig{nobuild}                  = 1;
+            local $lconfig{noinstall}                = 1;
+            local $lconfig{noconfirm}                = 1;
+            local $lconfig{noedit}                   = 1;
+            local $lconfig{noinfo}                   = 1;
+            local $lconfig{recompute_deps}           = 0;
+            local $lconfig{show_build_files_content} = 0;
 
             if (!install_package($pkg)) {
                 note(":: <<$pkg>> not found.");
@@ -2494,7 +2495,7 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
         foreach my $pkg (@keyword_arguments) {
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
             msg(":: Cloning package: $pkg") if $lconfig{debug};
-            if (!download_package($pkg, rel2abs(curdir()))) {
+            if (!download_package($pkg, $curdir)) {
                 note(":: <<$pkg>> not found.");
                 $? = 1;
                 next;
