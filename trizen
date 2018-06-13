@@ -1370,19 +1370,19 @@ sub install_built_package ($pkg, @args) {
     foreach my $path (@packagelist) {
         if ($path =~ m{(?:.*/|^)(.*?)$pkg_suffix_re}oi) {
             my $pkgname = $1;
-            $packages{$pkgname} = $path;
+            $packages{lc $pkgname}      = $path;
             $already_built{lc $pkgname} = 1;
         }
     }
 
-    exists($packages{$pkg}) || do {
+    exists($packages{lc $pkg}) || do {
         note(":: Unable to find a built tarball for <<$pkg>>");
         $? = 2;
         return;
     };
 
     # Install the package
-    install_local_package($pkg, delete($packages{$pkg}), q{-Ud}, @args) || return;
+    install_local_package($pkg, delete($packages{lc $pkg}), q{-Ud}, @args) || return;
 
     # Don't ask for split packages in `--noinstall` mode
     # or when `split_packages` is set to a false value.
@@ -1410,7 +1410,7 @@ sub install_built_package ($pkg, @args) {
 
             # Install the selected packages
             foreach my $pkgname (@reply) {
-                install_local_package($pkgname, $packages{$pkgname}, q{-Ud}, @args);
+                install_local_package($pkgname, $packages{lc $pkgname}, q{-Ud}, @args);
             }
         }
     }
