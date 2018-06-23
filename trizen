@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 13 June 2018
+# Latest edit: 23 June 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -168,6 +168,7 @@ my %CONFIG = (
               show_inexistent              => 1,
               show_unmaintained            => 1,
               install_built_with_noconfirm => 0,
+              color_code_dependencies      => 0,
              );
 
 $CONFIG{clone_dir} = catdir(tmpdir(), "$execname-$user");
@@ -237,6 +238,7 @@ aur_results_sort_order       => str     Sort the AUR results in "ascending" or "
 aur_results_votes            => bool    Show the number of votes in AUR results.
 ask_for_retry                => bool    When `makepkg` fails to build a package, offer the option for trying again.
 clone_dir                    => str     Absolute path to the directory where to clone and build packages.
+color_code_dependencies      => bool    Display the dependencies of a package in specific colors (green = installed; blue = in repo; purple = in AUR).
 debug                        => bool    Verbose mode.
 flip_indices                 => bool    In search+install mode, show the indices of packages in reverse order.
 flip_results                 => bool    Show the search results in reverse order.
@@ -933,14 +935,13 @@ sub package_is_installed ($pkgname, $strict = 1) {
     return;
 }
 
-sub versioncmp ($v1, $v2) {
-    `/usr/bin/vercmp \Q$v1\E \Q$v2\E` + 0;
+sub package_is_provided ($pkgname) {
+    chomp(my $deptest = `$lconfig{pacman_command} -T \Q$pkgname\E`);
+    return ($deptest eq '');
 }
 
-sub array_ref_or_string ($data) {
-    ref($data) eq 'ARRAY'
-      ? (grep { defined($_) and $_ ne '' } @$data)
-      : ($data // 'None');
+sub versioncmp ($v1, $v2) {
+    `/usr/bin/vercmp \Q$v1\E \Q$v2\E` + 0;
 }
 
 sub strip_space ($string) {
@@ -961,18 +962,6 @@ sub parse_package_name_and_version ($pkgname) {
     }
 
     return ($pkgname, undef, undef);
-}
-
-sub indent_array (@elems) {
-    my $first = strip_space(shift(@elems));
-
-    @elems or return $first;
-
-    my $rest = join("\n", @elems);
-    $rest =~ s/^\s+//gm;
-    $rest =~ s/^/' ' x 18/gem;
-
-    return "$first\n$rest";
 }
 
 sub info_for_package ($pkgname) {
@@ -1072,6 +1061,41 @@ sub get_rpc_info ($pkgname) {
     json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=info&arg=" . uri_escape_utf8($pkgname)) // return);
 }
 
+sub indent_array ($elems) {
+    my $first = shift(@$elems) // 'None';
+
+    @$elems or return $first;
+
+    my $rest = join("\n", @$elems);
+    $rest =~ s/^\s+//gm;
+    $rest =~ s/^/' ' x 18/gem;
+
+    return "$first\n$rest";
+}
+
+sub color_code_dependencies ($deps) {
+
+    $lconfig{'color_code_dependencies'} || return $deps;
+
+    my @aur_packages;
+    my @repo_packages;
+    my @installed_packages;
+
+    foreach my $pkgname (@$deps) {
+        if (package_is_provided($pkgname)) {
+            push @installed_packages, "$c{bgreen}$pkgname$c{reset}";
+        }
+        elsif (is_available_in_pacman_repo($pkgname)) {
+            push @repo_packages, "$c{bblue}$pkgname$c{reset}";
+        }
+        else {
+            push @aur_packages, "$c{bpurple}$pkgname$c{reset}";
+        }
+    }
+
+    return [@installed_packages, @repo_packages, @aur_packages];
+}
+
 sub show_info ($info) {
 
     say map { sprintf $c{bold} . $_->[0], $c{reset} . $_->[1] }
@@ -1081,18 +1105,18 @@ sub show_info ($info) {
       ["Maintainer      : %s\n", $info->{Maintainer} // "$c{bred}None$c{reset}"],
       ["URL             : %s\n", $info->{URL}],
       ["AUR URL         : %s\n", sprintf($aur_package_id_url, $info->{ID})],
-      ["License         : %s\n", indent_array(array_ref_or_string($info->{License}))],
+      ["License         : %s\n", indent_array($info->{License} // [])],
       ["Votes           : %s\n", $info->{NumVotes}],
       ["Popularity      : %s\n", sprintf("%.2g%%", $info->{Popularity})],
       ["Installed       : %s\n", package_is_installed($info->{Name}) ? "$c{bgreen}Yes$c{reset}" : 'No'],
       ["Out Of Date     : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
-      ["Depends On      : %s\n", indent_array(array_ref_or_string($info->{Depends}))],
-      ["Make Deps       : %s\n", indent_array(array_ref_or_string($info->{MakeDepends}))],
-      ["Check Deps      : %s\n", indent_array(array_ref_or_string($info->{CheckDepends}))],
-      ["Optional Deps   : %s\n", indent_array(array_ref_or_string($info->{OptDepends}))],
-      ["Provides        : %s\n", indent_array(array_ref_or_string($info->{Provides}))],
-      ["Conflicts With  : %s\n", indent_array(array_ref_or_string($info->{Conflicts}))],
-      ["Replaces        : %s\n", indent_array(array_ref_or_string($info->{Replaces}))],
+      ["Depends On      : %s\n", indent_array(color_code_dependencies($info->{Depends} //      []))],
+      ["Make Deps       : %s\n", indent_array(color_code_dependencies($info->{MakeDepends} //  []))],
+      ["Check Deps      : %s\n", indent_array(color_code_dependencies($info->{CheckDepends} // []))],
+      ["Optional Deps   : %s\n", indent_array(color_code_dependencies($info->{OptDepends} //   []))],
+      ["Provides        : %s\n", indent_array($info->{Provides} //  [])],
+      ["Conflicts With  : %s\n", indent_array($info->{Conflicts} // [])],
+      ["Replaces        : %s\n", indent_array($info->{Replaces} //  [])],
       ["Package Base    : %s\n", $info->{PackageBase}],
       ["Last Update     : %s\n", scalar localtime($info->{LastModified} || $info->{FirstSubmitted})],
       ["Description     : %s\n", $info->{Description}];
@@ -1647,9 +1671,7 @@ sub install_package ($pkg) {
             # Check to see if the dependency is already provided by some other installed package.
             if (not defined($local_version)) {    # dependency is not installed
 
-                chomp(my $deptest = `$lconfig{pacman_command} -T \Q$pkgname\E`);
-
-                if ($deptest eq '') {
+                if (package_is_provided($pkgname)) {
                     msg(":: Dependency <<$name>> is provided by other package -- skipping") if $lconfig{debug};
                     next;
                 }
