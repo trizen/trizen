@@ -1661,10 +1661,10 @@ sub install_package ($pkg) {
         }
 
         if ($already_installed{lc $name} or (defined($local_version) ? defined($version) ? $is_up_to_date : 1 : 0)) {
-            msg(":: Dependency <<$name>> is already installed -- skipping") if $lconfig{debug};
+            msg(":: Dependency <<$pkgname>> is already installed -- skipping") if $lconfig{debug};
         }
-        elsif (is_available_in_pacman_repo($name)) {
-            msg(":: Dependency <<$name>> is available in pacman's repository -- skipping") if $lconfig{debug};
+        elsif (is_available_in_pacman_repo($pkgname)) {
+            msg(":: Dependency <<$pkgname>> is available in pacman's repository -- skipping") if $lconfig{debug};
         }
         else {
 
