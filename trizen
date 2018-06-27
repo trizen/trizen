@@ -238,7 +238,7 @@ aur_results_sort_order       => str     Sort the AUR results in "ascending" or "
 aur_results_votes            => bool    Show the number of votes in AUR results.
 ask_for_retry                => bool    When `makepkg` fails to build a package, offer the option for trying again.
 clone_dir                    => str     Absolute path to the directory where to clone and build packages.
-color_code_dependencies      => bool    Display the dependencies of a package in specific colors (green = installed; blue = in repo; purple = in AUR).
+color_code_dependencies      => bool    Display the dependencies of a package in specific colors (green = installed; cyan = in repo; purple = in AUR).
 debug                        => bool    Verbose mode.
 flip_indices                 => bool    In search+install mode, show the indices of packages in reverse order.
 flip_results                 => bool    Show the search results in reverse order.
@@ -1086,7 +1086,7 @@ sub color_code_dependencies ($deps) {
             push @installed_packages, "$c{bgreen}$pkgname$c{reset}";
         }
         elsif (is_available_in_pacman_repo($pkgname)) {
-            push @repo_packages, "$c{bblue}$pkgname$c{reset}";
+            push @repo_packages, "$c{bcyan}$pkgname$c{reset}";
         }
         else {
             push @aur_packages, "$c{bpurple}$pkgname$c{reset}";
