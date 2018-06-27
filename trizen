@@ -1822,7 +1822,8 @@ sub format_package_result ($package) {
       : q{};
 
     # Formatting string
-    my $result_string = "$c{bpurple}$repo/$c{reset}$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s%s";
+    my $result_string =
+      ($repo eq 'aur' ? $c{bpurple} : $c{bcyan}) . "$repo/$c{reset}$c{bold}%s$c{reset} $c{bblue}%s$c{reset}%s%s%s%s%s%s%s";
 
     # Normalize the popularity percentage
     $package->{Popularity} = sprintf("%.2f", $package->{Popularity} // 0);
