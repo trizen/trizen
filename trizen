@@ -167,6 +167,7 @@ my %CONFIG = (
               show_ood                     => 0,
               show_inexistent              => 1,
               show_unmaintained            => 1,
+              install_built_with_Ud        => 0,
               install_built_with_noconfirm => 0,
               color_code_dependencies      => 0,
              );
@@ -244,6 +245,7 @@ flip_indices                 => bool    In search+install mode, show the indices
 flip_results                 => bool    Show the search results in reverse order.
 force                        => bool    Pass the `--force` flag to `pacman`.
 git_clone_depth              => int     Pass the `--depth int` flag to `git clone`. (0 means no limit)
+install_built_with_Ud        => bool    Install built packages with `-Ud`, which skips dependency version checks.
 install_built_with_noconfirm => bool    Install built packages with `--noconfirm`.
 lwp_env_proxy                => bool    Use proxy settings defined in `env` (if any).
 lwp_show_progress            => bool    Show the HTTPS requests made by LWP::UserAgent to the AUR servers.
@@ -1405,8 +1407,10 @@ sub install_built_package ($pkg, @args) {
         return;
     };
 
+    my $install_flag = $lconfig{install_built_with_Ud} ? '-Ud' : '-U';
+
     # Install the package
-    install_local_package($pkg, delete($packages{lc $pkg}), q{-Ud}, @args) || return;
+    install_local_package($pkg, delete($packages{lc $pkg}), $install_flag, @args) || return;
 
     # Don't ask for split packages in `--noinstall` mode
     # or when `split_packages` is set to a false value.
@@ -1434,7 +1438,7 @@ sub install_built_package ($pkg, @args) {
 
             # Install the selected packages
             foreach my $pkgname (@reply) {
-                install_local_package($pkgname, $packages{lc $pkgname}, q{-Ud}, @args);
+                install_local_package($pkgname, $packages{lc $pkgname}, $install_flag, @args);
             }
         }
     }
@@ -2084,7 +2088,7 @@ sub update_local_packages (@repo_packages) {
 
         my $multiinfo = json2perl(
             get($url) // do {
-                note(":: Unable to get info for local packages...");
+                note(":: Unable to get info for AUR packages...");
                 $? = 1;
                 return;
               }
