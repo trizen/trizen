@@ -1250,12 +1250,12 @@ sub output_file_content ($file) {
     }
 
     open my $fh, '<:utf8', $file or do {
-        note(":: Unable to open <<$file>> for read: {!$!!}");
+        note(":: Unable to open <<$file>> for reading: {!$!!}");
         return;
     };
 
     say '';
-    msg(":: Content of <<$file>>");
+    msg(":: Content of: <<$file>>");
     say '';
 
     eval {
@@ -1300,7 +1300,20 @@ sub show_and_edit_text_files ($info) {
                 print "\n";
             }
             else {
-                output_file_content($abs_file);
+
+                # Highlight the code in the PKGBUILD and other *.install files, using the `highlight` tool
+                if (    !$lconfig{pager_mode}
+                    and ($file eq 'PKGBUILD' or $file =~ /\.install\z/)
+                    and -x '/usr/bin/highlight') {
+                    say '';
+                    msg(":: Content of: <<$abs_file>>");
+                    say '';
+                    system('/usr/bin/highlight', '-O', 'ansi', '--syntax=bash', $abs_file);
+                    say '';
+                }
+                else {
+                    output_file_content($abs_file);
+                }
             }
         }
 
