@@ -22,7 +22,8 @@ depends=(
          'perl-json'
          'perl-data-dump'
          'perl-lwp-protocol-https'
-         'perl-term-readline-gnu'
+         'perl-term-readline-gnu',
+         'fakeroot'
         )
 
 optdepends=(
