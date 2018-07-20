@@ -186,6 +186,7 @@ my %lconfig = (
     clean         => 0,                           # -c
     local         => 0,                           # -l
     pkgbuild      => 0,
+    print         => 0,
     sysupgrade    => 0,                           # -u
     comments      => 0,
     database      => 0,                           # -D
@@ -2384,7 +2385,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
 
             if (!$lconfig{aur} && is_available_in_pacman_repo($pkg)) {
-                execute_pacman_command(0, qw(-Si), $pkg);
+                execute_pacman_command(0, get_pacman_arguments('all', qw(info sync)), $pkg);
             }
             else {
                 my $info = info_for_package($pkg) // do {
@@ -2409,12 +2410,12 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         }
     }
 
-    if ($lconfig{p} or $lconfig{pkgbuild}) {      # -Sp
+    if ($lconfig{p} or $lconfig{pkgbuild} or $lconfig{print}) {    # -Sp
         foreach my $pkg (splice @keyword_arguments) {
 
             # For repo packages, display the download URL only
             if (is_available_in_pacman_repo($pkg)) {
-                execute_pacman_command(0, qw(-Sp), $pkg);
+                execute_pacman_command(0, get_pacman_arguments('all', qw(sync print)), $pkg);
                 next;
             }
 
