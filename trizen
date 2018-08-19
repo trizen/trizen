@@ -57,7 +57,7 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-use Locale::TextDomain qw<trizen ./po>;
+use Locale::TextDomain qw<trizen /usr/share/locale>;
 
 my $version  = '1.51';
 my $execname = 'trizen';
