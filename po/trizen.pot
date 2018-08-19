@@ -1,0 +1,1078 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-08-19 18:16+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: trizen:613
+#, perl-brace-format
+msgid ""
+"\n"
+"\t\t{bred}!!! You are running {bgreen}{execname}{reset}{bred} as root !!!"
+"{reset}\n"
+"\n"
+msgstr ""
+
+#: trizen:229
+#, perl-brace-format
+msgid "# Updated on {localtime}"
+msgstr ""
+
+#: trizen:228
+#, perl-brace-format
+msgid "# {execname} configuration file"
+msgstr ""
+
+#: trizen:1573
+#, perl-brace-format
+msgid ":: <<pkg>> not found."
+msgstr ""
+
+#: trizen:2155
+#, perl-brace-format
+msgid ""
+":: <<{pkgname}>> -- ignoring upgrade ({!{pkgs_pkgname}!} => <<{version}>>)"
+msgstr ""
+
+#: trizen:2168
+#, perl-brace-format
+msgid ""
+":: <<{pkgname}>> has a different version in AUR! ({!{pkgs_pkgname}!} != "
+"<<{version}{reset}>>)"
+msgstr ""
+
+#: trizen:2142
+#, perl-brace-format
+msgid ":: <<{pkgname}>> has been flagged {!out-of-date!}!"
+msgstr ""
+
+#: trizen:2253
+#, perl-brace-format
+msgid ":: <<{pkgname}>> has been upgraded!"
+msgstr ""
+
+#: trizen:2256
+#, perl-brace-format
+msgid ":: <<{pkgname}>> has {!NOT!} been upgraded!"
+msgstr ""
+
+#: trizen:2146
+#, perl-brace-format
+msgid ":: <<{pkgname}>> is {!unmaintained!}!"
+msgstr ""
+
+#: trizen:2178
+#, perl-brace-format
+msgid ":: <<{pkgname}>> was {!not found!} in AUR -- skipping"
+msgstr ""
+
+#: trizen:1566
+#, perl-brace-format
+msgid ":: <<{pkg}>> exists in AUR!"
+msgstr ""
+
+#: trizen:2483
+#, perl-brace-format
+msgid ":: <<{pkg}>> has been successfully installed!"
+msgstr ""
+
+#: trizen:1586
+#, perl-brace-format
+msgid ":: <<{pkg}>> is a VCS package -- installing"
+msgstr ""
+
+#: trizen:1622
+#, perl-brace-format
+msgid ":: <<{pkg}>> is already built -- installing"
+msgstr ""
+
+#: trizen:1580
+#, perl-brace-format
+msgid ":: <<{pkg}>> is already installed!"
+msgstr ""
+
+#: trizen:1569
+#, perl-brace-format
+msgid ":: <<{pkg}>> is available in pacman's repository..."
+msgstr ""
+
+#: trizen:1591
+#, perl-brace-format
+msgid ":: <<{pkg}>> is installed and up-to-date -- skipping"
+msgstr ""
+
+#: trizen:2402 trizen:2435 trizen:2495 trizen:2533 trizen:2544
+#, perl-brace-format
+msgid ":: <<{pkg}>> not found."
+msgstr ""
+
+#: trizen:1597
+#, perl-brace-format
+msgid ":: <<{pkg}>> seems to be {!out-of-date!} -- installing"
+msgstr ""
+
+#: trizen:1616
+#, perl-brace-format
+msgid ":: <<{pkg}>> will be explicitly installed..."
+msgstr ""
+
+#: trizen:1610
+#, perl-brace-format
+msgid ":: <<{pkg}>> will be installed as dependency..."
+msgstr ""
+
+#: trizen:1206
+#, perl-brace-format
+msgid ":: <<{tarball}>> has been successfully moved into <<{movepkg_dir}>>."
+msgstr ""
+
+#: trizen:1604 trizen:2502
+#, perl-brace-format
+msgid ":: AUR URL: {aur_url}"
+msgstr ""
+
+#: trizen:2413
+#, perl-brace-format
+msgid ":: AUR packages maintained by <<{maintainer}>>"
+msgstr ""
+
+#: trizen:1727
+#, perl-brace-format
+msgid ":: Building and installing <<{pkg}>>..."
+msgstr ""
+
+#: trizen:1150
+#, perl-brace-format
+msgid ":: Cannot access directory <<{dir}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:1743
+#, perl-brace-format
+msgid ":: Cannot access the AUR clone directory: {!{errno}!}"
+msgstr ""
+
+#: trizen:2486
+#, perl-brace-format
+msgid ":: Cannot install package: {pkg}"
+msgstr ""
+
+#: trizen:2442
+#, perl-brace-format
+msgid ":: Cannot open PKGBUILD of package <<{pkg}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:349
+#, perl-brace-format
+msgid ":: Cannot open file <<{config_file}>> for write: {!{errno}!}"
+msgstr ""
+
+#: trizen:1777
+#, perl-brace-format
+msgid ":: Cannot remove directory <<{dir}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:1071
+#, perl-brace-format
+msgid ":: Changed directory successfully to: {dir_name}"
+msgstr ""
+
+#: trizen:1050
+#, perl-brace-format
+msgid ":: Changing directory to: {path}"
+msgstr ""
+
+#: trizen:2542
+#, perl-brace-format
+msgid ":: Cloning package: {pkg}"
+msgstr ""
+
+#: trizen:1324
+#, perl-brace-format
+msgid ":: Content of: <<{abs_file}>>"
+msgstr ""
+
+#: trizen:1273
+#, perl-brace-format
+msgid ":: Content of: <<{file}>>"
+msgstr ""
+
+#: trizen:1726
+#, perl-brace-format
+msgid ":: Current directory is: current_dir"
+msgstr ""
+
+#: trizen:1562
+#, perl-brace-format
+msgid ":: Current directory is: {current_dir}"
+msgstr ""
+
+#: trizen:1707
+#, perl-brace-format
+msgid ":: Dependency <<{name}>> is provided by other package -- skipping"
+msgstr ""
+
+#: trizen:1696
+#, perl-brace-format
+msgid ":: Dependency <<{pkgname}>> is already installed -- skipping"
+msgstr ""
+
+#: trizen:1699
+#, perl-brace-format
+msgid ""
+":: Dependency <<{pkgname}>> is available in pacman's repository -- skipping"
+msgstr ""
+
+#: trizen:1718
+#, perl-brace-format
+msgid ":: Dependency not found: <<{name}>>"
+msgstr ""
+
+#: trizen:1782
+msgid ":: Done!"
+msgstr ""
+
+#: trizen:881
+#, perl-brace-format
+msgid ":: Exit code: {exit_code}"
+msgstr ""
+
+#: trizen:996
+#, perl-brace-format
+msgid ":: Found <<{resultcount}>> packages."
+msgstr ""
+
+#: trizen:2568
+#, perl-brace-format
+msgid ":: Found tarball: {tarball}"
+msgstr ""
+
+#: trizen:1660
+#, perl-brace-format
+msgid ":: Ignoring lib32-* package arch '{arch}': {name}"
+msgstr ""
+
+#: trizen:2416
+#, perl-brace-format
+msgid ":: Maintainer not found: {maintainer}"
+msgstr ""
+
+#: trizen:1187 trizen:1192
+#, perl-brace-format
+msgid ":: Moving <<{tarball}>> into <<{movepkg_dir}>>"
+msgstr ""
+
+#: trizen:2239
+msgid ":: No AUR updates found..."
+msgstr ""
+
+#: trizen:2018
+msgid ":: No packages found..."
+msgstr ""
+
+#: trizen:2448
+#, perl-brace-format
+msgid ":: PKGBUILD of <<{pkg}>>"
+msgstr ""
+
+#: trizen:1603
+#, perl-brace-format
+msgid ":: Package: {name}"
+msgstr ""
+
+#: trizen:2501
+#, perl-brace-format
+msgid ":: Package: {pkg}"
+msgstr ""
+
+#: trizen:870
+#, perl-brace-format
+msgid ":: Pacman command: {user_pacman_command}"
+msgstr ""
+
+#: trizen:1214
+msgid ":: Recomputing dependencies..."
+msgstr ""
+
+#: trizen:1776
+#, perl-brace-format
+msgid ":: Removing <<{dir}>>..."
+msgstr ""
+
+#: trizen:1758
+#, perl-brace-format
+msgid ":: Removing the content of <<{clone_dir}>>..."
+msgstr ""
+
+#: trizen:347
+msgid ":: Saving configuration file..."
+msgstr ""
+
+#: trizen:1452
+#, perl-brace-format
+msgid ":: This group contains <<{packages}>> more packages:"
+msgstr ""
+
+#: trizen:1059
+#, perl-brace-format
+msgid ":: Trying to change directory to: {dir_name}"
+msgstr ""
+
+#: trizen:1712
+#, perl-brace-format
+msgid ":: Trying to install dependency: <<{name}>>"
+msgstr ""
+
+#: trizen:1365
+#, perl-brace-format
+msgid ":: Unable to build <<{pkg}>> - makepkg exited with code: {exit_code}"
+msgstr ""
+
+#: trizen:1067
+#, perl-brace-format
+msgid ":: Unable to chdir() to <<{dir_name}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:1054
+#, perl-brace-format
+msgid ":: Unable to chdir() to <<{path}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:354
+#, perl-brace-format
+msgid ":: Unable to create clone directory <<{clone_dir}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:672
+#, perl-brace-format
+msgid ":: Unable to create directory <<{clone_dir}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:124
+#, perl-brace-format
+msgid ":: Unable to create directory <<{config_dir}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:1179
+#, perl-brace-format
+msgid ":: Unable to create {movepkg_dir}: {!{errno}!}"
+msgstr ""
+
+#: trizen:774
+#, perl-brace-format
+msgid ":: Unable to decode HTML content: {eval_error}"
+msgstr ""
+
+#: trizen:1433
+#, perl-brace-format
+msgid ":: Unable to find a built tarball for <<{pkg}>>"
+msgstr ""
+
+#: trizen:2119
+msgid ":: Unable to get info for AUR packages..."
+msgstr ""
+
+#: trizen:989
+#, perl-brace-format
+msgid ":: Unable to get info for package: {pkgname}"
+msgstr ""
+
+#: trizen:1200
+#, perl-brace-format
+msgid ""
+":: Unable to move <<{tarball}>> into <<{movepkg_dir}>> -- exit code: "
+"{exit_code}"
+msgstr ""
+
+#: trizen:1189
+#, perl-brace-format
+msgid ":: Unable to move <<{tarball}>> into <<{movepkg_dir}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:1268
+#, perl-brace-format
+msgid ":: Unable to open <<{file}>> for reading: {!{errno}!}"
+msgstr ""
+
+#: trizen:2265
+#, perl-brace-format
+msgid ":: Unable to open directory <<{pacman_local_dir}>>: {!{errno}!}"
+msgstr ""
+
+#: trizen:1956
+#, perl-brace-format
+msgid ":: Unable to parse pacman result: {pkgline}"
+msgstr ""
+
+#: trizen:1219
+#, perl-brace-format
+msgid ":: `makepkg --printsrcinfo` exited with code: {exit_code}"
+msgstr ""
+
+#: trizen:1348
+#, perl-brace-format
+msgid ":: {editor} exited with code: {exit_code}"
+msgstr ""
+
+#: trizen:1456
+msgid "=>> Do you want to install more packages from this group?"
+msgstr ""
+
+#: trizen:1378
+msgid "=>> Exit now?"
+msgstr ""
+
+#: trizen:1751
+#, perl-brace-format
+msgid "=>> Remove the content of {clone_dir}?"
+msgstr ""
+
+#: trizen:1771
+#, perl-brace-format
+msgid "=>> Remove the content of {dir}?"
+msgstr ""
+
+#: trizen:1001
+msgid "=>> Select a package"
+msgstr ""
+
+#: trizen:2246
+msgid "=>> Select packages for upgrade (<ENTER> for all)"
+msgstr ""
+
+#: trizen:2053
+msgid "=>> Select packages to install"
+msgstr ""
+
+#: trizen:1460
+msgid "=>> Select which packages to install"
+msgstr ""
+
+#: trizen:882 trizen:1201 trizen:1372
+msgid "=>> Try again?"
+msgstr ""
+
+#: trizen:1124
+msgid "AUR URL         :"
+msgstr ""
+
+#: trizen:248
+msgid "Absolute path to the directory where to clone and build packages."
+msgstr ""
+
+#: trizen:262
+msgid ""
+"Absolute path to the directory where to move built packages (with `movepkg`)."
+msgstr ""
+
+#: trizen:270
+msgid "Absolute path to the pacman's local directory."
+msgstr ""
+
+#: trizen:280
+msgid "Ask about installing the other parts of a split package."
+msgstr ""
+
+#: trizen:283
+msgid ""
+"Automatically repeat `sudo -v` in the background after a `sudo` command was "
+"first executed."
+msgstr ""
+
+#: trizen:1132
+msgid "Check Deps      :"
+msgstr ""
+
+#: trizen:282
+msgid ""
+"Command used when special permissions are required and `use_sudo` is set to "
+"0."
+msgstr ""
+
+#: trizen:286
+msgid ""
+"Command used when special permissions are required and `use_sudo` is set to "
+"1."
+msgstr ""
+
+#: trizen:411
+#, perl-brace-format
+msgid "Configuration file: {bold}{config_file}{reset}"
+msgstr ""
+
+#: trizen:1135
+msgid "Conflicts With  :"
+msgstr ""
+
+#: trizen:1130
+msgid "Depends On      :"
+msgstr ""
+
+#: trizen:1139
+msgid "Description     :"
+msgstr ""
+
+#: trizen:238
+#, perl-brace-format
+msgid "Disable output colors for `{execname}`.'"
+msgstr ""
+
+#: trizen:249
+msgid ""
+"Display the dependencies of a package in specific colors (green = installed; "
+"cyan = in repo; purple = in AUR)."
+msgstr ""
+
+#: trizen:267
+msgid "Do not `git pull` new changes from the AUR git server."
+msgstr ""
+
+#: trizen:265
+msgid "Do not display package information when installing an AUR package."
+msgstr ""
+
+#: trizen:266
+msgid "Do not install built packages -- builds only."
+msgstr ""
+
+#: trizen:264
+msgid "Do not prompt to edit files when installing an AUR package."
+msgstr ""
+
+#: trizen:446
+msgid "Each configuration key is a valid option when preceded with '--'"
+msgstr ""
+
+#: trizen:281
+msgid ""
+"Ensure LWP::UserAgent connects to servers that have a valid certificate."
+msgstr ""
+
+#: trizen:491 trizen:511
+msgid "Examples:"
+msgstr ""
+
+#: trizen:239
+#, perl-brace-format
+msgid ""
+"Execute `sudo -v` when `{execname}` is first executed and apply the behavior "
+"of `sudo_autorepeat`."
+msgstr ""
+
+#: trizen:251
+msgid "In search+install mode, show the indices of packages in reverse order."
+msgstr ""
+
+#: trizen:1461
+msgid "Install"
+msgstr ""
+
+#: trizen:256
+msgid "Install built packages with `--noconfirm`."
+msgstr ""
+
+#: trizen:255
+msgid ""
+"Install built packages with `-Ud`, which skips dependency version checks."
+msgstr ""
+
+#: trizen:1128
+msgid "Installed       :"
+msgstr ""
+
+#: trizen:285
+msgid ""
+"Interval, in seconds, after which `sudo -v` is executed in background (with "
+"`sudo_autorepeat`)."
+msgstr ""
+
+#: trizen:1138
+msgid "Last Update     :"
+msgstr ""
+
+#: trizen:1125
+msgid "License         :"
+msgstr ""
+
+#: trizen:458 trizen:507
+msgid "Main options"
+msgstr ""
+
+#: trizen:419
+msgid "Main options:"
+msgstr ""
+
+#: trizen:1122
+msgid "Maintainer      :"
+msgstr ""
+
+#: trizen:1131
+msgid "Make Deps       :"
+msgstr ""
+
+#: trizen:261
+msgid "Move built packages in the directory `movepkg_dir`."
+msgstr ""
+
+#: trizen:1120
+msgid "Name            :"
+msgstr ""
+
+#: trizen:1128 trizen:1129
+msgid "No"
+msgstr ""
+
+#: trizen:1881
+msgid "No description available..."
+msgstr ""
+
+#: trizen:1122
+msgid "None"
+msgstr ""
+
+#: trizen:1133
+msgid "Optional Deps   :"
+msgstr ""
+
+#: trizen:431 trizen:470
+msgid "Other options:"
+msgstr ""
+
+#: trizen:1129
+msgid "Out Of Date     :"
+msgstr ""
+
+#: trizen:1137
+msgid "Package Base    :"
+msgstr ""
+
+#: trizen:254
+msgid "Pass the `--depth int` flag to `git clone`. (0 means no limit)"
+msgstr ""
+
+#: trizen:253
+msgid "Pass the `--force` flag to `pacman`."
+msgstr ""
+
+#: trizen:279
+msgid "Pass the `--skipinteg` argument to `makepkg`."
+msgstr ""
+
+#: trizen:1127
+msgid "Popularity      :"
+msgstr ""
+
+#: trizen:1134
+msgid "Provides        :"
+msgstr ""
+
+#: trizen:272
+msgid ""
+"Recompute the dependencies of a package after its build files are inspected."
+msgstr ""
+
+#: trizen:1136
+msgid "Replaces        :"
+msgstr ""
+
+#: trizen:1119
+msgid "Repository      :"
+msgstr ""
+
+#: trizen:259
+msgid "Seconds after which an HTTPS connection is aborted."
+msgstr ""
+
+#: trizen:441
+msgid "See also:"
+msgstr ""
+
+#: trizen:1002
+msgid "Select"
+msgstr ""
+
+#: trizen:275
+msgid "Show AUR comments for a package before building it."
+msgstr ""
+
+#: trizen:258
+msgid "Show the HTTPS requests made by LWP::UserAgent to the AUR servers."
+msgstr ""
+
+#: trizen:271
+msgid "Show the build files in pager mode using pager."
+msgstr ""
+
+#: trizen:273
+msgid "Show the content of the build files of a package before building it."
+msgstr ""
+
+#: trizen:241
+msgid "Show the date when the packages were last updated in AUR results."
+msgstr ""
+
+#: trizen:246
+msgid "Show the number of votes in AUR results."
+msgstr ""
+
+#: trizen:242
+msgid "Show the popularity score in AUR results."
+msgstr ""
+
+#: trizen:252
+msgid "Show the search results in reverse order."
+msgstr ""
+
+#: trizen:243
+msgid "Show when a package is installed in AUR results."
+msgstr ""
+
+#: trizen:244
+msgid ""
+"Sort the AUR results by \"name\", \"votes\", \"popularity\" or \"date\"."
+msgstr ""
+
+#: trizen:245
+msgid "Sort the AUR results in \"ascending\" or \"descending\" order."
+msgstr ""
+
+#: trizen:260
+msgid "The `makepkg` command that is used internally in building a package."
+msgstr ""
+
+#: trizen:269
+msgid "The `pacman` command that is used internally for pacman operations."
+msgstr ""
+
+#: trizen:268
+msgid "The number of packages to display in `--stats`"
+msgstr ""
+
+#: trizen:415
+msgid "Trizen AUR Package Manager"
+msgstr ""
+
+#: trizen:1123
+msgid "URL             :"
+msgstr ""
+
+#: trizen:1121
+msgid "Unknown"
+msgstr ""
+
+#: trizen:2345
+msgid "Unneeded packages:"
+msgstr ""
+
+#: trizen:257
+msgid "Use proxy settings defined in `env` (if any)."
+msgstr ""
+
+#: trizen:287
+msgid "Use the `sudo` command when special permissions are required."
+msgstr ""
+
+#: trizen:250
+msgid "Verbose mode."
+msgstr ""
+
+#: trizen:1121
+msgid "Version         :"
+msgstr ""
+
+#: trizen:1126
+msgid "Votes           :"
+msgstr ""
+
+#: trizen:277
+msgid "Warn about out-of-date marked packages, during -Su."
+msgstr ""
+
+#: trizen:276
+msgid "Warn about packages that do not exist in AUR, during -Su."
+msgstr ""
+
+#: trizen:278
+msgid "Warn about unmaintained packages, during -Su."
+msgstr ""
+
+#: trizen:247
+msgid ""
+"When `makepkg` fails to build a package, offer the option for trying again."
+msgstr ""
+
+#: trizen:274
+msgid ""
+"When the build files of a package already exist locally, show the diff only."
+msgstr ""
+
+#: trizen:1128 trizen:1129
+msgid "Yes"
+msgstr ""
+
+#: trizen:437
+msgid "activate the debug/verbose mode"
+msgstr ""
+
+#: trizen:464
+msgid "build and install packages from `pwd`"
+msgstr ""
+
+#: trizen:428
+msgid "check dependencies (see: pacman -Th)"
+msgstr ""
+
+#: trizen:454
+#, perl-brace-format
+msgid "clean the cache directory of `{execname}` and `pacman`"
+msgstr ""
+
+#: trizen:513
+msgid "clones <package>"
+msgstr ""
+
+#: trizen:514
+msgid "clones <package> along with its AUR dependencies"
+msgstr ""
+
+#: trizen:423
+msgid "clones a package in the current directory"
+msgstr ""
+
+#: trizen:509
+msgid "clones a package with all needed AUR dependencies"
+msgstr ""
+
+#: trizen:487
+msgid "directory where to clone and build packages"
+msgstr ""
+
+#: trizen:436
+msgid "disable text colors"
+msgstr ""
+
+#: trizen:422
+msgid "display AUR comments for a package"
+msgstr ""
+
+#: trizen:475
+msgid "do not `git pull` new changes"
+msgstr ""
+
+#: trizen:484
+msgid "do not ask for any confirmation"
+msgstr ""
+
+#: trizen:477
+msgid "do not build packages (implies --noedit)"
+msgstr ""
+
+#: trizen:433
+msgid "do not display any warnings"
+msgstr ""
+
+#: trizen:474
+msgid "do not display package info after cloning"
+msgstr ""
+
+#: trizen:478
+msgid "do not install packages after building"
+msgstr ""
+
+#: trizen:476
+msgid "do not prompt to edit files"
+msgstr ""
+
+#: trizen:479
+msgid "do not reinstall up-to-date packages"
+msgstr ""
+
+#: trizen:488
+msgid "editor command used to edit build files"
+msgstr ""
+
+#: trizen:493
+msgid "install <package>"
+msgstr ""
+
+#: trizen:412
+#, perl-brace-format
+msgid "install built packages from {clone_dir} or `pwd`"
+msgstr ""
+
+#: trizen:410
+#, perl-brace-format
+msgid "install packages (see: {execname} -Sh)"
+msgstr ""
+
+#: trizen:481
+msgid "install packages as explicitly installed"
+msgstr ""
+
+#: trizen:480
+msgid "install packages as non-explicitly installed"
+msgstr ""
+
+#: trizen:486
+msgid "move built packages in this directory (implies --movepkg)"
+msgstr ""
+
+#: trizen:485
+msgid "move built packages into pacman's cache directory"
+msgstr ""
+
+#: trizen:468
+msgid "only AUR operations (with: -c, -u, -s, -i)"
+msgstr ""
+
+#: trizen:427
+msgid "operate on the package database (see: pacman -Dh)"
+msgstr ""
+
+#: trizen:1870
+msgid "out-of-date"
+msgstr ""
+
+#: trizen:482
+msgid "pass the `--force` argument to `pacman`"
+msgstr ""
+
+#: trizen:483
+msgid "pass the `--skipinteg` argument to `makepkg`"
+msgstr ""
+
+#: trizen:438
+msgid "print this message and exit"
+msgstr ""
+
+#: trizen:439
+msgid "print version and exit"
+msgstr ""
+
+#: trizen:426
+msgid "query the files database (see: pacman -Fh)"
+msgstr ""
+
+#: trizen:425
+msgid "query the package database (see: pacman -Qh)"
+msgstr ""
+
+#: trizen:466
+msgid "refresh package databases (with: -u)"
+msgstr ""
+
+#: trizen:424
+msgid "remove packages from the system (see: pacman -Rh)"
+msgstr ""
+
+#: trizen:494
+msgid "search for <keyword>"
+msgstr ""
+
+#: trizen:460
+msgid "search for packages"
+msgstr ""
+
+#: trizen:463
+msgid "show PKGBUILD only"
+msgstr ""
+
+#: trizen:495
+msgid "show info about <package>"
+msgstr ""
+
+#: trizen:461
+msgid "show info for packages"
+msgstr ""
+
+#: trizen:473
+msgid "show out-of-date flagged packages during -Su"
+msgstr ""
+
+#: trizen:462
+msgid "show packages maintained by <username>"
+msgstr ""
+
+#: trizen:435
+msgid "show stats about the installed packages"
+msgstr ""
+
+#: trizen:489
+msgid "space-separated list of packages to ignore during -Su"
+msgstr ""
+
+#: trizen:1871
+msgid "unmaintained"
+msgstr ""
+
+#: trizen:472
+msgid "update VCS packages during -Su"
+msgstr ""
+
+#: trizen:465
+msgid "upgrade installed packages"
+msgstr ""
+
+#: trizen:434
+msgid "use only the regular repositories"
+msgstr ""
+
+#: trizen:2336
+#, perl-brace-format
+msgid ""
+"{bblue}::{reset} {bold}Total installed packages:{byellow} {num_of_pkgs}"
+"{reset}\n"
+"{bblue}::{reset} {bold}Explicitly installed packages:{byellow} "
+"{exp_installed_packages}{reset}\n"
+"{bblue}::{reset} {bold}Asdep installed packages:{byellow} {as_dep_packages}"
+"{reset}\n"
+"{bblue}::{reset} {bold}Theoretical space used by packages:{byellow} "
+"{total_size} MB{reset}\n"
+"\n"
+"{bblue}::{reset} {bold}Oldest built packages:{byellow} {oldest_built}"
+"{reset}\n"
+"{bblue}::{reset} {bold}Newest built packages:{byellow} {newest_built}"
+"{reset}\n"
+"\n"
+"{bblue}::{reset} {bold}Oldest installed packages:{byellow} {oldest_installed}"
+"{reset}\n"
+"{bblue}::{reset} {bold}Newest installed packages:{byellow} {newest_installed}"
+"{reset}\n"
+msgstr ""
+
+#: trizen:1338
+#, perl-brace-format
+msgid "{bold}=>> Edit {file}?{reset}"
+msgstr ""
+
+#: trizen:817
+#, perl-brace-format
+msgid "{bold}Comment by {bgreen}{author}{reset}{bold} on {date}{reset}"
+msgstr ""
+
+#: trizen:409
+#, perl-brace-format
+msgid "{bold}usage:{reset} {execname} [options] [pkgname] [pkgname] [...]"
+msgstr ""
+
+#: trizen:503
+#, perl-brace-format
+msgid "{bold}usage:{reset} {execname} {-G --get} [options] [package(s)]"
+msgstr ""
+
+#: trizen:453
+#, perl-brace-format
+msgid "{bold}usage:{reset} {execname} {-S --sync} [options] [package(s)]"
+msgstr ""
