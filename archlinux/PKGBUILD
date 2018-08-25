@@ -23,6 +23,7 @@ depends=(
          'perl-data-dump'
          'perl-lwp-protocol-https'
          'perl-term-readline-gnu'
+         'perl-libintl-perl'
         )
 
 optdepends=(
