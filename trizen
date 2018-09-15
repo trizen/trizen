@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 24 August 2018
+# Latest edit: 15 September 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -280,6 +280,8 @@ sudo_autorepeat              => bool    Automatically repeat `sudo -v` in the ba
 sudo_autorepeat_at_runtime   => bool    Execute `sudo -v` when `$execname` is first executed and apply the behavior of `sudo_autorepeat`.
 sudo_autorepeat_interval     => int     Interval, in seconds, after which `sudo -v` is executed in background (with `sudo_autorepeat`).
 sudo_command                 => str     Command used when special permissions are required and `use_sudo` is set to 1.
+syntax_highlighting          => bool    Syntax hightling of the build files, using the `highlight` tool from [community].
+syntax_highlighting_cmd      => str     The `highlight` command used in highlighting the syntax of the build files (with `syntax_highlighting`).
 use_sudo                     => bool    Use the `sudo` command when special permissions are required.
 EOT
 
