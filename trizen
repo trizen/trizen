@@ -1384,6 +1384,7 @@ sub install_local_package ($name, $tarball, @pacman_args) {
 
     return 1 if $already_installed{lc $name};
 
+    # Handle `--noinstall` option
     if ($lconfig{noinstall}) {
         if ($lconfig{movepkg}) {
             $already_installed{lc $name} = 1;
@@ -1393,11 +1394,49 @@ sub install_local_package ($name, $tarball, @pacman_args) {
         return 1;
     }
 
+    # Install package with pacman
     if (execute_pacman_command(1, $tarball, @pacman_args)) {
+
+        # Mark package as installed
         $already_installed{lc $name} = 1;
+
+        # Move package (with `--movepkg`)
         if ($lconfig{movepkg}) {
             move_built_package($tarball);
         }
+
+        return 1;
+    }
+
+    return;
+}
+
+sub install_local_packages ($packages, $pacman_args) {
+
+    # Redirect to the main `install_local_package()` in `--noinstall` mode
+    if ($lconfig{noinstall}) {
+        foreach my $name (keys %$packages) {
+            install_local_package($name, $packages->{$name}, @$pacman_args);
+        }
+        return 1;
+    }
+
+    my @packages_to_install = grep { not $already_installed{lc $_} } keys %$packages;
+
+    # Install multiple packages with a single pacman command
+    if (execute_pacman_command(1, @{$packages}{@packages_to_install}, @$pacman_args)) {
+
+        # Mark packages as installed
+        foreach my $name (@packages_to_install) {
+
+            $already_installed{lc $name} = 1;
+
+            # Move packages (with `--movepkg`)
+            if ($lconfig{movepkg}) {
+                move_built_package($packages->{$name});
+            }
+        }
+
         return 1;
     }
 
@@ -1422,33 +1461,28 @@ sub install_built_package ($pkg, @args) {
         }
     }
 
-    exists($packages{lc $pkg}) || do {
+    if (not exists($packages{lc $pkg})) {
         note(":: Unable to find a built tarball for <<$pkg>>");
         $? = 2;
         return;
-    };
+    }
 
     my $install_flag = $lconfig{install_built_with_Ud} ? '-Ud' : '-U';
 
-    # Install the package
-    install_local_package($pkg, delete($packages{lc $pkg}), $install_flag, @args) || return;
-
-    # Don't ask for split packages in `--noinstall` mode
-    # or when `split_packages` is set to a false value.
-    ($lconfig{noinstall} || !$lconfig{split_packages}) && return 1;
-
-    # If the list contains more built packages, then ask the user
-    # if they want to install some other packages from this group.
-    if (keys %packages) {
+    # When the list contains multiple packages, then ask the user which ones to install
+    if (    scalar(grep { not $already_installed{lc $_} } keys(%packages)) > 1
+        and $lconfig{split_packages}
+        and !$lconfig{noinstall}) {
 
         say '';
-        msg(":: This group contains <<" . scalar(keys %packages) . ">> more packages:");
+        msg(":: This group contains <<" . scalar(keys %packages) . ">> packages:");
         say "\n" . join("\n", map { "   $_" } sort keys %packages), "\n";
 
         if (
-            $term->ask_yn(prompt  => "$c{bold}=>> Do you want to install more packages from this group?$c{reset}",
+            $term->ask_yn(prompt  => "$c{bold}=>> Do you want to install other packages from this group?$c{reset}",
                           default => 'n')
           ) {
+
             my @reply = $term->get_reply(
                                          print_me => "\n$c{bold}=>> Select which packages to install$c{reset}",
                                          prompt   => "$c{bold}Install$c{reset}",
@@ -1458,13 +1492,12 @@ sub install_built_package ($pkg, @args) {
                                         );
 
             # Install the selected packages
-            foreach my $pkgname (@reply) {
-                install_local_package($pkgname, $packages{lc $pkgname}, $install_flag, @args);
-            }
+            return install_local_packages({map { lc($_) => $packages{lc($_)} } @reply}, [$install_flag, @args]);
         }
     }
 
-    return 1;
+    # Otherwise, install the main package only
+    install_local_package($pkg, $packages{lc $pkg}, $install_flag, @args);
 }
 
 sub build_and_install_package ($pkg, @args) {
