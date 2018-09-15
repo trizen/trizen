@@ -189,6 +189,7 @@ my %lconfig = (
     local         => 0,                           # -l
     pkgbuild      => 0,
     print         => 0,
+    list          => 0,
     sysupgrade    => 0,                           # -u
     comments      => 0,
     database      => 0,                           # -D
@@ -228,7 +229,7 @@ sub dump_configuration ($config, $configuration_file) {
     my $config_header = <<"EOH";
 #!/usr/bin/perl
 
-# $execname configuration file
+# $execname v$version configuration file
 # Updated on ${\(scalar localtime)}
 
 EOH
@@ -2371,6 +2372,10 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     if ($lconfig{l} or $lconfig{local}) {    # -Sl
         $lconfig{nopull}    = 1;
         $lconfig{clone_dir} = rel2abs(curdir());
+    }
+
+    if ($lconfig{list}) {
+        execute_pacman_command(0, get_pacman_arguments('all', qw(list)), splice(@keyword_arguments));
     }
 
     if ($lconfig{h} or $lconfig{help}) {     # -Sh
