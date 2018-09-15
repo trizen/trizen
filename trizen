@@ -170,6 +170,8 @@ my %CONFIG = (
               install_built_with_Ud        => 0,
               install_built_with_noconfirm => 0,
               color_code_dependencies      => 0,
+              syntax_highlighting          => ((-x '/usr/bin/highlight') ? 1 : 0),
+              syntax_highlighting_cmd      => '/usr/bin/highlight -O ansi',
              );
 
 $CONFIG{clone_dir} = catdir(tmpdir(), "$execname-$user");
@@ -1253,14 +1255,32 @@ sub output_file_content ($file) {
         return 1;
     }
 
+    say "\n", '-' x 80;
+    msg(":: Content of <<$file>>");
+    say '-' x 80, "\n";
+
+    # Syntax highlighting of the build files, using the `highlight` tool
+    if ($lconfig{syntax_highlighting}) {
+        require File::Basename;
+
+        my $syntax = 'text';
+        if (File::Basename::basename($file) eq 'PKGBUILD' or $file =~ /\.(?:install|sh)\z/) {
+            $syntax = 'bash';
+        }
+        elsif ($file =~ /\.(\w+)\z/) {
+            $syntax = $1;
+        }
+
+        system(join(' ', $lconfig{syntax_highlighting_cmd}, "--syntax=$syntax", '--force', quotemeta($file)));
+
+        say '';
+        return 1;
+    }
+
     open my $fh, '<:utf8', $file or do {
         note(":: Unable to open <<$file>> for reading: {!$!!}");
         return;
     };
-
-    say '';
-    msg(":: Content of: <<$file>>");
-    say '';
 
     eval {
         local $/ = undef;
@@ -1282,20 +1302,14 @@ sub show_and_edit_text_files ($info) {
         print "\n";
     }
 
-    foreach my $file ('PKGBUILD', sort grep { $_ ne 'PKGBUILD' and -f and not -z _ } glob('*')) {
+    require File::Basename;
+    chomp(my @files = map { File::Basename::basename(decode_utf8($_)) } `/usr/bin/git ls-files`);
+
+    foreach my $file ('PKGBUILD', grep { $_ ne 'PKGBUILD' and -f and not -z _ } @files) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
         next if substr($file, -4) eq q{.bak};    # ignore backup (.bak) files
         next if substr($file, 0, 1) eq q{.};     # ignore hidden files
-
-        # Ignore files larger than 50 KB that are not PKGBUILD or *.install
-        if (
-            ((-s $file) > 50 * 1024 or not -T _)
-            and not(   $file eq 'PKGBUILD'
-                    or $file =~ /\.install\z/)
-          ) {
-            next;
-        }
 
         my $abs_file = rel2abs($file);
 
@@ -1303,21 +1317,8 @@ sub show_and_edit_text_files ($info) {
             if ($lconfig{show_diff_only} and $info->{_exists_in_cache}) {
                 print "\n";
             }
-            else {
-
-                # Highlight the code in the PKGBUILD and other *.install files, using the `highlight` tool
-                if (    !$lconfig{pager_mode}
-                    and ($file eq 'PKGBUILD' or $file =~ /\.install\z/)
-                    and -x '/usr/bin/highlight') {
-                    say '';
-                    msg(":: Content of: <<$abs_file>>");
-                    say '';
-                    system('/usr/bin/highlight', '-O', 'ansi', '--syntax=bash', $abs_file);
-                    say '';
-                }
-                else {
-                    output_file_content($abs_file);
-                }
+            elsif (-T $abs_file) {               # output when it's a text-file
+                output_file_content($abs_file);
             }
         }
 
