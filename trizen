@@ -1421,7 +1421,11 @@ sub install_local_packages ($packages, $pacman_args) {
         return 1;
     }
 
+    # The list of packages to intall
     my @packages_to_install = grep { not $already_installed{lc $_} } keys %$packages;
+
+    # Return early when there are no packages to install
+    return 1 if not @packages_to_install;
 
     # Install multiple packages with a single pacman command
     if (execute_pacman_command(1, @{$packages}{@packages_to_install}, @$pacman_args)) {
