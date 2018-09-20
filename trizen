@@ -1421,7 +1421,7 @@ sub install_local_packages ($packages, $pacman_args) {
         return 1;
     }
 
-    # The list of packages to intall
+    # The list of packages to install
     my @packages_to_install = grep { not $already_installed{lc $_} } keys %$packages;
 
     # Return early when there are no packages to install
@@ -2643,7 +2643,7 @@ elsif ($lconfig{F} or $lconfig{files}) {    # -F
         main_quit();
     }
 
-    my @args = (get_pacman_arguments('all', qw(files quiet search refresh noconfirm regex)), @keyword_arguments);
+    my @args = (get_pacman_arguments('all', qw(files quiet search list refresh noconfirm regex)), @keyword_arguments);
 
     if ($lconfig{y} or $lconfig{refresh}) {
         execute_pacman_command(1, @args);
@@ -2666,7 +2666,7 @@ elsif ($lconfig{Q} or $lconfig{query}) {    # -Q
     }
     else {
 #<<<
-        execute_pacman_command(0, get_pacman_arguments('all', qw(query check search info quiet noconfirm upgrades)), @keyword_arguments);
+        execute_pacman_command(0, get_pacman_arguments('all', qw(query check search info list quiet noconfirm upgrades)), @keyword_arguments);
 #>>>
     }
 }
