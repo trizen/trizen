@@ -1,0 +1,179 @@
+.TH TRIZEN "1" "August 2018" "1.0.1" "User Commands"
+
+.SH NAME
+trizen \- trizen is a lightweight wrapper for AUR, written in Perl.
+
+.SH DESCRIPTION
+.PP
+trizen is a lightweight wrapper for AUR, written in Perl.
+.PP
+Main features include:
+.IP \[bu] 2
+Installation of packages from the AUR
+.IP \[bu] 2
+Search support for AUR packages
+.IP \[bu] 2
+Reading AUR comments for packages
+.IP \[bu] 2
+Upgrade support for AUR packages
+.IP \[bu] 2
+Recursive resolver of AUR dependencies
+.IP \[bu] 2
+Built\-in interaction with \[aq]pacman\[aq]
+.IP \[bu] 2
+Edit support for text files
+.IP \[bu] 2
+Input/output UTF\-8 support
+
+.SH INSTALLATION
+.IP \[bu] 2
+Tagged version:
+.IP
+.nf
+\f[C]
+git\ clone\ https://aur.archlinux.org/trizen.git
+cd\ trizen
+makepkg\ \-si
+\f[]
+.fi
+.IP \[bu] 2
+\f[C]\-git\f[] version:
+.IP
+.nf
+\f[C]
+git\ clone\ https://aur.archlinux.org/trizen\-git.git
+cd\ trizen\-git
+makepkg\ \-si
+\f[]
+.fi
+
+
+
+.SH USAGE
+.IP
+.nf
+\f[C]
+usage:\ trizen\ [options]\ [pkgname]\ [pkgname]\ [...]
+
+Main\ options:
+
+\ \ \ \ \-S,\ \-\-sync\ \ \ \ \ \ :\ install\ packages\ (see:\ trizen\ \-Sh)
+\ \ \ \ \-C,\ \-\-comments\ \ :\ display\ AUR\ comments\ for\ a\ package
+\ \ \ \ \-G,\ \-\-get\ \ \ \ \ \ \ :\ clones\ a\ package\ in\ the\ current\ directory
+\ \ \ \ \-R,\ \-\-remove\ \ \ \ :\ remove\ packages\ from\ the\ system\ (see:\ pacman\ \-Rh)
+\ \ \ \ \-Q,\ \-\-query\ \ \ \ \ :\ query\ the\ package\ database\ (see:\ pacman\ \-Qh)
+\ \ \ \ \-F,\ \-\-files\ \ \ \ \ :\ query\ the\ files\ database\ (see:\ pacman\ \-Fh)
+\ \ \ \ \-D,\ \-\-database\ \ :\ operate\ on\ the\ package\ database\ (see:\ pacman\ \-Dh)
+\ \ \ \ \-T,\ \-\-deptest\ \ \ :\ check\ dependencies\ (see:\ pacman\ \-Th)
+\ \ \ \ \-U,\ \-\-upgrade\ \ \ :\ install\ built\ packages\ from\ \[aq]\-\-clone\-dir\[aq]\ or\ `pwd`
+
+Other\ options:
+
+\ \ \ \ \-q,\ \-\-quiet\ \ \ \ \ :\ do\ not\ display\ any\ warnings
+\ \ \ \ \-r,\ \-\-regular\ \ \ :\ use\ only\ the\ regular\ repositories
+\ \ \ \ \ \ \ \ \-\-stats\ \ \ \ \ :\ show\ stats\ about\ the\ installed\ packages
+\ \ \ \ \ \ \ \ \-\-nocolors\ \ :\ disable\ text\ colors
+\ \ \ \ \ \ \ \ \-\-debug\ \ \ \ \ :\ activate\ the\ debug/verbose\ mode
+\ \ \ \ \ \ \ \ \-\-help\ \ \ \ \ \ :\ print\ this\ message\ and\ exit
+\ \ \ \ \ \ \ \ \-\-version\ \ \ :\ print\ version\ and\ exit
+
+See\ also:
+
+\ \ \ \ trizen\ \-Sh
+\ \ \ \ trizen\ \-Gh
+
+::\ Each\ configuration\ key\ is\ a\ valid\ option\ when\ preceded\ with\ \[aq]\-\-\[aq]
+\f[]
+.fi
+.SH SYNC OPTIONS (\f[C]\-S\f[])
+.IP
+.nf
+\f[C]
+usage:\ trizen\ {\-S\ \-\-sync}\ [options]\ [package(s)]
+
+Main\ options:
+
+\ \ \-s,\ \-\-search\ \ \ \ \ \ \ \ :\ search\ for\ packages
+\ \ \-i,\ \-\-info\ \ \ \ \ \ \ \ \ \ :\ show\ info\ for\ packages
+\ \ \-m,\ \-\-maintainer\ \ \ \ :\ show\ packages\ maintained\ by\ <username>
+\ \ \-p,\ \-\-pkgbuild\ \ \ \ \ \ :\ show\ PKGBUILD\ only
+\ \ \-l,\ \-\-local\ \ \ \ \ \ \ \ \ :\ build\ and\ install\ packages\ from\ `pwd`
+\ \ \-u,\ \-\-sysupgrade\ \ \ \ :\ upgrade\ installed\ packages
+\ \ \-y,\ \-\-refresh\ \ \ \ \ \ \ :\ refresh\ package\ databases\ (with:\ \-u)
+\ \ \-c,\ \-\-clean\ \ \ \ \ \ \ \ \ :\ clean\ the\ cache\ directory\ of\ `trizen`\ and\ `pacman`
+\ \ \-a,\ \-\-aur\ \ \ \ \ \ \ \ \ \ \ :\ only\ AUR\ operations\ (with:\ \-c,\ \-u,\ \-s,\ \-i)
+
+Other\ options:
+
+\ \ \ \ \ \ \-\-devel\ \ \ \ \ \ \ \ \ :\ update\ VCS\ packages\ during\ \-Su
+\ \ \ \ \ \ \-\-show\-ood\ \ \ \ \ \ :\ show\ out\-of\-date\ flagged\ packages\ during\ \-Su
+\ \ \ \ \ \ \-\-noinfo\ \ \ \ \ \ \ \ :\ do\ not\ display\ package\ info\ after\ cloning
+\ \ \ \ \ \ \-\-nopull\ \ \ \ \ \ \ \ :\ do\ not\ `git\ pull`\ new\ changes
+\ \ \ \ \ \ \-\-noedit\ \ \ \ \ \ \ \ :\ do\ not\ prompt\ to\ edit\ files
+\ \ \ \ \ \ \-\-nobuild\ \ \ \ \ \ \ :\ do\ not\ build\ packages\ (implies\ \-\-noedit)
+\ \ \ \ \ \ \-\-noinstall\ \ \ \ \ :\ do\ not\ install\ packages\ after\ building
+\ \ \ \ \ \ \-\-needed\ \ \ \ \ \ \ \ :\ do\ not\ reinstall\ up\-to\-date\ packages
+\ \ \ \ \ \ \-\-asdeps\ \ \ \ \ \ \ \ :\ install\ packages\ as\ non\-explicitly\ installed
+\ \ \ \ \ \ \-\-asexplicit\ \ \ \ :\ install\ packages\ as\ explicitly\ installed
+\ \ \ \ \ \ \-\-force\ \ \ \ \ \ \ \ \ :\ pass\ the\ `\-\-force`\ argument\ to\ `pacman`
+\ \ \ \ \ \ \-\-skipinteg\ \ \ \ \ :\ pass\ the\ `\-\-skipinteg`\ argument\ to\ `makepkg`
+\ \ \ \ \ \ \-\-noconfirm\ \ \ \ \ :\ do\ not\ ask\ for\ any\ confirmation
+\ \ \ \ \ \ \-\-movepkg\ \ \ \ \ \ \ :\ move\ built\ packages\ into\ pacman\[aq]s\ cache\ directory
+\ \ \ \ \ \ \-\-movepkg\-dir=s\ :\ move\ built\ packages\ in\ this\ directory\ (implies\ \-\-movepkg)
+\ \ \ \ \ \ \-\-clone\-dir=s\ \ \ :\ directory\ where\ to\ clone\ and\ build\ packages
+\ \ \ \ \ \ \-\-editor=s\ \ \ \ \ \ :\ editor\ command\ used\ to\ edit\ build\ files
+\ \ \ \ \ \ \-\-ignore=s\ \ \ \ \ \ :\ space\-separated\ list\ of\ packages\ to\ ignore\ during\ \-Su
+
+Examples:
+
+\ \ \ \ trizen\ \-S\ \ <package>\ \ \ \ \ #\ install\ <package>
+\ \ \ \ trizen\ \-Ss\ <keyword>\ \ \ \ \ #\ search\ for\ <keyword>
+\ \ \ \ trizen\ \-Si\ <package>\ \ \ \ \ #\ show\ info\ about\ <package>
+\f[]
+.fi
+.SH GET OPTIONS (\f[C]\-G\f[])
+.IP
+.nf
+\f[C]
+usage:\ trizen\ {\-G\ \-\-get}\ [options]\ [package(s)]
+
+Main\ options:
+
+\ \ \ \ \-d,\ \-\-with\-deps\ \ \ \ \ :\ clones\ a\ package\ with\ all\ needed\ AUR\ dependencies
+
+Examples:
+
+\ \ \ \ trizen\ \-G\ \ <package>\ \ \ \ \ #\ clones\ <package>
+\ \ \ \ trizen\ \-Gd\ <package>\ \ \ \ \ #\ clones\ <package>\ along\ with\ its\ AUR\ dependencies
+\f[]
+.fi
+.PP
+
+
+.SH TRIZEN FILES
+.TP
+.B \ 
+/usr/bin/trizen (the perl program)
+.TP
+.B \ 
+A config file is auto generated at: ~/.config/trizen/trizen.conf
+
+
+.SH AUTHOR
+Trizen created by Daniel Șuteu. trizen@protonmail.com
+
+
+.SH "SEE ALSO"
+Upstream repository: https://github.com/trizen/trizen
+
+
+.SH REPORTING BUGS
+If you should find a bug or any other query, 
+please send a report 
+to upstream repository https://github.com/trizen/trizen
+
+
+.SH COPYRIGHT
+None at present.
+
+
