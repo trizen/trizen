@@ -1,6 +1,6 @@
 pkgbase = trizen-git
 	pkgdesc = Trizen AUR Package Manager: A lightweight wrapper for AUR (-git version).
-	pkgver = 1.48.7.g31e5328
+	pkgver = 1.52.5.g5ce9006
 	pkgrel = 1
 	url = https://github.com/trizen/trizen
 	arch = any
@@ -15,6 +15,7 @@ pkgbase = trizen-git
 	depends = perl-data-dump
 	depends = perl-lwp-protocol-https
 	depends = perl-term-readline-gnu
+	optdepends = highlight: for syntax highlighting
 	optdepends = perl-json-xs: faster JSON deserialization
 	provides = trizen
 	conflicts = trizen
