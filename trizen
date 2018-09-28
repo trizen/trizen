@@ -219,8 +219,8 @@ my %lconfig = (
     version       => \&version,
               );
 
-$lconfig{editor} = $ENV{VISUAL} || $ENV{EDITOR} || 'nano';
-$lconfig{pager_command} = $ENV{PAGER} || 'less';
+$lconfig{editor} = $ENV{VISUAL} || $ENV{EDITOR} || '/usr/bin/nano';
+$lconfig{pager} = $ENV{PAGER} || '/usr/bin/less';
 
 our $CONFIG;
 
@@ -479,6 +479,8 @@ $c{bgreen}Other options:$c{reset}
       $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (implies --movepkg)
       $c{bold}--clone-dir=s$c{reset}   : directory where to clone and build packages
       $c{bold}--editor=s$c{reset}      : editor command used to edit build files
+      $c{bold}--pager-mode$c{reset}    : display the build files of a package in pager mode
+      $c{bold}--pager=s$c{reset}       : pager command used to display the build files
       $c{bold}--ignore=s$c{reset}      : space-separated list of packages to ignore during -Su
 
 $c{bgreen}Examples:$c{reset}
@@ -1254,7 +1256,7 @@ sub output_file_content ($file) {
 
     if ($lconfig{pager_mode}) {
         print "\n";
-        system("$lconfig{pager_command} \Q$file\E");
+        system("$lconfig{pager} \Q$file\E");
         return 1;
     }
 

@@ -118,6 +118,8 @@ Other options:
       --movepkg-dir=s : move built packages in this directory (implies --movepkg)
       --clone-dir=s   : directory where to clone and build packages
       --editor=s      : editor command used to edit build files
+      --pager-mode    : display the build files of a package in pager mode
+      --pager=s       : pager command used to display the build files
       --ignore=s      : space-separated list of packages to ignore during -Su
 
 Examples:
