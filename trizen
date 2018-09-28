@@ -2597,21 +2597,39 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
     my @args = get_pacman_arguments('all', qw(asdeps asexplicit noconfirm force needed));
 
     foreach my $pkg (@keyword_arguments) {
-        if ($pkg =~ /$pkg_suffix_re/io and -f $pkg) {    # install from current dir
+
+        # install from current directory, given full package name
+        if ($pkg =~ /$pkg_suffix_re/io and -f $pkg) {
             push @packages, $pkg;
         }
-        else {                                           # install from cache dir
+        else {
+
+            # Install from clone directory, given only base package name
+            my $in_clone_dir = 0;
             foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
                 my $tarball = find_local_package($pkg, $dir) // next;
                 msg(":: Found tarball: $tarball");
                 push @packages, $tarball;
+                $in_clone_dir = 1;
+                last;
+            }
+
+            # When not found in the clone directory, install from
+            # the current directory, given only base package name
+            if (not $in_clone_dir) {
+                my $tarball = find_local_package($pkg, curdir());
+
+                if (defined($tarball)) {
+                    msg(":: Found tarball: $tarball");
+                    push @packages, $tarball;
+                }
             }
         }
     }
 
     execute_pacman_command(1, qw(-U), @args, @packages) if @packages;
 }
-elsif ($lconfig{R} or $lconfig{remove}) {                # -R
+elsif ($lconfig{R} or $lconfig{remove}) {    # -R
 
     if ($lconfig{h} or $lconfig{help}) {
         execute_pacman_command(0, '-Rh');
@@ -2620,7 +2638,7 @@ elsif ($lconfig{R} or $lconfig{remove}) {                # -R
 
     execute_pacman_command(1, get_pacman_arguments('all', qw(remove noconfirm)), @keyword_arguments);
 }
-elsif ($lconfig{D} or $lconfig{database}) {              # -D
+elsif ($lconfig{D} or $lconfig{database}) {    # -D
 
     if ($lconfig{h} or $lconfig{help}) {
         execute_pacman_command(0, '-Dh');
