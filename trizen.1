@@ -1,0 +1,237 @@
+.TH TRIZEN "1" "August 2018" "1.0.1" "User Commands"
+
+.SH NAME
+trizen \- trizen is a lightweight wrapper for AUR, written in Perl.
+
+.SH "SYNOPSIS"
+.sp
+\fItrizen\fR <operation> [options] [targets]
+
+.SH "OPERATIONS"
+.PP
+\fB\-S, \-\-sync\fR
+.RS 4
+Synchronize packages. Packages are installed directly from the remote repositories or from the AUR, including all dependencies required to run the packages.
+.RE
+.PP
+\fB\-C, \-\-comments\fR
+.RS 4
+Display AUR comments for a package.
+.RE
+.PP
+\fB\-G, \-\-get\fR
+.RS 4
+Clone an AUR package in the current directory.
+.RE
+.PP
+\fB\-R, \-\-remove\fR
+.RS 4
+Remove package(s) from the system. See: \fIpacman -Rh\fR
+.RE
+.PP
+\fB\-Q, \-\-query\fR
+.RS 4
+Query the package database. See: \fIpacman -Qh\fR
+.RE
+.PP
+\fB\-F, \-\-files\fR
+.RS 4
+Query the files database. See: \fIpacman -Fh\fR
+.RE
+.PP
+\fB\-D, \-\-database\fR
+.RS 4
+Operate on the package database. See: \fIpacman -Dh\fR
+.RE
+.PP
+\fB\-T, \-\-deptest\fR
+.RS 4
+Check dependencies. See: \fIpacman -Th\fR
+.RE
+.PP
+\fB\-U, \-\-upgrade\fR
+.RS 4
+Install built packages from \fI--clone-dir\fR or \fI`pwd`\fR. See: \fIpacman -Uh\fR
+
+.RE
+.SH "OPTIONS"
+.PP
+\fB\-q, \-\-quiet\fR
+.RS 4
+Display minimal output.
+.RE
+.PP
+\fB\-r, \-\-regular\fR
+.RS 4
+Use only the regular \fIpacman\fR repositories.
+.RE
+.PP
+\fB\-a, \-\-aur\fR
+.RS 4
+Perform only AUR operations (opposite of \fI--regular\fR).
+.RE
+.PP
+\fB\ \ \ \ \-\-stats\fR
+.RS 4
+Display statistics for the installed packages.
+.RE
+.PP
+\fB\ \ \ \ \-\-nocolors\fR
+.RS 4
+Disable ANSI colors.
+.RE
+.PP
+\fB\ \ \ \ \-\-debug\fR
+.RS 4
+Enable verbose mode.
+
+.RE
+.SH "SYNC OPTIONS (APPLY TO \FI-S\FR)"
+.PP
+\fB\-s, \-\-search\fR
+.RS 4
+Search for packages.
+.RE
+.PP
+\fB\-i, \-\-info\fR
+.RS 4
+Display info for packages.
+.RE
+.PP
+\fB\-m, \-\-maintainer\fR
+.RS 4
+Display the packages maintained by a given username.
+.RE
+.PP
+\fB\-p, \-\-pkgbuild\fR
+.RS 4
+Display the PKGBUILD of a given AUR package. For repo packages, it displays the download link.
+.RE
+.PP
+\fB\-l, \-\-local\fR
+.RS 4
+Build and install packages from the current directory. This option is best used in combination with \fI-G\fR. After A package is cloned in the current directory, the user can inspect or edit the build files, then \fI-Sl <pkgname>\fR will build and install the package, without pulling new changes from the AUR.
+.RE
+.PP
+\fB\-u, \-\-sysupgrade\fR
+.RS 4
+Upgrades all packages that are out-of-date.
+.RE
+
+TODO: document more options
+
+.SH "INTERACTIVE MODE"
+.PP
+Search and select packages to install, using the following syntax:
+.PP
+.RS 4
+\fBtrizen [keywords]\fR
+.PP
+.RE
+By default, the results include both official and AUR packages. Use \fI--regular\fR or \fI--aur\fR to include only official or AUR packages, respectively.
+
+.SH "MAIN OPTIONS"
+.nf
+\f[C]
+usage:\ trizen\ [options]\ [pkgname]\ [pkgname]\ [...]
+
+Main\ options:
+
+\ \ \-S,\ \-\-sync\ \ \ \ \ \ :\ install\ packages\ (see:\ trizen\ \-Sh)
+\ \ \-C,\ \-\-comments\ \ :\ display\ AUR\ comments\ for\ a\ package
+\ \ \-G,\ \-\-get\ \ \ \ \ \ \ :\ clones\ a\ package\ in\ the\ current\ directory
+\ \ \-R,\ \-\-remove\ \ \ \ :\ remove\ packages\ from\ the\ system\ (see:\ pacman\ \-Rh)
+\ \ \-Q,\ \-\-query\ \ \ \ \ :\ query\ the\ package\ database\ (see:\ pacman\ \-Qh)
+\ \ \-F,\ \-\-files\ \ \ \ \ :\ query\ the\ files\ database\ (see:\ pacman\ \-Fh)
+\ \ \-D,\ \-\-database\ \ :\ operate\ on\ the\ package\ database\ (see:\ pacman\ \-Dh)
+\ \ \-T,\ \-\-deptest\ \ \ :\ check\ dependencies\ (see:\ pacman\ \-Th)
+\ \ \-U,\ \-\-upgrade\ \ \ :\ install\ built\ packages\ from\ \[aq]\-\-clone\-dir\[aq]\ or\ `pwd`
+
+Other\ options:
+
+\ \ \-q,\ \-\-quiet\ \ \ \ \ :\ do\ not\ display\ any\ warnings
+\ \ \-r,\ \-\-regular\ \ \ :\ use\ only\ the\ regular\ repositories
+\ \ \ \ \ \ \-\-stats\ \ \ \ \ :\ show\ stats\ about\ the\ installed\ packages
+\ \ \ \ \ \ \-\-nocolors\ \ :\ disable\ text\ colors
+\ \ \ \ \ \ \-\-debug\ \ \ \ \ :\ activate\ the\ debug/verbose\ mode
+\ \ \ \ \ \ \-\-help\ \ \ \ \ \ :\ print\ this\ message\ and\ exit
+\ \ \ \ \ \ \-\-version\ \ \ :\ print\ version\ and\ exit
+
+See\ also:
+
+\ \ trizen\ \-Sh
+\ \ trizen\ \-Gh
+
+::\ Each\ configuration\ key\ is\ a\ valid\ option\ when\ preceded\ with\ \[aq]\-\-\[aq]
+\f[]
+.fi
+.SH SYNC OPTIONS (\f[C]\-S\f[])
+.nf
+\f[C]
+usage:\ trizen\ {\-S\ \-\-sync}\ [options]\ [package(s)]
+
+Main\ options:
+
+\ \ \-s,\ \-\-search\ \ \ \ \ \ \ \ :\ search\ for\ packages
+\ \ \-i,\ \-\-info\ \ \ \ \ \ \ \ \ \ :\ show\ info\ for\ packages
+\ \ \-m,\ \-\-maintainer\ \ \ \ :\ show\ packages\ maintained\ by\ <username>
+\ \ \-p,\ \-\-pkgbuild\ \ \ \ \ \ :\ show\ PKGBUILD\ only
+\ \ \-l,\ \-\-local\ \ \ \ \ \ \ \ \ :\ build\ and\ install\ packages\ from\ `pwd`
+\ \ \-u,\ \-\-sysupgrade\ \ \ \ :\ upgrade\ installed\ packages
+\ \ \-y,\ \-\-refresh\ \ \ \ \ \ \ :\ refresh\ package\ databases
+\ \ \-c,\ \-\-clean\ \ \ \ \ \ \ \ \ :\ clean\ the\ cache\ directory\ of\ `trizen`\ and\ `pacman`
+\ \ \-a,\ \-\-aur\ \ \ \ \ \ \ \ \ \ \ :\ only\ AUR\ operations\ (with:\ \-c,\ \-u,\ \-s,\ \-i)
+
+Other\ options:
+
+\ \ \-\-devel\ \ \ \ \ \ \ \ \ :\ update\ VCS\ packages\ during\ \-Su
+\ \ \-\-show\-ood\ \ \ \ \ \ :\ show\ out\-of\-date\ flagged\ packages\ during\ \-Su
+\ \ \-\-noinfo\ \ \ \ \ \ \ \ :\ do\ not\ display\ package\ info\ after\ cloning
+\ \ \-\-nopull\ \ \ \ \ \ \ \ :\ do\ not\ `git\ pull`\ new\ changes
+\ \ \-\-noedit\ \ \ \ \ \ \ \ :\ do\ not\ prompt\ to\ edit\ files
+\ \ \-\-nobuild\ \ \ \ \ \ \ :\ do\ not\ build\ packages\ (implies\ \-\-noedit)
+\ \ \-\-noinstall\ \ \ \ \ :\ do\ not\ install\ packages\ after\ building
+\ \ \-\-needed\ \ \ \ \ \ \ \ :\ do\ not\ reinstall\ up\-to\-date\ packages
+\ \ \-\-asdeps\ \ \ \ \ \ \ \ :\ install\ packages\ as\ non\-explicitly\ installed
+\ \ \-\-asexplicit\ \ \ \ :\ install\ packages\ as\ explicitly\ installed
+\ \ \-\-force\ \ \ \ \ \ \ \ \ :\ pass\ the\ `\-\-force`\ argument\ to\ `pacman`
+\ \ \-\-skipinteg\ \ \ \ \ :\ pass\ the\ `\-\-skipinteg`\ argument\ to\ `makepkg`
+\ \ \-\-noconfirm\ \ \ \ \ :\ do\ not\ ask\ for\ any\ confirmation
+\ \ \-\-movepkg\ \ \ \ \ \ \ :\ move\ built\ packages\ into\ pacman\[aq]s\ cache\ directory
+\ \ \-\-movepkg\-dir=s\ :\ move\ built\ packages\ in\ this\ directory\ (implies\ \-\-movepkg)
+\ \ \-\-clone\-dir=s\ \ \ :\ directory\ where\ to\ clone\ and\ build\ packages
+\ \ \-\-editor=s\ \ \ \ \ \ :\ editor\ command\ used\ to\ edit\ build\ files
+\ \ \-\-ignore=s\ \ \ \ \ \ :\ space\-separated\ list\ of\ packages\ to\ ignore\ during\ \-Su
+
+Examples:
+
+\ \ trizen\ \-S\ \ <package>\ \ \ \ \ #\ install\ <package>
+\ \ trizen\ \-Ss\ <keyword>\ \ \ \ \ #\ search\ for\ <keyword>
+\ \ trizen\ \-Si\ <package>\ \ \ \ \ #\ show\ info\ about\ <package>
+\f[]
+.fi
+.SH GET OPTIONS (\f[C]\-G\f[])
+.nf
+\f[C]
+usage:\ trizen\ {\-G\ \-\-get}\ [options]\ [package(s)]
+
+Main\ options:
+
+\ \ \-d,\ \-\-with\-deps\ \ \ \ \ :\ clones\ a\ package\ with\ all\ needed\ AUR\ dependencies
+
+Examples:
+
+\ \ trizen\ \-G\ \ <package>\ \ \ \ \ #\ clones\ <package>
+\ \ trizen\ \-Gd\ <package>\ \ \ \ \ #\ clones\ <package>\ along\ with\ its\ AUR\ dependencies
+\f[]
+.fi
+.PP
+
+.SH CONFIGURATION
+Configuration file: ~/.config/trizen/trizen.conf
+
+.SH AUTHOR
+Trizen was created by Daniel Șuteu.
+
+.SH "SEE ALSO"
+Upstream repository: https://github.com/trizen/trizen
