@@ -112,6 +112,9 @@ if (not $stdin_on_tty and any { $_ eq '-' } @ARGV) {
 
 @ARGV = map { decode_utf8($_) } @ARGV;
 
+my %args_count;
+++$args_count{substr($_, 2) =~ tr/-/_/r} for grep { /^--\w/ } @ARGV;
+
 # Disable colors
 if (not $stdout_on_tty or (any { $_ eq '--nocolors' } @ARGV)) {
     %c = map { ($_ => "") } keys %c;
@@ -832,7 +835,10 @@ sub get_pacman_arguments ($type, @options) {
     }
 
     foreach my $option (@options) {
-        push(@args, '--' . $option) if $lconfig{$option};
+        if ($lconfig{$option}) {
+            my $count = $args_count{$option} || 1;
+            push(@args, ('--' . $option) x $count);
+        }
     }
 
     return @args;
@@ -844,7 +850,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
         q{ },
         do {
             my %seen;
-            ($lconfig{pacman_command}, grep { !$seen{$_}++ } map { quotemeta($_) } @cmd);
+            ($lconfig{pacman_command}, grep { /^\w/ ? !$seen{$_}++ : 1 } map { quotemeta($_) } @cmd);
           }
     );
 
