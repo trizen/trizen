@@ -239,11 +239,11 @@ Clone a package along with all its AUR dependencies that are not already install
 .SH "INTERACTIVE MODE"
 .PP
 Search and select packages to install, using the following syntax:
-.PP
+
 .RS 4
 \fItrizen [keywords]\fR
-.PP
 .RE
+.PP
 By default, the results include both repo and AUR packages. Add \fI--regular\fR or \fI--aur\fR to search only for repo or AUR packages, respectively.
 
 .SH "EXAMPLES"
@@ -258,8 +258,20 @@ By default, the results include both repo and AUR packages. Add \fI--regular\fR 
 .SH CONFIGURATION
 Configuration file: ~/.config/trizen/trizen.conf
 
+.SH "CONFIGURATION OPTIONS"
+.PP
+Each configuration key can be used an a command-line argument, by precending it `\fI--\fR` and (optionally) replacing underscores (`\fI_\fR`) with dashes (`\fI-\fR`).
+
+For example:
+
+.RS 4
+\fItrizen --stats --packages-in-stats=50\fR
+.RE
+.PP
+The above command will display 50 packages in \fI--stats\fR.
+
 .SH AUTHOR
-Trizen was created by Daniel Șuteu <trizen@protonmail.com>.
+Daniel Șuteu <trizen@protonmail.com>.
 
 .SH "SEE ALSO"
 Upstream repository: https://github.com/trizen/trizen
