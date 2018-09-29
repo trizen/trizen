@@ -850,7 +850,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
         q{ },
         do {
             my %seen;
-            ($lconfig{pacman_command}, grep { /^\w/ ? !$seen{$_}++ : 1 } map { quotemeta($_) } @cmd);
+            ($lconfig{pacman_command}, grep { (/^\w/ || /^--[A-Z]/) ? !$seen{$_}++ : 1 } map { quotemeta($_) } @cmd);
           }
     );
 
@@ -2602,7 +2602,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
     }
 
     my @packages;
-    my @args = get_pacman_arguments('all', qw(asdeps asexplicit noconfirm force needed));
+    my @args = get_pacman_arguments('all', qw(upgrade asdeps asexplicit noconfirm force needed));
 
     foreach my $pkg (@keyword_arguments) {
 
@@ -2635,7 +2635,9 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
         }
     }
 
-    execute_pacman_command(1, qw(-U), @args, @packages) if @packages;
+    if (@packages) {
+        execute_pacman_command(1, @args, @packages);
+    }
 }
 elsif ($lconfig{R} or $lconfig{remove}) {    # -R
 
