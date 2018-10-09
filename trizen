@@ -2123,7 +2123,7 @@ sub list_aur_maintainer_packages ($maintainer) {
 }
 
 sub download_srcinfo ($pkgname) {
-    get("https://aur.archlinux.org/cgit/aur.git/plain/.SRCINFO?h=$pkgname");
+    get("https://aur.archlinux.org/cgit/aur.git/plain/.SRCINFO?h=" . uri_escape_utf8($pkgname));
 }
 
 sub get_github_commit_info ($owner, $repo, $commit_sha = 'HEAD') {
