@@ -191,6 +191,7 @@ my %lconfig = (
     clean         => 0,                           # -c
     local         => 0,                           # -l
     pkgbuild      => 0,
+    foreign       => 0,                           # -m
     print         => 0,
     list          => 0,
     sysupgrade    => 0,                           # -u
@@ -2211,13 +2212,25 @@ sub update_local_packages (@repo_packages) {
     }
 
     # Notify when a package is not found in AUR
-    # https://github.com/trizen/trizen/issues/24
-    if ($lconfig{show_inexistent}) {
+    #   https://github.com/trizen/trizen/issues/24
+    #   https://github.com/trizen/trizen/issues/188 (support for `-Qma`)
+
+    if ($lconfig{show_inexistent} or $lconfig{show_foreign_only}) {
         foreach my $pkgname (sort keys %exists_in_aur) {
             if (not $exists_in_aur{$pkgname}) {
+
+                if ($lconfig{show_foreign_only}) {
+                    $lconfig{quiet}
+                      ? printf("%s\n", $pkgname)
+                      : printf("$c{bold}%s$c{reset} $c{bgreen}%s$c{reset}\n", $pkgname, $packages{$pkgname});
+                    next;
+                }
+
                 note(":: <<$pkgname>> was {!not found!} in AUR -- skipping");
             }
         }
+
+        return 1 if $lconfig{show_foreign_only};
     }
 
     my $max_pkgname_width = max(map { length($_->{name}) } @packages_for_update);
@@ -2240,8 +2253,11 @@ sub update_local_packages (@repo_packages) {
               ? printf("%s\n", $pkgname)
               : printf("$c{bold}%s$c{reset} $c{bgreen}%s$c{reset} -> $c{bgreen}%s$c{reset}\n",
                        $pkgname, $packages{$pkgname}, $version);
+
+            next;
         }
-        elsif ($package->{is_vcs} and $package->{local_vcmp} >= 0) {
+
+        if ($package->{is_vcs} and $package->{local_vcmp} >= 0) {
 
             my $aur_color   = $package->{local_vcmp} == 0 ? $c{bgreen} : $c{byellow};
             my $local_color = $package->{local_vcmp} == 0 ? $c{bgreen} : $c{bblue};
@@ -2606,31 +2622,30 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
 
     foreach my $pkg (@keyword_arguments) {
 
-        # install from current directory, given full package name
+        # Install from current directory, given full package name
         if ($pkg =~ /$pkg_suffix_re/io and -f $pkg) {
             push @packages, $pkg;
+            next;
         }
-        else {
 
-            # Install from clone directory, given only base package name
-            my $in_clone_dir = 0;
-            foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
-                my $tarball = find_local_package($pkg, $dir) // next;
+        # Install from clone directory, given only base package name
+        my $in_clone_dir = 0;
+        foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
+            my $tarball = find_local_package($pkg, $dir) // next;
+            msg(":: Found tarball: $tarball");
+            push @packages, $tarball;
+            $in_clone_dir = 1;
+            last;
+        }
+
+        # When not found in the clone directory, install from
+        # the current directory, given only base package name
+        if (not $in_clone_dir) {
+            my $tarball = find_local_package($pkg, curdir());
+
+            if (defined($tarball)) {
                 msg(":: Found tarball: $tarball");
                 push @packages, $tarball;
-                $in_clone_dir = 1;
-                last;
-            }
-
-            # When not found in the clone directory, install from
-            # the current directory, given only base package name
-            if (not $in_clone_dir) {
-                my $tarball = find_local_package($pkg, curdir());
-
-                if (defined($tarball)) {
-                    msg(":: Found tarball: $tarball");
-                    push @packages, $tarball;
-                }
             }
         }
     }
@@ -2688,13 +2703,16 @@ elsif ($lconfig{Q} or $lconfig{query}) {    # -Q
     }
 
     if ($lconfig{aur} and ($lconfig{u} or $lconfig{upgrades})) {
-        local $lconfig{aur}                = 1;
         local $lconfig{show_upgrades_only} = 1;
+        update_local_packages();
+    }
+    elsif ($lconfig{aur} and ($lconfig{m} or $lconfig{foreign})) {
+        local $lconfig{show_foreign_only} = 1;
         update_local_packages();
     }
     else {
 #<<<
-        execute_pacman_command(0, get_pacman_arguments('all', qw(query check search info list quiet noconfirm upgrades)), @keyword_arguments);
+        execute_pacman_command(0, get_pacman_arguments('all', qw(query foreign check search info list quiet noconfirm upgrades)), @keyword_arguments);
 #>>>
     }
 }
