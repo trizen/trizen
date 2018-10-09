@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 29 September 2018
+# Latest edit: 09 October 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -47,7 +47,7 @@ use warnings;
 
 use experimental qw(signatures);
 
-use List::Util qw(first any all max);
+use List::Util qw(first any all max shuffle);
 use Encode qw(decode_utf8);
 use Getopt::Std qw(getopts);
 use URI::Escape qw(uri_escape_utf8);
@@ -2122,6 +2122,135 @@ sub list_aur_maintainer_packages ($maintainer) {
     print_package_results(sort_aur_results(@maintainers_packages));
 }
 
+sub download_srcinfo ($pkgname) {
+    get("https://aur.archlinux.org/cgit/aur.git/plain/.SRCINFO?h=$pkgname");
+}
+
+sub get_github_commit_info ($owner, $repo, $commit_sha = 'HEAD') {
+
+    # TODO: use authentication
+    #       https://developer.github.com/v3/#authentication
+
+    # Without authentication, the rate limit allows only for up to 60 requests per hour.
+
+    json2perl(get("https://api.github.com/repos/$owner/$repo/commits/$commit_sha") // return);
+}
+
+sub get_github_last_commit ($pkgname) {
+
+    # Get the .SRCINFO file, so we can extract the source URL
+    my $srcinfo = download_srcinfo($pkgname) // next;
+
+    # Get the GitHub source URL
+    if ($srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
+
+        my $owner = $1;
+        my $repo  = $2 =~ s/\.git\z//r;
+
+        msg(":: Checking GitHub <<$owner/$repo>> for updates...");
+
+        # Get info for the latest commit
+        my $commit_info = get_github_commit_info($owner, $repo);
+
+        #~ use Data::Dump qw(pp);
+        #~ pp $commit_info;
+
+        # Return the info about the latest commit
+        return $commit_info;
+    }
+
+    return;
+}
+
+sub read_local_desc_file ($pkgname) {
+
+    my $version = package_is_installed($pkgname, 0);
+    my $pkgdir = catdir($lconfig{pacman_local_dir}, "$pkgname-$version");
+
+    if (not -d $pkgdir) {
+        note(":: Directory <<$pkgdir>> does not exist! Check the <<pacman_local_dir>> config-option!");
+        return;
+    }
+
+    my $desc_file = catfile($pkgdir, 'desc');
+
+    if (not -f $desc_file) {
+        note(":: <<$desc_file>> is not a file: {!$!!}");
+        return;
+    }
+
+    open my $fh, '<:utf8', $desc_file or do {
+        note(":: Unable to open <<$desc_file>> for reading: {!$!!}");
+        return;
+    };
+
+    my $content = do {
+        local $/;
+        <$fh>;
+    };
+
+    close $fh;
+
+    return $content;
+}
+
+sub get_local_build_timestamp ($pkgname) {
+
+    my $content = read_local_desc_file($pkgname) // return;
+
+    if ($content =~ /^%BUILDDATE%\s+([0-9]+)/m) {
+        return $1;
+    }
+
+    return;
+}
+
+sub is_github_commit_new ($commit_info, $pkgname) {
+
+    require Time::Piece;
+
+    # Get the times
+    my $build_date  = get_local_build_timestamp($pkgname) // return;
+    my $commit_date = $commit_info->{commit}{committer}{date} // $commit_info->{commit}{author}{date} // return;
+
+    # Parse the times
+    my $build_time  = Time::Piece->strptime($build_date,  '%s');
+    my $commit_time = Time::Piece->strptime($commit_date, '%FT%TZ');
+
+    if ($lconfig{debug}) {
+        msg(":: <<$pkgname>> comparing <<$build_time>> <=> <<$commit_time>>");
+    }
+
+    # Compare the times
+    return ($commit_time > $build_time);
+}
+
+sub check_vcs_packages (@vcs_packages) {
+
+    my @for_update;
+
+    foreach my $pkg (shuffle(@vcs_packages)) {
+
+        # Ignore non-git packages
+        $pkg->{name} =~ /-git\z/ or next;
+
+        # Get the latest GitHub commit (if it is a GitHub repo)
+        my $last_commit = get_github_last_commit($pkg->{name}) // next;
+
+        # Compare the date of the latest commit against the build date of
+        # the package and mark the package for update if the commit is newer.
+        if (is_github_commit_new($last_commit, $pkg->{name})) {
+
+            $pkg->{version}    = 'latest';
+            $pkg->{local_vcmp} = -1;
+
+            push @for_update, $pkg;
+        }
+    }
+
+    return @for_update;
+}
+
 sub update_local_packages (@repo_packages) {
 
 #<<<
@@ -2166,6 +2295,7 @@ sub update_local_packages (@repo_packages) {
         push @aur_results, @{$multiinfo->{results}};
     }
 
+    my @vcs_packages;
     my @packages_for_update;
 
     foreach my $result (@aur_results) {
@@ -2197,18 +2327,36 @@ sub update_local_packages (@repo_packages) {
                 next;
             }
 
-            push @packages_for_update,
-              {
-                name       => $pkgname,
-                version    => $version,
-                is_vcs     => $is_vcs_package,
-                local_vcmp => $local_vcmp,
-              };
+            my $pkginfo = {
+                           name       => $pkgname,
+                           version    => $version,
+                           is_vcs     => $is_vcs_package,
+                           local_vcmp => $local_vcmp,
+                          };
+
+            if ($local_vcmp >= 0 and $lconfig{devel} and $lconfig{needed}) {
+                push @vcs_packages, $pkginfo;
+                next;
+            }
+
+            push @packages_for_update, $pkginfo;
         }
         elsif ($version ne $packages{$pkgname}) {
-            note(":: <<$pkgname>> has a different version in AUR!" . " ({!$packages{$pkgname}!} != <<$version$c{reset}>>)")
-              if $lconfig{debug};
+#<<<
+            if ($lconfig{debug} and not $is_vcs_package) {
+                note(":: <<$pkgname>> has a different version in AUR!" . " ({!$packages{$pkgname}!} != <<$version$c{reset}>>)");
+            }
+#>>>
         }
+    }
+
+    if (@vcs_packages) {
+
+        # Check VCS packages for updates
+        push @packages_for_update, check_vcs_packages(@vcs_packages);
+
+        # Sort the list of packages marked for update
+        @packages_for_update = sort { $a->{name} cmp $b->{name} } @packages_for_update;
     }
 
     # Notify when a package is not found in AUR
