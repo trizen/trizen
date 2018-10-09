@@ -678,22 +678,37 @@ if (    $lconfig{sudo_autorepeat_at_runtime}
 
 #----------------------- WORK AREA -----------------------#
 
+sub new_lwp_object (%opts) {
+
+    require LWP::UserAgent;
+    require HTTP::Message;
+
+    my $lwp = LWP::UserAgent->new(
+                                  env_proxy     => $lconfig{lwp_env_proxy},
+                                  show_progress => $lconfig{lwp_show_progress},
+                                  timeout       => $lconfig{lwp_timeout},
+                                  ssl_opts => {verify_hostname => $lconfig{ssl_verify_hostname}, SSL_version => 'TLSv1_2'},
+                                  agent    => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
+                                  %opts,
+                                 );
+
+    my $accepted_encodings = HTTP::Message::decodable();
+    $lwp->default_header('Accept-Encoding' => $accepted_encodings);
+
+    require LWP::ConnCache;
+    my $cache = LWP::ConnCache->new;
+    $cache->total_capacity(undef);    # no limit
+    $lwp->conn_cache($cache);
+
+    return $lwp;
+}
+
 # Run-time loaded modules
 require Term::UI;
 require Term::ReadLine;
-require LWP::UserAgent;
-require HTTP::Message;
 
 # Initializing module objects
 my $term = Term::ReadLine->new("$execname $version");
-
-my $lwp = LWP::UserAgent->new(
-                              env_proxy     => $lconfig{lwp_env_proxy},
-                              show_progress => $lconfig{lwp_show_progress},
-                              timeout       => $lconfig{lwp_timeout},
-                              ssl_opts      => {verify_hostname => $lconfig{ssl_verify_hostname}, SSL_version => 'TLSv1_2'},
-                              agent         => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
-                             );
 
 sub format_line ($string, $color) {
 
@@ -761,9 +776,9 @@ sub get ($url) {
         return;
     }
 
-    state $accepted_encodings = HTTP::Message::decodable();
+    state $lwp = new_lwp_object();
 
-    my $response = $lwp->get($url, 'Accept-Encoding' => $accepted_encodings);
+    my $response = $lwp->get($url);
 
     if ($response->is_success) {
         my $content = $response->decoded_content;
