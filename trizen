@@ -47,7 +47,7 @@ use warnings;
 
 use experimental qw(signatures);
 
-use List::Util qw(first any max);
+use List::Util qw(first any all max);
 use Encode qw(decode_utf8);
 use Getopt::Std qw(getopts);
 use URI::Escape qw(uri_escape_utf8);
@@ -2028,9 +2028,9 @@ sub search_packages (@keywords) {
             next if $seen{$result->{Name}}++;
 
 #<<<
-            next if any {
-                      not(($result->{Name}        // '') =~ $_)
-                  and not(($result->{Description} // '') =~ $_)
+            next if not all {
+                     (($result->{Name}        // '') =~ $_)
+                  or (($result->{Description} // '') =~ $_)
             } @keys_re;
 #>>>
 
