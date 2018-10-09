@@ -2136,32 +2136,6 @@ sub get_github_commit_info ($owner, $repo, $commit_sha = 'HEAD') {
     json2perl(get("https://api.github.com/repos/$owner/$repo/commits/$commit_sha") // return);
 }
 
-sub get_github_last_commit ($pkgname) {
-
-    # Get the .SRCINFO file, so we can extract the source URL
-    my $srcinfo = download_srcinfo($pkgname) // next;
-
-    # Get the GitHub source URL
-    if ($srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
-
-        my $owner = $1;
-        my $repo  = $2 =~ s/\.git\z//r;
-
-        msg(":: Checking GitHub <<$owner/$repo>> for updates...");
-
-        # Get info for the latest commit
-        my $commit_info = get_github_commit_info($owner, $repo);
-
-        #~ use Data::Dump qw(pp);
-        #~ pp $commit_info;
-
-        # Return the info about the latest commit
-        return $commit_info;
-    }
-
-    return;
-}
-
 sub read_local_desc_file ($pkgname) {
 
     my $version = package_is_installed($pkgname, 0);
@@ -2225,6 +2199,31 @@ sub is_github_commit_new ($commit_info, $pkgname) {
     return ($commit_time > $build_time);
 }
 
+sub is_vcs_package_ood ($pkgname) {
+
+    # Get the .SRCINFO file, so we can extract the source URL
+    my $srcinfo = download_srcinfo($pkgname) // next;
+
+    # Get the GitHub source URL
+    if ($srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
+
+        my $owner = $1;
+        my $repo  = $2 =~ s/\.git\z//r;
+
+        msg(":: <<$pkgname>> checking GitHub <<$owner/$repo>> for updates...");
+
+        # Get info for the latest commit
+        my $commit_info = get_github_commit_info($owner, $repo) // return;
+
+        # Return true if the commit is newer than the build-date of the package
+        return is_github_commit_new($commit_info, $pkgname);
+    }
+
+    # TODO: add support for GitLab
+
+    return;
+}
+
 sub check_vcs_packages (@vcs_packages) {
 
     my @for_update;
@@ -2234,12 +2233,7 @@ sub check_vcs_packages (@vcs_packages) {
         # Ignore non-git packages
         $pkg->{name} =~ /-git\z/ or next;
 
-        # Get the latest GitHub commit (if it is a GitHub repo)
-        my $last_commit = get_github_last_commit($pkg->{name}) // next;
-
-        # Compare the date of the latest commit against the build date of
-        # the package and mark the package for update if the commit is newer.
-        if (is_github_commit_new($last_commit, $pkg->{name})) {
+        if (is_vcs_package_ood($pkg->{name})) {
 
             $pkg->{version}    = 'latest';
             $pkg->{local_vcmp} = -1;
