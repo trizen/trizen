@@ -2383,6 +2383,11 @@ sub update_local_packages (@repo_packages) {
                     next;
                 }
 
+                # Don't warn about ignored packages not found in AUR
+                if (exists $ignored_pkgs{$pkgname}) {
+                    next;
+                }
+
                 note(":: <<$pkgname>> was {!not found!} in AUR -- skipping");
             }
         }
