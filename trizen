@@ -2137,20 +2137,6 @@ sub list_aur_maintainer_packages ($maintainer) {
     print_package_results(sort_aur_results(@maintainers_packages));
 }
 
-sub download_srcinfo ($pkgname) {
-    get("https://aur.archlinux.org/cgit/aur.git/plain/.SRCINFO?h=" . uri_escape_utf8($pkgname));
-}
-
-sub get_github_commit_info ($owner, $repo, $commit_sha = 'HEAD') {
-
-    # TODO: use authentication
-    #       https://developer.github.com/v3/#authentication
-
-    # Without authentication, the rate limit allows only for up to 60 requests per hour.
-
-    json2perl(get("https://api.github.com/repos/$owner/$repo/commits/$commit_sha") // return);
-}
-
 sub read_local_desc_file ($pkgname) {
 
     my $version = package_is_installed($pkgname, 0);
@@ -2183,35 +2169,84 @@ sub read_local_desc_file ($pkgname) {
     return $content;
 }
 
-sub get_local_build_timestamp ($pkgname) {
+sub parse_date ($date, $format) {
+    require Time::Piece;
+    Time::Piece->strptime($date, $format);
+}
+
+sub parse_iso_date ($date) {
+    parse_date($date, '%FT%TZ');
+}
+
+sub get_local_build_date ($pkgname) {
 
     my $content = read_local_desc_file($pkgname) // return;
 
     if ($content =~ /^%BUILDDATE%\s+([0-9]+)/m) {
-        return $1;
+        return parse_date($1, '%s');
     }
 
     return;
 }
 
-sub is_github_commit_new ($commit_info, $pkgname) {
+sub get_github_commit_info ($owner, $repo, $commit_sha = 'HEAD') {
 
-    require Time::Piece;
+    # TODO: use authentication
+    #       https://developer.github.com/v3/#authentication
 
-    # Get the times
-    my $build_date  = get_local_build_timestamp($pkgname) // return;
-    my $commit_date = $commit_info->{commit}{committer}{date} // $commit_info->{commit}{author}{date} // return;
+    # Without authentication, the rate limit allows only for up to 60 requests per hour.
 
-    # Parse the times
-    my $build_time  = Time::Piece->strptime($build_date,  '%s');
-    my $commit_time = Time::Piece->strptime($commit_date, '%FT%TZ');
+    json2perl(get("https://api.github.com/repos/$owner/$repo/commits/$commit_sha") // return);
+}
+
+sub get_gitlab_commit_info ($owner, $repo, $commit_sha = 'HEAD') {
+    json2perl(get("https://gitlab.com/api/v4/projects/" . uri_escape_utf8("$owner/$repo") . "/repository/commits/$commit_sha")
+              // return);
+}
+
+sub get_github_commit_date ($commit_info) {
+    parse_iso_date($commit_info->{commit}{committer}{date} // $commit_info->{commit}{author}{date} // return);
+}
+
+sub get_gitlab_commit_date ($commit_info) {
+    parse_iso_date(($commit_info->{committed_date} // $commit_info->{authored_date} // return) =~ s/\.[0-9]{3}Z\z/Z/r);
+}
+
+sub is_commit_new ($commit_date, $pkgname) {
+
+    # Get the build-date of the package
+    my $build_date = get_local_build_date($pkgname) // return;
 
     if ($lconfig{debug}) {
-        msg(":: <<$pkgname>> comparing <<$build_time>> <=> <<$commit_time>>");
+        msg(":: <<$pkgname>> comparing <<$build_date>> <=> <<$commit_date>>");
     }
 
-    # Compare the times
-    return ($commit_time > $build_time);
+    # Compare the dates
+    return ($commit_date > $build_date);
+}
+
+sub has_new_github_commit ($owner, $repo, $pkgname) {
+
+    # Get info for the latest commit
+    my $commit_info = get_github_commit_info($owner, $repo) // return;
+    my $commit_date = get_github_commit_date($commit_info) // return;
+
+    # Return true if the commit is newer than the build-date of the package
+    return is_commit_new($commit_date, $pkgname);
+}
+
+sub has_new_gitlab_commit ($owner, $repo, $pkgname) {
+
+    # Get info for the latest commit
+    my $commit_info = get_gitlab_commit_info($owner, $repo) // return;
+    my $commit_date = get_gitlab_commit_date($commit_info) // return;
+
+    # Return true if the commit is newer than the build-date of the package
+    return is_commit_new($commit_date, $pkgname);
+}
+
+sub download_srcinfo ($pkgname) {
+    get("https://aur.archlinux.org/cgit/aur.git/plain/.SRCINFO?h=" . uri_escape_utf8($pkgname));
 }
 
 sub is_vcs_package_ood ($pkgname) {
@@ -2219,7 +2254,7 @@ sub is_vcs_package_ood ($pkgname) {
     # Get the .SRCINFO file, so we can extract the source URL
     my $srcinfo = download_srcinfo($pkgname) // next;
 
-    # Get the GitHub source URL
+    # Extract GitHub source URL
     if ($srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
 
         my $owner = $1;
@@ -2227,14 +2262,19 @@ sub is_vcs_package_ood ($pkgname) {
 
         msg(":: <<$pkgname>> checking GitHub <<$owner/$repo>> for updates...");
 
-        # Get info for the latest commit
-        my $commit_info = get_github_commit_info($owner, $repo) // return;
-
-        # Return true if the commit is newer than the build-date of the package
-        return is_github_commit_new($commit_info, $pkgname);
+        return has_new_github_commit($owner, $repo, $pkgname);
     }
 
-    # TODO: add support for GitLab
+    # Extract GitLab source URL
+    if ($srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?gitlab\.com/([-\w.]+)/([-\w.]+)}m) {
+
+        my $owner = $1;
+        my $repo  = $2 =~ s/\.git\z//r;
+
+        msg(":: <<$pkgname>> checking GitLab <<$owner/$repo>> for updates...");
+
+        return has_new_gitlab_commit($owner, $repo, $pkgname);
+    }
 
     return;
 }
