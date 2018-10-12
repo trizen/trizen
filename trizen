@@ -943,7 +943,7 @@ sub package_is_installed ($pkgname, $strict = 1) {
             }
 
             foreach my $dir (readdir($dir_h)) {
-                if (scalar(reverse($dir)) =~ /^(.+?-.+?)-(.+)/) {
+                if (reverse($dir) =~ /^(.+?-.+?)-(.+)/) {
 
                     my $name    = reverse($2);
                     my $version = reverse($1);
@@ -979,10 +979,11 @@ sub versioncmp ($v1, $v2) {
     `/usr/bin/vercmp \Q$v1\E \Q$v2\E` + 0;
 }
 
-sub strip_space ($string) {
-    $string // return '';
-    $string =~ s/^\s+//;
-    return unpack 'A*', $string;
+sub strip_space ($str) {
+    $str // return '';
+    $str =~ /\s/ or return $str;
+    $str =~ s/^\s+//;
+    return unpack 'A*', $str;
 }
 
 sub strip_version ($version) {
@@ -2137,17 +2138,11 @@ sub list_aur_maintainer_packages ($maintainer) {
     print_package_results(sort_aur_results(@maintainers_packages));
 }
 
-sub read_local_desc_file ($pkgname) {
+sub read_local_desc_file ($pkgname, $version = undef) {
 
-    my $version = package_is_installed($pkgname, 0);
-    my $pkgdir = catdir($lconfig{pacman_local_dir}, "$pkgname-$version");
+    $version //= package_is_installed($pkgname, 0) // return;
 
-    if (not -d $pkgdir) {
-        note(":: Directory <<$pkgdir>> does not exist! Check the <<pacman_local_dir>> config-option!");
-        return;
-    }
-
-    my $desc_file = catfile($pkgdir, 'desc');
+    my $desc_file = catfile($lconfig{pacman_local_dir}, "$pkgname-$version", 'desc');
 
     if (not -f $desc_file) {
         note(":: <<$desc_file>> is not a file: {!$!!}");
@@ -2519,6 +2514,7 @@ sub update_local_packages (@repo_packages) {
 }
 
 sub show_stats {
+
     opendir my $dir_h, $lconfig{pacman_local_dir}
       or error(":: Unable to open directory <<$lconfig{pacman_local_dir}>>: {!$!!}");
 
@@ -2544,49 +2540,51 @@ sub show_stats {
         return 1;
     };
 
-    while (defined(my $subdir = readdir $dir_h)) {
+    foreach my $dir (readdir($dir_h)) {
 
-        next if $subdir eq q{.} or $subdir eq q{..};
-        -d "$lconfig{pacman_local_dir}/$subdir" or next;
+        reverse($dir) =~ /^(.+?-.+?)-(.+)/ or next;
+
+        my $name    = reverse($2);
+        my $version = reverse($1);
 
         ++$num_of_pkgs;
-        my ($current_pkg) = $subdir =~ /^(.+?)-[^-]+-[^-]+$/;
 
-        open my $fh, '<:utf8', catfile($lconfig{pacman_local_dir}, $subdir, 'desc') or next;
-        while (defined(my $line = <$fh>)) {
+        chomp(my @desc = split(/\n/, read_local_desc_file($name, $version) // next));
 
-            chomp($line);
+        while (@desc) {
+            my $line = shift(@desc);
 
             if ($line eq "%REASON%") {
-                $reason_deps{$current_pkg} = ();
+                $reason_deps{$name} = ();
             }
             elsif ($line eq "%DEPENDS%") {
-                while (defined(my $dep = <$fh>)) {
-                    chomp $dep;
+                while (@desc) {
+                    my $dep = shift(@desc);
                     last if $dep eq q{};
                     $dependencies{strip_version($dep)} = ();
                 }
             }
-            elsif ($line eq "%PROVIDES%" and exists $reason_deps{$current_pkg}) {
-                while (defined(my $provided = <$fh>)) {
-                    chomp $provided;
+            elsif ($line eq "%PROVIDES%" and exists($reason_deps{$name})) {
+                while (@desc) {
+                    my $provided = shift(@desc);
                     last if $provided eq q{};
-                    push @{$reason_deps{$current_pkg}}, strip_version($provided);
+                    push @{$reason_deps{$name}}, strip_version($provided);
                 }
             }
             elsif ($line eq "%SIZE%") {
-                $total_size += <$fh>;
+                $total_size += shift(@desc);
             }
             elsif ($line eq "%BUILDDATE%") {
-                chomp(my $date = <$fh>);
-                $append_package->($date, $current_pkg, 'built');
+                my $date = shift(@desc);
+                $append_package->($date, $name, 'built');
             }
             elsif ($line eq "%INSTALLDATE%") {
-                chomp(my $date = <$fh>);
-                $append_package->($date, $current_pkg, 'installed');
+                my $date = shift(@desc);
+                $append_package->($date, $name, 'installed');
             }
         }
     }
+
     closedir $dir_h;
 
     my $as_dep_packages = keys %reason_deps;
@@ -2603,6 +2601,7 @@ $c{bblue}::$c{reset} $c{bold}Newest installed packages:$c{byellow} @{[map { $_->
 STATS
 
     print "$c{bblue}::$c{reset} $c{bold}Unneeded packages:$c{byellow}";
+
     while (my ($key, $value) = each %reason_deps) {
         next if exists $dependencies{$key};
         if (ref($value) eq 'ARRAY') {
@@ -2610,8 +2609,8 @@ STATS
         }
         print qq{ $key};
     }
-    say $c{reset};
 
+    say $c{reset};
     main_quit();
 }
 
