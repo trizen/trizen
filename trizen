@@ -47,7 +47,7 @@ use warnings;
 
 use experimental qw(signatures);
 
-use List::Util qw(first any all max shuffle);
+use List::Util qw(first any all max);
 use Encode qw(decode_utf8);
 use Getopt::Std qw(getopts);
 use URI::Escape qw(uri_escape_utf8);
@@ -2237,11 +2237,7 @@ sub has_new_gitlab_commit ($owner, $repo, $pkgname) {
     return is_commit_new($commit_date, $pkgname);
 }
 
-sub download_srcinfo ($pkgname) {
-    get("https://aur.archlinux.org/cgit/aur.git/plain/.SRCINFO?h=" . uri_escape_utf8($pkgname));
-}
-
-sub has_new_git_commit ($pkgname, $source_url) {
+sub has_new_git_commit ($source_url, $pkgname) {
 
     my $dir = catdir($lconfig{clone_dir}, ".$pkgname");
 
@@ -2256,6 +2252,23 @@ sub has_new_git_commit ($pkgname, $source_url) {
 
     my $commit_date = parse_date($seconds, '%s');
     return is_commit_new($commit_date, $pkgname);
+}
+
+sub download_srcinfo ($pkgname) {
+
+    my $file = catfile($lconfig{clone_dir}, $pkgname, '.SRCINFO');
+
+    if (not -f $file) {
+        download_package($pkgname, $lconfig{clone_dir});
+    }
+
+    if (open my $fh, '<:utf8', $file) {
+        my $content = do { local $/; <$fh> };
+        close $fh;
+        return $content;
+    }
+
+    get("https://aur.archlinux.org/cgit/aur.git/plain/.SRCINFO?h=" . uri_escape_utf8($pkgname));    # fallback
 }
 
 sub is_vcs_package_ood ($pkgname) {
@@ -2275,7 +2288,7 @@ sub is_vcs_package_ood ($pkgname) {
 #<<<
         return (
                has_new_github_commit($owner, $repo, $pkgname)
-            // has_new_git_commit($pkgname, "git://github.com/$owner/$repo.git")        # fallback
+            // has_new_git_commit("git://github.com/$owner/$repo.git", $pkgname)        # fallback
         );
 #>>>
     }
@@ -2299,7 +2312,7 @@ sub is_vcs_package_ood ($pkgname) {
 
         msg(":: <<$pkgname>> checking <<$source_url>> for updates...");
 
-        return has_new_git_commit($pkgname, $source_url);
+        return has_new_git_commit($source_url, $pkgname);
     }
 
     return;
@@ -2309,7 +2322,7 @@ sub check_vcs_packages (@vcs_packages) {
 
     my @for_update;
 
-    foreach my $pkg (shuffle(@vcs_packages)) {
+    foreach my $pkg (@vcs_packages) {
 
         # Ignore non-git packages
         $pkg->{name} =~ /-git\z/ or next;
