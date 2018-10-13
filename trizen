@@ -1539,9 +1539,8 @@ sub build_and_install_package ($pkg, @args) {
             return 1;
         }
 
-        #$already_built{lc $pkg} = 1;
-        $already_installed{lc $pkg} = 1;
-        return 1;
+        $already_built{lc $pkg} = 1;
+        return install_built_package($pkg, @args);
     }
 
     # Check to see if the current package was
