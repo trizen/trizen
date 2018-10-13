@@ -173,6 +173,8 @@ my %CONFIG = (
               install_built_with_Ud        => 0,
               install_built_with_noconfirm => 0,
               color_code_dependencies      => 0,
+              use_github_api               => 1,
+              use_gitlab_api               => 1,
               syntax_highlighting          => ((-x '/usr/bin/highlight') ? 1 : 0),
               syntax_highlighting_cmd      => '/usr/bin/highlight -O ansi',
              );
@@ -217,8 +219,6 @@ my %lconfig = (
     asexplicit    => 0,
     help          => 0,
     update_config => 0,
-    github_check  => 1,
-    gitlab_check  => 1,
     ignore        => '',                          # packages to ignore during -Su
     as_root       => ($user eq 'root' ? 1 : 0),
     stats         => \&show_stats,
@@ -235,7 +235,7 @@ sub dump_configuration ($config, $configuration_file) {
     my $config_header = <<"EOH";
 #!/usr/bin/perl
 
-# $execname v$version configuration file
+# $execname configuration file
 # Updated on ${\(scalar localtime)}
 
 EOH
@@ -289,6 +289,8 @@ sudo_autorepeat_interval     => int     Interval, in seconds, after which `sudo 
 sudo_command                 => str     Command used when special permissions are required and `use_sudo` is set to 1.
 syntax_highlighting          => bool    Syntax hightling of the build files, using the `highlight` tool from [community].
 syntax_highlighting_cmd      => str     The `highlight` command used in highlighting the syntax of the build files (with `syntax_highlighting`).
+use_github_api               => bool    Check GitHub sources for updates using GitHub's API. (during `--devel --needed`)
+use_gitlab_api               => bool    Check GitLab sources for updates using GitLab's API. (during `--devel --needed`)
 use_sudo                     => bool    Use the `sudo` command when special permissions are required.
 EOT
 
@@ -2288,7 +2290,7 @@ sub is_vcs_package_ood ($pkgname) {
 
     # Extract GitHub source URL
     # Limited to 60 requests per hour. Fallback once the limit has been reached.
-    if ($lconfig{github_check} and $srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
+    if ($lconfig{use_github_api} and $srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
 
         my $owner = $1;
         my $repo  = $2 =~ s/\.git\z//r;
@@ -2299,7 +2301,7 @@ sub is_vcs_package_ood ($pkgname) {
         return (
                has_new_github_commit($owner, $repo, $pkgname)
             // do {
-                    $lconfig{github_check} = 0;                                             # GitHub rate limit has been reached
+                    $lconfig{use_github_api} = 0;                                           # GitHub rate limit has been reached
                     has_new_git_commit("git://github.com/$owner/$repo.git", $pkgname)       # fallback
                }
         );
@@ -2307,7 +2309,7 @@ sub is_vcs_package_ood ($pkgname) {
     }
 
     # Extract GitLab source URL
-    if ($lconfig{gitlab_check} and $srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?gitlab\.com/([-\w.]+)/([-\w.]+)}m) {
+    if ($lconfig{use_gitlab_api} and $srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?gitlab\.com/([-\w.]+)/([-\w.]+)}m) {
 
         my $owner = $1;
         my $repo  = $2 =~ s/\.git\z//r;
@@ -2318,7 +2320,7 @@ sub is_vcs_package_ood ($pkgname) {
         return (
                has_new_gitlab_commit($owner, $repo, $pkgname)
             // do {
-                    $lconfig{gitlab_check} = 0;                                             # GitLab rate limit has been reached
+                    $lconfig{use_gitlab_api} = 0;                                           # GitLab rate limit has been reached
                     has_new_git_commit("git://gitlab.com/$owner/$repo.git", $pkgname)       # fallback
                }
         );
