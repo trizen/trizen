@@ -217,6 +217,8 @@ my %lconfig = (
     asexplicit    => 0,
     help          => 0,
     update_config => 0,
+    github_check  => 1,
+    gitlab_check  => 1,
     ignore        => '',                          # packages to ignore during -Su
     as_root       => ($user eq 'root' ? 1 : 0),
     stats         => \&show_stats,
@@ -2278,7 +2280,7 @@ sub is_vcs_package_ood ($pkgname) {
 
     # Extract GitHub source URL
     # Limited to 60 requests per hour. Fallback once the limit has been reached.
-    if ($srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
+    if ($lconfig{github_check} and $srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
 
         my $owner = $1;
         my $repo  = $2 =~ s/\.git\z//r;
@@ -2288,20 +2290,32 @@ sub is_vcs_package_ood ($pkgname) {
 #<<<
         return (
                has_new_github_commit($owner, $repo, $pkgname)
-            // has_new_git_commit("git://github.com/$owner/$repo.git", $pkgname)        # fallback
+            // do {
+                    $lconfig{github_check} = 0;                                             # GitHub rate limit has been reached
+                    has_new_git_commit("git://github.com/$owner/$repo.git", $pkgname)       # fallback
+               }
         );
 #>>>
     }
 
     # Extract GitLab source URL
-    if ($srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?gitlab\.com/([-\w.]+)/([-\w.]+)}m) {
+    if ($lconfig{gitlab_check} and $srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?gitlab\.com/([-\w.]+)/([-\w.]+)}m) {
 
         my $owner = $1;
         my $repo  = $2 =~ s/\.git\z//r;
 
         msg(":: <<$pkgname>> checking GitLab <<$owner/$repo>> for updates...");
 
-        return has_new_gitlab_commit($owner, $repo, $pkgname);
+#<<<
+        return (
+               has_new_gitlab_commit($owner, $repo, $pkgname)
+            // do {
+                    $lconfig{gitlab_check} = 0;                                             # GitLab rate limit has been reached
+                    has_new_git_commit("git://gitlab.com/$owner/$repo.git", $pkgname)       # fallback
+               }
+        );
+#>>>
+
     }
 
     # Other Git sources
