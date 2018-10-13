@@ -57,7 +57,7 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.54';
+my $version  = '1.55';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
