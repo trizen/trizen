@@ -2244,12 +2244,26 @@ sub download_srcinfo ($pkgname) {
     get("https://aur.archlinux.org/cgit/aur.git/plain/.SRCINFO?h=" . uri_escape_utf8($pkgname));
 }
 
+sub has_new_git_commit ($pkgname, $source_url) {
+
+    require File::Temp;
+    my $dir = File::Temp::tempdir(CLEANUP => 1);
+
+    system('/usr/bin/git', 'clone', $source_url, $dir, '--quiet', '--depth=1') and return;
+    chomp(my $seconds = `/usr/bin/git -C \Q$dir\E log -1 --format=%ct` // return);
+
+    my $commit_date = parse_date($seconds, '%s');
+
+    return is_commit_new($commit_date, $pkgname);
+}
+
 sub is_vcs_package_ood ($pkgname) {
 
     # Get the .SRCINFO file, so we can extract the source URL
     my $srcinfo = download_srcinfo($pkgname) // next;
 
     # Extract GitHub source URL
+    # Limited to only 60 requests per hour.
     if ($srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
 
         my $owner = $1;
@@ -2269,6 +2283,17 @@ sub is_vcs_package_ood ($pkgname) {
         msg(":: <<$pkgname>> checking GitLab <<$owner/$repo>> for updates...");
 
         return has_new_gitlab_commit($owner, $repo, $pkgname);
+    }
+
+    # Other Git sources
+    if (   $srcinfo =~ m{^\h*source\h*=\h*(?:\S*?::)?git\+(\S+)}m
+        or $srcinfo =~ m{^\h*source\h*=\h*(?:\S*?::)?(git://\S+)}m) {
+
+        my $source_url = $1;
+
+        msg(":: <<$pkgname>> checking <<$source_url>> for updates...");
+
+        return has_new_git_commit($pkgname, $source_url);
     }
 
     return;
