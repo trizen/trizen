@@ -157,7 +157,7 @@ my %CONFIG = (
               movepkg_dir                  => '/var/cache/pacman/pkg',
               pacman_local_dir             => '/var/lib/pacman/local',
               pacman_command               => '/usr/bin/pacman',
-              show_diff_only               => 0,
+              show_diff_only               => 1,
               show_build_files_content     => 1,
               aur_results_sort_by          => 'name',
               aur_results_sort_order       => 'ascending',
@@ -172,7 +172,7 @@ my %CONFIG = (
               show_unmaintained            => 1,
               install_built_with_Ud        => 0,
               install_built_with_noconfirm => 0,
-              color_code_dependencies      => 0,
+              color_code_dependencies      => 1,
               use_github_api               => 1,
               use_gitlab_api               => 1,
               syntax_highlighting          => ((-x '/usr/bin/highlight') ? 1 : 0),
@@ -682,21 +682,23 @@ if (    $lconfig{sudo_autorepeat_at_runtime}
 
 #----------------------- WORK AREA -----------------------#
 
-sub new_lwp_object (%opts) {
+sub new_lwp_object (%opt) {
 
     require LWP::UserAgent;
     require HTTP::Message;
 
+#<<<
     my $lwp = LWP::UserAgent->new(
                                   env_proxy     => $lconfig{lwp_env_proxy},
                                   show_progress => $lconfig{lwp_show_progress},
                                   timeout       => $lconfig{lwp_timeout},
-                                  ssl_opts => {verify_hostname => $lconfig{ssl_verify_hostname}, SSL_version => 'TLSv1_2'},
-                                  agent    => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
-                                  %opts,
+                                  ssl_opts      => {verify_hostname => $lconfig{ssl_verify_hostname}, SSL_version => 'TLSv1_2'},
+                                  agent         => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
+                                  %opt,
                                  );
+#>>>
 
-    my $accepted_encodings = HTTP::Message::decodable();
+    state $accepted_encodings = HTTP::Message::decodable();
     $lwp->default_header('Accept-Encoding' => $accepted_encodings);
 
     require LWP::ConnCache;
@@ -1048,9 +1050,12 @@ sub download_package ($pkgname, $path) {
         chomp(my $old_commit_hash = `/usr/bin/git -C \Q$dir_name\E rev-parse HEAD`);
 
         if (!$lconfig{nopull}) {
+
+            msg(":: Pulling AUR changes: $pkgname");
+
 #<<<
-            system('/usr/bin/git', '-C', $dir_name, 'reset', '--hard', 'HEAD', ($lconfig{quiet} ? ('-q') : ())) && return;
-            system('/usr/bin/git', '-C', $dir_name, 'pull',  '--ff',           ($lconfig{quiet} ? ('-q') : ())) && return;
+            system('/usr/bin/git', '-C', $dir_name, 'reset', '--hard', 'HEAD', '--quiet') && return;
+            system('/usr/bin/git', '-C', $dir_name, 'pull',  '--ff',           '--quiet') && return;
 #>>>
         }
 
@@ -1062,11 +1067,15 @@ sub download_package ($pkgname, $path) {
     }
     else {
 
+        msg(":: Cloning AUR package: $pkgname");
+
+        my @flags;
+
+        push @flags, '--quiet';
+        push @flags, "--depth=$lconfig{git_clone_depth}" if ($lconfig{git_clone_depth} > 0);
+
         # Clone the build files
-        system('/usr/bin/git', '-C', $path, 'clone',
-               ($lconfig{git_clone_depth} > 0 ? "--depth=$lconfig{git_clone_depth}" : ()),
-               ($lconfig{quiet} ? ('-q') : ()), $git_url)
-          && return;
+        system('/usr/bin/git', '-C', $path, 'clone', @flags, $git_url) && return;
     }
 
     if ($lconfig{debug}) {
@@ -1282,12 +1291,11 @@ sub recompute_dependencies ($info) {
 sub output_file_content ($file) {
 
     if ($lconfig{pager_mode}) {
-        print "\n";
         system("$lconfig{pager} \Q$file\E");
         return 1;
     }
 
-    say "\n", '-' x 80;
+    say '-' x 80;
     msg(":: Content of <<$file>>");
     say '-' x 80, "\n";
 
@@ -1330,10 +1338,6 @@ sub output_file_content ($file) {
 
 sub show_and_edit_text_files ($info) {
 
-    if (!$lconfig{show_build_files_content}) {
-        print "\n";
-    }
-
     require File::Basename;
     chomp(my @files = map { File::Basename::basename(decode_utf8($_)) } `/usr/bin/git ls-files`);
 
@@ -1347,7 +1351,7 @@ sub show_and_edit_text_files ($info) {
 
         if ($lconfig{show_build_files_content}) {
             if ($lconfig{show_diff_only} and $info->{_exists_in_cache}) {
-                print "\n";
+                ## ok
             }
             elsif (-T $abs_file) {               # output when it's a text-file
                 output_file_content($abs_file);
@@ -1536,12 +1540,15 @@ sub install_built_package ($pkg, @args) {
 sub build_and_install_package ($pkg, @args) {
 
     if ($lconfig{nobuild}) {
+
         if ($lconfig{noinstall}) {
             $already_installed{lc $pkg} = 1;
             return 1;
         }
-        $already_built{lc $pkg} = 1;
-        return install_built_package($pkg, @args);
+
+        #$already_built{lc $pkg} = 1;
+        $already_installed{lc $pkg} = 1;
+        return 1;
     }
 
     # Check to see if the current package was
@@ -1645,12 +1652,22 @@ sub install_package ($pkg) {
 
                 my $is_ood = is_vcs_package_ood($info->{PackageBase});
 
-                if (defined($is_ood) and not $is_ood) {
-                    msg(":: <<$pkg>> is installed and up-to-date -- skipping");
-                    return 1;
+                if (defined($is_ood)) {
+
+                    # The VCS package is not out-of-date
+                    if (not $is_ood) {
+                        msg(":: <<$pkg>> is installed and up-to-date -- skipping");
+                        return 1;
+                    }
+
+                    # The VCS package seems to be out-of-date
+                    msg(":: <<$pkg>> seems to be {!out-of-date!} -- updating") if $lconfig{debug};
                 }
 
-                msg(":: <<$pkg>> is a VCS package -- installing");
+                # Couldn't determine if the VCS package is out-of-date
+                else {
+                    msg(":: <<$pkg>> is a VCS package -- updating");
+                }
             }
 
             # Compare the local version against the AUR version
@@ -1661,14 +1678,10 @@ sub install_package ($pkg) {
 
             # Package seems to be out-of-date
             else {
-                note(":: <<$pkg>> seems to be {!out-of-date!} -- installing") if $lconfig{debug};
+                note(":: <<$pkg>> seems to be {!out-of-date!} -- updating") if $lconfig{debug};
             }
         }
     }
-
-    say '';
-    msg(":: Package: $info->{Name}");
-    msg(":: AUR URL: " . sprintf($aur_package_id_url, $info->{ID}));
 
     my @args = get_pacman_arguments('long', qw(noconfirm force needed));
 
@@ -1695,17 +1708,18 @@ sub install_package ($pkg) {
         print "\n", join("\n", @comments) if @comments;
     }
 
+    # Display package info
+    if (not $lconfig{noinfo}) {
+        say '';
+        show_info($info);
+    }
+
     # Show and edit PKGBUILD and other -T files
     show_and_edit_text_files($info);
 
     # Recompute dependencies
     if ($lconfig{recompute_deps}) {
         recompute_dependencies($info);
-    }
-
-    # Display package info
-    if (not $lconfig{noinfo}) {
-        show_info($info);
     }
 
     foreach my $pkgname (
@@ -2865,7 +2879,6 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
             local $lconfig{show_build_files_content} = 0;
 
             if (!install_package($pkg)) {
-                note(":: <<$pkg>> not found.");
                 $? = 1;
                 next;
             }
@@ -2874,7 +2887,6 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
     else {    # -G only
         foreach my $pkg (@keyword_arguments) {
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
-            msg(":: Cloning package: $pkg") if $lconfig{debug};
             if (!download_package($pkg, $curdir)) {
                 note(":: <<$pkg>> not found.");
                 $? = 1;
