@@ -1511,11 +1511,14 @@ sub install_built_package ($pkg, @args) {
         and $lconfig{split_packages}
         and !$lconfig{noinstall}) {
 
+        # Select by default the installed packages, along with the package name specified during -S
+        my @selected = grep { lc($pkg) eq $_ or package_is_installed($_) } sort keys %packages;
+
         my @reply = $term->get_reply(
                                      print_me => "\n$c{bold}=>> Select packages to install$c{reset}",
                                      prompt   => "$c{bold}Install$c{reset}",
                                      choices  => [sort keys %packages],
-                                     default  => [sort keys %packages],
+                                     default  => [@selected],
                                      multi    => 1,
                                     );
 
