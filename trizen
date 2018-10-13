@@ -2246,14 +2246,18 @@ sub download_srcinfo ($pkgname) {
 
 sub has_new_git_commit ($pkgname, $source_url) {
 
-    require File::Temp;
-    my $dir = File::Temp::tempdir(CLEANUP => 1);
+    my $dir = catdir($lconfig{clone_dir}, ".$pkgname");
 
-    system('/usr/bin/git', 'clone', $source_url, $dir, '--quiet', '--depth=1') and return;
+    if (-d $dir and -d catdir($dir, '.git')) {
+        system('/usr/bin/git', '-C', $dir, 'pull') and return;
+    }
+    else {
+        system('/usr/bin/git', 'clone', $source_url, $dir, '--quiet', '--depth=1') and return;
+    }
+
     chomp(my $seconds = `/usr/bin/git -C \Q$dir\E log -1 --format=%ct` // return);
 
     my $commit_date = parse_date($seconds, '%s');
-
     return is_commit_new($commit_date, $pkgname);
 }
 
