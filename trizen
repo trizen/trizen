@@ -2249,7 +2249,7 @@ sub has_new_git_commit ($pkgname, $source_url) {
     my $dir = catdir($lconfig{clone_dir}, ".$pkgname");
 
     if (-d $dir and -d catdir($dir, '.git')) {
-        system('/usr/bin/git', '-C', $dir, 'pull') and return;
+        system('/usr/bin/git', '-C', $dir, 'pull', '--quiet') and return;
     }
     else {
         system('/usr/bin/git', 'clone', $source_url, $dir, '--quiet', '--depth=1') and return;
