@@ -1051,7 +1051,7 @@ sub download_package ($pkgname, $path) {
 
         if (!$lconfig{nopull}) {
 
-            msg(":: Pulling AUR changes: $pkgname");
+            msg(":: Pulling AUR changes: $pkg_base");
 
 #<<<
             system('/usr/bin/git', '-C', $dir_name, 'reset', '--hard', 'HEAD', '--quiet') && return;
@@ -1067,7 +1067,7 @@ sub download_package ($pkgname, $path) {
     }
     else {
 
-        msg(":: Cloning AUR package: $pkgname");
+        msg(":: Cloning AUR package: $pkg_base");
 
         my @flags;
 
