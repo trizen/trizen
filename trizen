@@ -1638,8 +1638,16 @@ sub install_package ($pkg) {
 
         if ($lconfig{needed}) {
 
-            # Ignore the `--needed` flag when `--devel` is used and the package is a VCS package
+            # Check if a VCS package needs to be updated when `--devel` is specified
             if ($lconfig{devel} and is_vcs_package($pkg)) {
+
+                my $is_ood = is_vcs_package_ood($info->{PackageBase});
+
+                if (defined($is_ood) and not $is_ood) {
+                    msg(":: <<$pkg>> is installed and up-to-date -- skipping");
+                    return 1;
+                }
+
                 msg(":: <<$pkg>> is a VCS package -- installing");
             }
 
@@ -2276,7 +2284,7 @@ sub download_srcinfo ($pkgname) {
 sub is_vcs_package_ood ($pkgname) {
 
     # Get the .SRCINFO file, so we can extract the source URL
-    my $srcinfo = download_srcinfo($pkgname) // next;
+    my $srcinfo = download_srcinfo($pkgname) // return;
 
     # Extract GitHub source URL
     # Limited to 60 requests per hour. Fallback once the limit has been reached.
@@ -2341,7 +2349,7 @@ sub check_vcs_packages (@vcs_packages) {
         # Ignore non-git packages
         $pkg->{name} =~ /-git\z/ or next;
 
-        if (is_vcs_package_ood($pkg->{name})) {
+        if (is_vcs_package_ood($pkg->{info}{PackageBase})) {
 
             $pkg->{version}    = 'latest';
             $pkg->{local_vcmp} = -1;
@@ -2432,6 +2440,7 @@ sub update_local_packages (@repo_packages) {
             my $pkginfo = {
                            name       => $pkgname,
                            version    => $version,
+                           info       => $result,
                            is_vcs     => $is_vcs_package,
                            local_vcmp => $local_vcmp,
                           };
@@ -2450,15 +2459,6 @@ sub update_local_packages (@repo_packages) {
             }
 #>>>
         }
-    }
-
-    if (@vcs_packages) {
-
-        # Check VCS packages for updates
-        push @packages_for_update, check_vcs_packages(@vcs_packages);
-
-        # Sort the list of packages marked for update
-        @packages_for_update = sort { $a->{name} cmp $b->{name} } @packages_for_update;
     }
 
     # Notify when a package is not found in AUR
@@ -2486,6 +2486,15 @@ sub update_local_packages (@repo_packages) {
         }
 
         return 1 if $lconfig{show_foreign_only};
+    }
+
+    if (@vcs_packages) {
+
+        # Check VCS packages for updates
+        push @packages_for_update, check_vcs_packages(@vcs_packages);
+
+        # Sort the list of packages marked for update
+        @packages_for_update = sort { $a->{name} cmp $b->{name} } @packages_for_update;
     }
 
     my $max_pkgname_width = max(map { length($_->{name}) } @packages_for_update);
@@ -2560,6 +2569,9 @@ sub update_local_packages (@repo_packages) {
     my @selected_packages = select_packages_from_input(lc($input), \%for_update, [map { $_->{name} } @packages_for_update], 1);
 
     foreach my $pkgname (@selected_packages) {
+
+        local $lconfig{needed} = 0;
+
         if (install_package($pkgname)) {
             msg(":: <<$pkgname>> has been upgraded!") if $lconfig{debug};
         }
