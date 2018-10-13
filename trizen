@@ -2271,7 +2271,12 @@ sub is_vcs_package_ood ($pkgname) {
 
         msg(":: <<$pkgname>> checking GitHub <<$owner/$repo>> for updates...");
 
-        return has_new_github_commit($owner, $repo, $pkgname);
+#<<<
+        return (
+               has_new_github_commit($owner, $repo, $pkgname)
+            // has_new_git_commit($pkgname, "git://github.com/$owner/$repo.git")        # fallback
+        );
+#>>>
     }
 
     # Extract GitLab source URL
