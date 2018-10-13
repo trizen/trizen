@@ -2185,18 +2185,15 @@ sub get_local_build_date ($pkgname) {
 }
 
 sub get_github_commit_info ($owner, $repo, $commit_sha = 'HEAD') {
-
-    # TODO: use authentication
-    #       https://developer.github.com/v3/#authentication
-
-    # Without authentication, the rate limit allows only for up to 60 requests per hour.
-
+#<<<
     json2perl(get("https://api.github.com/repos/$owner/$repo/commits/$commit_sha") // return);
+#>>>
 }
 
 sub get_gitlab_commit_info ($owner, $repo, $commit_sha = 'HEAD') {
-    json2perl(get("https://gitlab.com/api/v4/projects/" . uri_escape_utf8("$owner/$repo") . "/repository/commits/$commit_sha")
-              // return);
+#<<<
+    json2perl(get("https://gitlab.com/api/v4/projects/" . uri_escape_utf8("$owner/$repo") . "/repository/commits/$commit_sha") // return);
+#>>>
 }
 
 sub get_github_commit_date ($commit_info) {
@@ -2267,7 +2264,7 @@ sub is_vcs_package_ood ($pkgname) {
     my $srcinfo = download_srcinfo($pkgname) // next;
 
     # Extract GitHub source URL
-    # Limited to only 60 requests per hour.
+    # Limited to 60 requests per hour. Fallback once the limit has been reached.
     if ($srcinfo =~ m{^\h*source\h*=.*?://(?:www\.)?github\.com/([-\w.]+)/([-\w.]+)}m) {
 
         my $owner = $1;
