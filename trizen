@@ -689,13 +689,13 @@ sub new_lwp_object (%opt) {
 
 #<<<
     my $lwp = LWP::UserAgent->new(
-                                  env_proxy     => $lconfig{lwp_env_proxy},
-                                  show_progress => $lconfig{lwp_show_progress},
-                                  timeout       => $lconfig{lwp_timeout},
-                                  ssl_opts      => {verify_hostname => $lconfig{ssl_verify_hostname}, SSL_version => 'TLSv1_2'},
-                                  agent         => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
-                                  %opt,
-                                 );
+          timeout       => $lconfig{lwp_timeout},
+          env_proxy     => $lconfig{lwp_env_proxy},
+          show_progress => $lconfig{lwp_show_progress},
+          agent         => "Mozilla/5.0 (CLI; U; gzip; en-US) $execname/$version",
+          ssl_opts      => {verify_hostname => $lconfig{ssl_verify_hostname}, SSL_version => 'TLSv1_2'},
+          %opt,
+    );
 #>>>
 
     state $accepted_encodings = HTTP::Message::decodable();
@@ -1506,31 +1506,21 @@ sub install_built_package ($pkg, @args) {
 
     my $install_flag = $lconfig{install_built_with_Ud} ? '-Ud' : '-U';
 
-    # When the list contains multiple packages, then ask the user which ones to install
+    # When the list contains multiple packages, ask the user which ones to install
     if (    scalar(grep { not $already_installed{lc $_} } keys(%packages)) > 1
         and $lconfig{split_packages}
         and !$lconfig{noinstall}) {
 
-        say '';
-        msg(":: This group contains <<" . scalar(keys %packages) . ">> packages:");
-        say "\n" . join("\n", map { "   $_" } sort keys %packages), "\n";
+        my @reply = $term->get_reply(
+                                     print_me => "\n$c{bold}=>> Select packages to install$c{reset}",
+                                     prompt   => "$c{bold}Install$c{reset}",
+                                     choices  => [sort keys %packages],
+                                     default  => [sort keys %packages],
+                                     multi    => 1,
+                                    );
 
-        if (
-            $term->ask_yn(prompt  => "$c{bold}=>> Do you want to install other packages from this group?$c{reset}",
-                          default => 'n')
-          ) {
-
-            my @reply = $term->get_reply(
-                                         print_me => "\n$c{bold}=>> Select which packages to install$c{reset}",
-                                         prompt   => "$c{bold}Install$c{reset}",
-                                         choices  => [sort keys %packages],
-                                         default  => [sort keys %packages],
-                                         multi    => 1,
-                                        );
-
-            # Install the selected packages
-            return install_local_packages({map { lc($_) => $packages{lc($_)} } @reply}, [$install_flag, @args]);
-        }
+        # Install the selected packages
+        return install_local_packages({map { lc($_) => $packages{lc($_)} } @reply}, [$install_flag, @args]);
     }
 
     # Otherwise, install the main package only
