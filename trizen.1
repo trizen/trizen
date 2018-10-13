@@ -105,7 +105,9 @@ Display the PKGBUILD of a given AUR package. For repo packages, it displays the 
 .PP
 \fB\-l, \-\-local\fR
 .RS 4
-Build and install packages from the current directory. This option is best used in combination with \fI-G\fR. After A package is cloned in the current directory, the user can inspect or edit the build files, then \fI-Sl <pkgname>\fR will build and install the package, without pulling new changes from the AUR.
+Build and install packages from the current directory. This option is best used in combination with \fI-G\fR.
+
+After a package is cloned in the current directory, the user can inspect or edit the build files, then \fI-Sl <pkgname>\fR will build and install the package, without pulling new changes from the AUR.
 .RE
 .PP
 \fB\-u, \-\-sysupgrade\fR
@@ -120,7 +122,7 @@ Refresh package databases.
 .PP
 \fB\-c, \-\-clean\fR
 .RS 4
-Clean the cache directory of \fIpacman\fR and \fItrizen\fR. Add \fI-r\fR to clean only pacman's cache, or \fI-a\fR to clean only trizen's cache.
+Clean the cache directories of \fIpacman\fR and \fItrizen\fR. Add \fI-r\fR to clean only pacman's cache, or \fI-a\fR to clean only trizen's cache.
 .RE
 .PP
 \fB\-a, \-\-aur\fR
@@ -131,6 +133,8 @@ Only AUR operations.
 \fB\-\-devel\fR
 .RS 4
 Update VCS packages during \fI-Su\fR.
+
+In combination with \fI--needed\fR, trizen will check if a package really needs to be updated (i.e. has a new commit). Currently, only git sources are supported.
 .RE
 .PP
 \fB\-\-show-ood\fR
