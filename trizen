@@ -1124,7 +1124,8 @@ sub indent_array ($elems) {
 
 sub color_code_dependencies ($deps) {
 
-    $lconfig{'color_code_dependencies'} || return $deps;
+    $c{reset}                         || return $deps;
+    $lconfig{color_code_dependencies} || return $deps;
 
     my @aur_packages;
     my @repo_packages;
