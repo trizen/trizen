@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 13 October 2018
+# Latest edit: 30 November 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -226,7 +226,7 @@ my %lconfig = (
               );
 
 $lconfig{editor} = $ENV{VISUAL} || $ENV{EDITOR} || '/usr/bin/nano';
-$lconfig{pager} = $ENV{PAGER} || '/usr/bin/less';
+$lconfig{pager}  = $ENV{PAGER}  || '/usr/bin/less';
 
 our $CONFIG;
 
@@ -275,7 +275,7 @@ pager_mode                   => bool    Show the build files in pager mode using
 recompute_deps               => bool    Recompute the dependencies of a package after its build files are inspected.
 show_build_files_content     => bool    Show the content of the build files of a package before building it.
 show_diff_only               => bool    When the build files of a package already exist locally, show the diff only.
-show_comments                => bool    Show AUR comments for a package before building it.
+show_comments                => int     Show the `n` most recent AUR comments for a package before building it. (max: 10)
 show_inexistent              => bool    Warn about packages that do not exist in AUR, during -Su.
 show_ood                     => bool    Warn about out-of-date marked packages, during -Su.
 show_unmaintained            => bool    Warn about unmaintained packages, during -Su.
@@ -315,7 +315,7 @@ EOT
         $dumped_config =~ s/\Q$home_dir\E/\$ENV{HOME}/g;
     }
 
-    my $names_re = join('|', keys %table);
+    my $names_re  = join('|', keys %table);
     my $max_width = max(map { length($_) } split(/\n/, $dumped_config));
 
     # Add description after each configuration option
@@ -338,7 +338,7 @@ if (-e $config_file and (-s _) > 1) {
 
         $CONFIG->{clone_dir} //= $CONFIG{clone_dir};
 
-        if (join(' ', sort keys %CONFIG) ne join(' ', sort keys %$CONFIG)) {
+        if (join(' ', sort keys %CONFIG) ne join(' ', sort keys %$CONFIG) or (-M $0) < (-M $config_file)) {
             $lconfig{update_config} = 1;
         }
 
@@ -388,7 +388,7 @@ my %already_built;        # will keep track of built packages
 my %already_installed;    # will keep track of installed packages
 my %seen_package;         # will keep track of seen packages
 
-my $pkg_suffices = join('|', map { quotemeta } @package_suffices);
+my $pkg_suffices  = join('|', map { quotemeta } @package_suffices);
 my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/o;
 
 my $sudo_autorepeat_pid;
@@ -808,7 +808,7 @@ sub get_comments ($id) {
     $id // return;
     $id =~ /^\d+\z/ or return;
 
-    my $url = sprintf($aur_package_id_url, $id);
+    my $url     = sprintf($aur_package_id_url, $id);
     my $content = get($url) // return;
 
     require HTML::Entities;
@@ -830,7 +830,7 @@ sub get_comments ($id) {
         my $comment = $3;
 
         $comment =~ s{<.*?>}{}gs;
-        $author =~ s{<.*?>}{}gs;
+        $author  =~ s{<.*?>}{}gs;
         $comment = HTML::Entities::decode_entities($comment);
 
         #$comment =~ s/\h{2,}/ /g;
@@ -841,6 +841,12 @@ $c{bold}Comment by $c{bgreen}$author$c{reset}$c{bold} on $date$c{reset}
 $comment
 EOC
     }
+
+    # >1 is intentional for backwards compatibility
+    if ($lconfig{show_comments} > 1 and @comments > $lconfig{show_comments}) {
+        @comments = splice(@comments, -$lconfig{show_comments});
+    }
+
     return @comments;
 }
 
@@ -873,7 +879,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
         do {
             my %seen;
             ($lconfig{pacman_command}, grep { (/^\w/ || /^--[A-Z]/) ? !$seen{$_}++ : 1 } map { quotemeta($_) } @cmd);
-          }
+        }
     );
 
     if (    $needs_root
@@ -1160,13 +1166,13 @@ sub show_info ($info) {
       ["Popularity      : %s\n", sprintf("%.2g%%", $info->{Popularity})],
       ["Installed       : %s\n", package_is_installed($info->{Name}) ? "$c{bgreen}Yes$c{reset}" : 'No'],
       ["Out Of Date     : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
-      ["Depends On      : %s\n", indent_array(color_code_dependencies($info->{Depends} //      []))],
-      ["Make Deps       : %s\n", indent_array(color_code_dependencies($info->{MakeDepends} //  []))],
+      ["Depends On      : %s\n", indent_array(color_code_dependencies($info->{Depends}      // []))],
+      ["Make Deps       : %s\n", indent_array(color_code_dependencies($info->{MakeDepends}  // []))],
       ["Check Deps      : %s\n", indent_array(color_code_dependencies($info->{CheckDepends} // []))],
-      ["Optional Deps   : %s\n", indent_array(color_code_dependencies($info->{OptDepends} //   []))],
-      ["Provides        : %s\n", indent_array($info->{Provides} //  [])],
+      ["Optional Deps   : %s\n", indent_array(color_code_dependencies($info->{OptDepends}   // []))],
+      ["Provides        : %s\n", indent_array($info->{Provides}  // [])],
       ["Conflicts With  : %s\n", indent_array($info->{Conflicts} // [])],
-      ["Replaces        : %s\n", indent_array($info->{Replaces} //  [])],
+      ["Replaces        : %s\n", indent_array($info->{Replaces}  // [])],
       ["Package Base    : %s\n", $info->{PackageBase}],
       ["Last Update     : %s\n", scalar localtime($info->{LastModified} || $info->{FirstSubmitted})],
       ["Description     : %s\n", $info->{Description}];
@@ -1701,11 +1707,7 @@ sub install_package ($pkg) {
         print "\n", join("\n", @comments) if @comments;
     }
 
-    # Display package info
-    if (not $lconfig{noinfo}) {
-        say '';
-        show_info($info);
-    }
+    say '';
 
     # Show and edit PKGBUILD and other -T files
     show_and_edit_text_files($info);
@@ -1713,6 +1715,11 @@ sub install_package ($pkg) {
     # Recompute dependencies
     if ($lconfig{recompute_deps}) {
         recompute_dependencies($info);
+    }
+
+    # Display package info
+    if (not $lconfig{noinfo}) {
+        show_info($info);
     }
 
     foreach my $pkgname (
@@ -2001,7 +2008,7 @@ sub search_repo_packages (@keywords) {
     @keywords = map { quotemeta($_) } @keywords;
 
     my @pacman_args = get_pacman_arguments('long');
-    my @lines = split(/\n/, decode_utf8(scalar `$lconfig{pacman_command} -Ss @pacman_args @keywords`));
+    my @lines       = split(/\n/, decode_utf8(scalar `$lconfig{pacman_command} -Ss @pacman_args @keywords`));
 
     my @results;
 
@@ -2124,7 +2131,7 @@ sub interactive_search_and_install (@keywords) {
     @items{map { lc($_->{Name}) } @results} = @results;
     @items{map { lc($_->{Repository} . '/' . $_->{Name}) } @results} = @results;
 
-    my $input = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ") // return;
+    my $input             = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ") // return;
     my @selected_packages = select_packages_from_input(lc($input), \%items, \@results);
 
     my @aur_packages;
@@ -2240,7 +2247,7 @@ sub has_new_github_commit ($owner, $repo, $pkgname) {
 
     # Get info for the latest commit
     my $commit_info = get_github_commit_info($owner, $repo) // return;
-    my $commit_date = get_github_commit_date($commit_info) // return;
+    my $commit_date = get_github_commit_date($commit_info)  // return;
 
     # Return true if the commit is newer than the build-date of the package
     return is_commit_new($commit_date, $pkgname);
@@ -2250,7 +2257,7 @@ sub has_new_gitlab_commit ($owner, $repo, $pkgname) {
 
     # Get info for the latest commit
     my $commit_info = get_gitlab_commit_info($owner, $repo) // return;
-    my $commit_date = get_gitlab_commit_date($commit_info) // return;
+    my $commit_date = get_gitlab_commit_date($commit_info)  // return;
 
     # Return true if the commit is newer than the build-date of the package
     return is_commit_new($commit_date, $pkgname);
@@ -2406,7 +2413,7 @@ sub update_local_packages (@repo_packages) {
                 note(":: Unable to get info for AUR packages...");
                 $? = 1;
                 return;
-              }
+            }
         );
 
         ref($multiinfo->{results}) eq 'ARRAY' or return;
@@ -2435,7 +2442,7 @@ sub update_local_packages (@repo_packages) {
         }
 
         my $is_vcs_package = is_vcs_package($pkgname);
-        my $local_vcmp = versioncmp($packages{$pkgname}, $version);
+        my $local_vcmp     = versioncmp($packages{$pkgname}, $version);
 
         if ($local_vcmp < 0 or ($lconfig{devel} and $is_vcs_package)) {
 
