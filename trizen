@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 30 November 2018
+# Latest edit: 18 December 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -363,33 +363,11 @@ if (not -d $lconfig{clone_dir}) {
 
 my $short_arguments = 'TDFCUNQRSGabcdefghiklmnopqrstuvwxy';
 
-my @package_suffices = qw(
-  .tar.7z
-  .tar.Z
-  .tar.bz2
-  .tar.gz
-  .tar.lrz
-  .tar.lz
-  .tar.lzma
-  .tar.lzo
-  .tar.xz
-  .tgz
-  .xz
-  .7z
-  .bz2
-  .gz
-  .lzma
-  .lzo
-  .tar
-  .zip
-  );
-
 my %already_built;        # will keep track of built packages
 my %already_installed;    # will keep track of installed packages
 my %seen_package;         # will keep track of seen packages
 
-my $pkg_suffices  = join('|', map { quotemeta } @package_suffices);
-my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg(?:$pkg_suffices)\z/o;
+my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg\.[a-z0-9A-Z.]+\z/;
 
 my $sudo_autorepeat_pid;
 
