@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 18 December 2018
+# Latest edit: 26 December 2018
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -127,56 +127,54 @@ if (not -d $config_dir) {
 
 #----------------------- GLOBAL VARIABLES -----------------------#
 my %CONFIG = (
-              show_comments                => 0,
-              debug                        => 0,
-              nocolors                     => 0,
-              movepkg                      => 0,
-              noedit                       => 0,
-              noinstall                    => 0,
-              nopull                       => 0,
-              noinfo                       => 0,
-              skipinteg                    => 0,
-              force                        => 0,
-              ask_for_retry                => 1,
-              lwp_show_progress            => 0,
-              lwp_env_proxy                => 1,
-              lwp_timeout                  => 60,
-              ssl_verify_hostname          => 1,
-              packages_in_stats            => 5,
-              git_clone_depth              => 0,
-              split_packages               => 1,
-              recompute_deps               => 1,
-              pager_mode                   => 0,
-              use_sudo                     => ((-x '/usr/bin/sudo') ? 1 : 0),
-              su_command                   => '/usr/bin/su -c',
-              sudo_command                 => '/usr/bin/sudo',
-              sudo_autorepeat              => 0,
-              sudo_autorepeat_at_runtime   => 0,
-              sudo_autorepeat_interval     => 180,
-              makepkg_command              => '/usr/bin/makepkg -scf',
-              movepkg_dir                  => '/var/cache/pacman/pkg',
-              pacman_local_dir             => '/var/lib/pacman/local',
-              pacman_command               => '/usr/bin/pacman',
-              show_diff_only               => 0,
-              show_build_files_content     => 1,
-              aur_results_sort_by          => 'name',
-              aur_results_sort_order       => 'ascending',
-              aur_results_votes            => 1,
-              aur_results_popularity       => 1,
-              aur_results_last_modified    => 1,
-              aur_results_show_installed   => 1,
-              flip_results                 => 0,
-              flip_indices                 => 0,
-              show_ood                     => 0,
-              show_inexistent              => 1,
-              show_unmaintained            => 1,
-              install_built_with_Ud        => 0,
-              install_built_with_noconfirm => 0,
-              color_code_dependencies      => 1,
-              use_github_api               => 1,
-              use_gitlab_api               => 1,
-              syntax_highlighting          => ((-x '/usr/bin/highlight') ? 1 : 0),
-              syntax_highlighting_cmd      => '/usr/bin/highlight -O ansi',
+              show_comments              => 0,
+              debug                      => 0,
+              nocolors                   => 0,
+              movepkg                    => 0,
+              noedit                     => 0,
+              noinstall                  => 0,
+              nopull                     => 0,
+              noinfo                     => 0,
+              skipinteg                  => 0,
+              force                      => 0,
+              ask_for_retry              => 1,
+              lwp_show_progress          => 0,
+              lwp_env_proxy              => 1,
+              lwp_timeout                => 60,
+              ssl_verify_hostname        => 1,
+              packages_in_stats          => 5,
+              git_clone_depth            => 0,
+              split_packages             => 1,
+              recompute_deps             => 1,
+              pager_mode                 => 0,
+              use_sudo                   => ((-x '/usr/bin/sudo') ? 1 : 0),
+              su_command                 => '/usr/bin/su -c',
+              sudo_command               => '/usr/bin/sudo',
+              sudo_autorepeat            => 0,
+              sudo_autorepeat_at_runtime => 0,
+              sudo_autorepeat_interval   => 180,
+              makepkg_command            => '/usr/bin/makepkg -scf',
+              movepkg_dir                => '/var/cache/pacman/pkg',
+              pacman_local_dir           => '/var/lib/pacman/local',
+              pacman_command             => '/usr/bin/pacman',
+              show_diff_only             => 0,
+              show_build_files_content   => 1,
+              aur_results_sort_by        => 'name',
+              aur_results_sort_order     => 'ascending',
+              aur_results_votes          => 1,
+              aur_results_popularity     => 1,
+              aur_results_last_modified  => 1,
+              aur_results_show_installed => 1,
+              flip_results               => 0,
+              flip_indices               => 0,
+              show_ood                   => 0,
+              show_inexistent            => 1,
+              show_unmaintained          => 1,
+              color_code_dependencies    => 1,
+              use_github_api             => 1,
+              use_gitlab_api             => 1,
+              syntax_highlighting        => ((-x '/usr/bin/highlight') ? 1 : 0),
+              syntax_highlighting_cmd    => '/usr/bin/highlight -O ansi',
              );
 
 $CONFIG{clone_dir} = catdir(tmpdir(), "$execname-$user");
@@ -255,8 +253,6 @@ flip_indices                 => bool    In search+install mode, show the indices
 flip_results                 => bool    Show the search results in reverse order.
 force                        => bool    Pass the `--force` flag to `pacman`.
 git_clone_depth              => int     Pass the `--depth int` flag to `git clone`. (0 means no limit)
-install_built_with_Ud        => bool    Install built packages with `-Ud`, which skips dependency version checks.
-install_built_with_noconfirm => bool    Install built packages with `--noconfirm`.
 lwp_env_proxy                => bool    Use proxy settings defined in `env` (if any).
 lwp_show_progress            => bool    Show the HTTPS requests made by LWP::UserAgent to the AUR servers.
 lwp_timeout                  => int     Seconds after which an HTTPS connection is aborted.
@@ -1467,10 +1463,6 @@ sub install_local_packages ($packages, $pacman_args) {
 
 sub install_built_package ($pkg, @args) {
 
-    if ($lconfig{install_built_with_noconfirm}) {
-        push @args, '--noconfirm';
-    }
-
     # Get the list of all built packages
     chomp(my @packagelist = map { decode_utf8($_) } `/usr/bin/makepkg --packagelist`);
 
@@ -1489,7 +1481,7 @@ sub install_built_package ($pkg, @args) {
         return;
     }
 
-    my $install_flag = $lconfig{install_built_with_Ud} ? '-Ud' : '-U';
+    my $install_flag = '-U';
 
     # When the list contains multiple packages, ask the user which ones to install
     if (    scalar(grep { not $already_installed{lc $_} } keys(%packages)) > 1
