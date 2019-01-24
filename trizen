@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2010-2018 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
+# Copyright (C) 2010-2019 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 26 December 2018
+# Latest edit: 24 January 2019
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -268,7 +268,7 @@ packages_in_stats            => int     The number of packages to display in `--
 pacman_command               => str     The `pacman` command that is used internally for pacman operations.
 pacman_local_dir             => str     Absolute path to the pacman's local directory.
 pager_mode                   => bool    Show the build files in pager mode using pager.
-recompute_deps               => bool    Recompute the dependencies of a package after its build files are inspected.
+recompute_deps               => bool    Recompute the dependencies of a package (after its build files are inspected / edited).
 show_build_files_content     => bool    Show the content of the build files of a package before building it.
 show_diff_only               => bool    When the build files of a package already exist locally, show the diff only.
 show_comments                => int     Show the `n` most recent AUR comments for a package before building it. (max: 10)
@@ -2879,6 +2879,12 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
 
         # Install from current directory, given full package name
         if ($pkg =~ /$pkg_suffix_re/io and -f $pkg) {
+            push @packages, $pkg;
+            next;
+        }
+
+        # URL
+        if ($pkg =~ m{^[a-z]+://.}) {
             push @packages, $pkg;
             next;
         }
