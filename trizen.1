@@ -61,6 +61,11 @@ Install built packages from \fI--clone-dir\fR or \fI`pwd`\fR. See: \fIpacman -Uh
 Display minimal output.
 .RE
 .PP
+\fB\-a, \-\-aur\fR
+.RS 4
+Perform only AUR operations.
+.RE
+.PP
 \fB\-r, \-\-regular\fR
 .RS 4
 Perform only regular \fIpacman\fR operations (the opposite of \fI--aur\fR).
@@ -125,11 +130,6 @@ Refresh package databases.
 Clean the cache directories of \fIpacman\fR and \fItrizen\fR. Add \fI-r\fR to clean only pacman's cache, or \fI-a\fR to clean only trizen's cache.
 .RE
 .PP
-\fB\-a, \-\-aur\fR
-.RS 4
-Only AUR operations.
-.RE
-.PP
 \fB\-\-devel\fR
 .RS 4
 Update VCS packages during \fI-Su\fR.
@@ -192,7 +192,7 @@ Install packages as explicitly installed.
 Pass the \fI--force\fR argument to \fIpacman\fR.
 .RE
 .PP
-\fB\-\-force\fR
+\fB\-\-skipinteg\fR
 .RS 4
 Pass the \fI--skipinteg\fR argument to \fImakepkg\fR.
 .RE
