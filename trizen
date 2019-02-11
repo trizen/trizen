@@ -809,6 +809,7 @@ sub get_comments ($id) {
 
         #$comment =~ s/\h{2,}/ /g;
         $comment = strip_space($comment);
+        $comment =~ s/[\b]+//g;
 
         unshift @comments, <<"EOC";
 $c{bold}Comment by $c{bgreen}$author$c{reset}$c{bold} on $date$c{reset}
@@ -1042,7 +1043,7 @@ sub download_package ($pkgname, $path) {
         $info->{_exists_in_cache} = 1;
 
 #<<<
-        print decode_utf8(scalar `/usr/bin/git -C \Q$dir_name\E diff --no-ext-diff $old_commit_hash --color=always ':!.SRCINFO'`);
+        print sanitize_output(decode_utf8(scalar `/usr/bin/git -C \Q$dir_name\E diff --no-ext-diff $old_commit_hash --color=always ':!.SRCINFO'`));
 #>>>
     }
     else {
@@ -1269,6 +1270,12 @@ sub recompute_dependencies ($info) {
     return 1;
 }
 
+sub sanitize_output ($str) {
+    $str = strip_space($str);
+    $str =~ s/[\b]+//g;    # remove backspace escapes
+    $str;
+}
+
 sub output_file_content ($file) {
 
     if ($lconfig{pager_mode}) {
@@ -1292,9 +1299,10 @@ sub output_file_content ($file) {
             $syntax = $1;
         }
 
-        system(join(' ', $lconfig{syntax_highlighting_cmd}, "--syntax=$syntax", '--force', quotemeta($file)));
+        my $cmd = join(' ', $lconfig{syntax_highlighting_cmd}, "--syntax=$syntax", '--force', quotemeta($file));
 
-        say '';
+        say sanitize_output(scalar `$cmd`) . "\n";
+
         return 1;
     }
 
@@ -1305,10 +1313,7 @@ sub output_file_content ($file) {
 
     eval {
         local $/ = undef;
-        my $content = <$fh>;
-        $content = reverse($content);
-        $content =~ s/^\s+//;
-        say scalar reverse($content) . "\n";
+        say sanitize_output(scalar <$fh>) . "\n";
     };
 
     $@ && return;
@@ -2766,7 +2771,12 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             say '';
             msg(":: PKGBUILD of <<$pkg>>");
             say '';
-            say <$fh>;
+            say sanitize_output(
+                do {
+                    local $/;
+                    scalar <$fh>;
+                }
+            );
 
             close $fh;
         }
