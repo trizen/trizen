@@ -1133,7 +1133,7 @@ sub show_info ($info) {
       ["Name            : %s\n", "$c{bold}$info->{Name}$c{reset}"],
       ["Version         : %s\n", $info->{Version} // 'Unknown'],
       ["Maintainer      : %s\n", $info->{Maintainer} // "$c{bred}None$c{reset}"],
-      ["URL             : %s\n", $info->{URL}],
+      ["URL             : %s\n", $info->{URL} // 'None'],
       ["AUR URL         : %s\n", sprintf($aur_package_id_url, $info->{ID})],
       ["License         : %s\n", indent_array($info->{License} // [])],
       ["Votes           : %s\n", $info->{NumVotes}],
