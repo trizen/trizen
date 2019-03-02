@@ -1092,11 +1092,13 @@ sub get_rpc_info ($pkgname) {
 }
 
 sub indent_array ($elems) {
-    my $first = shift(@$elems) // 'None';
 
-    @$elems or return $first;
+    my @copy = @$elems;
+    my $first = shift(@copy) // 'None';
 
-    my $rest = join("\n", @$elems);
+    @copy or return $first;
+
+    my $rest = join("\n", @copy);
     $rest =~ s/^\s+//gm;
     $rest =~ s/^/' ' x 18/gem;
 
