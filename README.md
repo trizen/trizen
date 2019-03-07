@@ -54,25 +54,26 @@ usage: trizen [options] [pkgname] [pkgname] [...]
 
 Main options:
 
-    -S, --sync      : install packages (see: trizen -Sh)
-    -C, --comments  : display AUR comments for a package
-    -G, --get       : clones a package in the current directory
-    -R, --remove    : remove packages from the system (see: pacman -Rh)
-    -Q, --query     : query the package database (see: pacman -Qh)
-    -F, --files     : query the files database (see: pacman -Fh)
-    -D, --database  : operate on the package database (see: pacman -Dh)
-    -T, --deptest   : check dependencies (see: pacman -Th)
-    -U, --upgrade   : install built packages from '--clone-dir' or `pwd`
+    -S, --sync         : install packages (see: trizen -Sh)
+    -C, --comments     : display AUR comments for a package
+    -G, --get          : clones a package in the current directory
+    -R, --remove       : remove packages from the system (see: pacman -Rh)
+    -Q, --query        : query the package database (see: pacman -Qh)
+    -F, --files        : query the files database (see: pacman -Fh)
+    -D, --database     : operate on the package database (see: pacman -Dh)
+    -T, --deptest      : check dependencies (see: pacman -Th)
+    -U, --upgrade      : install built packages from '--clone-dir' or `pwd`
 
 Other options:
 
-    -q, --quiet     : do not display any warnings
-    -r, --regular   : use only the regular repositories
-        --stats     : show stats about the installed packages
-        --nocolors  : disable text colors
-        --debug     : activate the debug/verbose mode
-        --help      : print this message and exit
-        --version   : print version and exit
+    -q, --quiet        : do not display any warnings
+    -r, --regular      : use only the regular repositories
+        --stats        : show stats about the installed packages
+        --nocolors     : disable text colors
+        --forcecolors  : force colors when not writing to STDOUT
+        --debug        : activate the debug/verbose mode
+        --help         : print this message and exit
+        --version      : print version and exit
 
 See also:
 

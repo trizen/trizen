@@ -115,9 +115,16 @@ if (not $stdin_on_tty and any { $_ eq '-' } @ARGV) {
 my %args_count;
 ++$args_count{substr($_, 2) =~ tr/-/_/r} for grep { /^--\w/ } @ARGV;
 
-# Disable colors
-if (not $stdout_on_tty or (any { $_ eq '--nocolors' } @ARGV)) {
-    %c = map { ($_ => "") } keys %c;
+my $colors = 2;
+if (not $stdout_on_tty) {
+    $colors = 1;
+}
+if (any { $_ eq '--nocolors' } @ARGV) {
+    $colors = 0;
+}
+
+if (any { $_ eq '--forcecolors' } @ARGV) {
+    $colors = 3;
 }
 
 if (not -d $config_dir) {
@@ -130,6 +137,7 @@ my %CONFIG = (
               show_comments              => 0,
               debug                      => 0,
               nocolors                   => 0,
+              forcecolors                => 0,
               movepkg                    => 0,
               noedit                     => 0,
               noinstall                  => 0,
@@ -260,6 +268,7 @@ makepkg_command              => str     The `makepkg` command that is used inter
 movepkg                      => bool    Move built packages in the directory `movepkg_dir`.
 movepkg_dir                  => str     Absolute path to the directory where to move built packages (with `movepkg`).
 nocolors                     => bool    Disable output colors for `$execname`.
+forcecolors                  => bool    Force output colors for `$execname`.
 noedit                       => bool    Do not prompt to edit files when installing an AUR package.
 noinfo                       => bool    Do not display package information when installing an AUR package.
 noinstall                    => bool    Do not install built packages -- builds only.
@@ -407,13 +416,14 @@ $c{bgreen}Main options:$c{reset}
 
 $c{bgreen}Other options:$c{reset}
 
-    $c{bold}-q$c{reset}, $c{bold}--quiet$c{reset}     : do not display any warnings
-    $c{bold}-r$c{reset}, $c{bold}--regular$c{reset}   : use only the regular repositories
-        $c{bold}--stats$c{reset}     : show stats about the installed packages
-        $c{bold}--nocolors$c{reset}  : disable text colors
-        $c{bold}--debug$c{reset}     : activate the debug/verbose mode
-        $c{bold}--help$c{reset}      : print this message and exit
-        $c{bold}--version$c{reset}   : print version and exit
+    $c{bold}-q$c{reset}, $c{bold}--quiet$c{reset}        : do not display any warnings
+    $c{bold}-r$c{reset}, $c{bold}--regular$c{reset}      : use only the regular repositories
+        $c{bold}--stats$c{reset}        : show stats about the installed packages
+        $c{bold}--nocolors$c{reset}     : disable text colors
+        $c{bold}--forcecolors$c{reset}  : force colors when not writing to STDOUT
+        $c{bold}--debug$c{reset}        : activate the debug/verbose mode
+        $c{bold}--help$c{reset}         : print this message and exit
+        $c{bold}--version$c{reset}      : print version and exit
 
 $c{bgreen}See also:$c{reset}
 
@@ -628,7 +638,17 @@ if ($lconfig{quiet}) {
     $SIG{__WARN__} = sub { };
 }
 
-if ($lconfig{nocolors}) {
+if (($colors == 1) or ($colors == 2)) {
+    if ($lconfig{nocolors}) {
+        $colors = 0;
+    }
+    if ($lconfig{forcecolors}) {
+        $colors = 3;
+    }
+}
+
+# Disable colors respecting parameter > config precedence
+if (($colors == 0) or ($colors == 1)) {
     %c = map { $_ => q{} } keys %c;
 }
 
