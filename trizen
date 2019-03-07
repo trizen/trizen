@@ -91,16 +91,28 @@ binmode(STDERR, ':utf8');
 local $ENV{HTTPS_VERSION} = 3;
 
 #----------------------- COLORS -----------------------#
-my %c = (
-         byellow => (BOLD YELLOW),
-         bpurple => (BOLD MAGENTA),
-         bblue   => (BOLD BLUE),
-         bgreen  => (BOLD GREEN),
-         bold    => (BOLD),
-         bred    => (BOLD RED),
-         bcyan   => (BOLD CYAN),
-         reset   => (RESET),
-        );
+my %c;
+
+sub enable_colors {
+    %c = (
+          byellow => (BOLD YELLOW),
+          bpurple => (BOLD MAGENTA),
+          bblue   => (BOLD BLUE),
+          bgreen  => (BOLD GREEN),
+          bold    => (BOLD),
+          bred    => (BOLD RED),
+          bcyan   => (BOLD CYAN),
+          reset   => (RESET),
+         );
+}
+
+sub disable_colors {
+    %c = map { $_ => q{} } keys %c;
+}
+
+enable_colors();    # enable colors by default
+
+#----------------------- ARGV -----------------------#
 
 my $stdout_on_tty = -t STDOUT;
 my $stdin_on_tty  = -t STDIN;
@@ -115,16 +127,8 @@ if (not $stdin_on_tty and any { $_ eq '-' } @ARGV) {
 my %args_count;
 ++$args_count{substr($_, 2) =~ tr/-/_/r} for grep { /^--\w/ } @ARGV;
 
-my $colors = 2;
-if (not $stdout_on_tty) {
-    $colors = 1;
-}
-if (any { $_ eq '--nocolors' } @ARGV) {
-    $colors = 0;
-}
-
-if (any { $_ eq '--forcecolors' } @ARGV) {
-    $colors = 3;
+if (not $stdout_on_tty or any { $_ eq '--nocolors' } @ARGV) {
+    disable_colors() if not any { $_ eq '--forcecolors' } @ARGV;
 }
 
 if (not -d $config_dir) {
@@ -268,7 +272,7 @@ makepkg_command              => str     The `makepkg` command that is used inter
 movepkg                      => bool    Move built packages in the directory `movepkg_dir`.
 movepkg_dir                  => str     Absolute path to the directory where to move built packages (with `movepkg`).
 nocolors                     => bool    Disable output colors for `$execname`.
-forcecolors                  => bool    Force output colors for `$execname`.
+forcecolors                  => bool    Force output colors even when not writing to STDOUT.
 noedit                       => bool    Do not prompt to edit files when installing an AUR package.
 noinfo                       => bool    Do not display package information when installing an AUR package.
 noinstall                    => bool    Do not install built packages -- builds only.
@@ -638,18 +642,12 @@ if ($lconfig{quiet}) {
     $SIG{__WARN__} = sub { };
 }
 
-if (($colors == 1) or ($colors == 2)) {
-    if ($lconfig{nocolors}) {
-        $colors = 0;
-    }
-    if ($lconfig{forcecolors}) {
-        $colors = 3;
-    }
+# Enable/disable colors
+if ($lconfig{forcecolors}) {
+    enable_colors();
 }
-
-# Disable colors respecting parameter > config precedence
-if (($colors == 0) or ($colors == 1)) {
-    %c = map { $_ => q{} } keys %c;
+elsif ($lconfig{nocolors}) {
+    disable_colors();
 }
 
 if ($lconfig{movepkg}) {
@@ -1113,7 +1111,7 @@ sub get_rpc_info ($pkgname) {
 
 sub indent_array ($elems) {
 
-    my @copy = @$elems;
+    my @copy  = @$elems;
     my $first = shift(@copy) // 'None';
 
     @copy or return $first;
