@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 02 March 2019
+# Latest edit: 02 April 2019
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -165,6 +165,7 @@ my %CONFIG = (
               sudo_autorepeat            => 0,
               sudo_autorepeat_at_runtime => 0,
               sudo_autorepeat_interval   => 180,
+              sudo_remove_timestamp      => 1,
               makepkg_command            => '/usr/bin/makepkg -scf',
               movepkg_dir                => '/var/cache/pacman/pkg',
               pacman_local_dir           => '/var/lib/pacman/local',
@@ -296,6 +297,7 @@ sudo_autorepeat              => bool    Automatically repeat `sudo -v` in the ba
 sudo_autorepeat_at_runtime   => bool    Execute `sudo -v` when `$execname` is first executed and apply the behavior of `sudo_autorepeat`.
 sudo_autorepeat_interval     => int     Interval, in seconds, after which `sudo -v` is executed in background (with `sudo_autorepeat`).
 sudo_command                 => str     Command used when special permissions are required and `use_sudo` is set to 1.
+sudo_remove_timestamp        => bool    Remove the cached sudo credentials before `makepkg` is executed (`sudo --remove-timestamp`).
 syntax_highlighting          => bool    Syntax hightling of the build files, using the `highlight` tool from [community].
 syntax_highlighting_cmd      => str     The `highlight` command used in highlighting the syntax of the build files (with `syntax_highlighting`).
 use_github_api               => bool    Check GitHub sources for updates using GitHub's API. (during `--devel --needed`)
@@ -890,7 +892,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
                                : $pacman_command
                               );
 
-    msg(":: Pacman command: " . ($user_pacman_command =~ s/\\(.)/$1/gr)) if $lconfig{debug};
+    msg(":: Pacman command: " . ($user_pacman_command =~ s/\\(.)/$1/gr));
 
     {
         system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
@@ -1703,6 +1705,12 @@ sub install_package ($pkg) {
     }
 
     say '';
+
+    if ($lconfig{use_sudo} and $lconfig{sudo_remove_timestamp}) {
+        msg(":: Removing sudo timestamp...") if $lconfig{debug};
+        system("/usr/bin/sudo", "--remove-timestamp");
+        msg(":: Failed with code <<$?>>!") if $?;
+    }
 
     # Show and edit PKGBUILD and other -T files
     show_and_edit_text_files($info);
