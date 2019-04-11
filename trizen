@@ -1709,7 +1709,7 @@ sub install_package ($pkg) {
     if ($lconfig{use_sudo} and $lconfig{sudo_remove_timestamp}) {
         msg(":: Removing sudo timestamp...") if $lconfig{debug};
         system("/usr/bin/sudo", "--remove-timestamp");
-        msg(":: Failed with code <<$?>>!") if $?;
+        note(":: Failed to remove sudo timestamp - exit code: {!$?!}") if $?;
     }
 
     # Show and edit PKGBUILD and other -T files
