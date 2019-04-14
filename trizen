@@ -1325,7 +1325,7 @@ sub output_file_content ($file) {
 
         my $cmd = join(' ', $lconfig{syntax_highlighting_cmd}, "--syntax=$syntax", '--force', quotemeta($file));
 
-        say sanitize_output(scalar `$cmd`) . "\n";
+        say sanitize_output(decode_utf8(scalar `$cmd`)) . "\n";
 
         return 1;
     }
