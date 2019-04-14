@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 02 April 2019
+# Latest edit: 14 April 2019
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -892,7 +892,9 @@ sub execute_pacman_command ($needs_root, @cmd) {
                                : $pacman_command
                               );
 
-    msg(":: Pacman command: " . ($user_pacman_command =~ s/\\(.)/$1/gr));
+    if ($lconfig{debug} or $needs_root) {
+        msg(":: Pacman command: " . ($user_pacman_command =~ s/\\(.)/$1/gr));
+    }
 
     {
         system($lconfig{as_root} ? $pacman_command : $user_pacman_command);
