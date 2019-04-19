@@ -1832,9 +1832,10 @@ sub clean_cache () {
 
     if (not $tmp_clonedir) {
 
+        say "\nTrizen's cache directory: $lconfig{clone_dir}";
 #<<<
         $term->ask_yn(
-            prompt  => "$c{bold}=>> Remove the content of $lconfig{clone_dir}?$c{reset}",
+            prompt  => "$c{bblue}::$c{reset}$c{bold} Do you want to clean trizen's cache directory?",
             default => 'n'
         ) || return;
 #>>>
