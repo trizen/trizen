@@ -1835,7 +1835,7 @@ sub clean_cache () {
         say "\nTrizen's cache directory: $lconfig{clone_dir}";
 #<<<
         $term->ask_yn(
-            prompt  => "$c{bblue}::$c{reset}$c{bold} Do you want to clean trizen's cache directory?",
+            prompt  => "$c{bblue}::$c{reset}$c{bold} Do you want to clean trizen's cache directory?$c{reset}",
             default => 'n'
         ) || return;
 #>>>
