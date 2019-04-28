@@ -2692,17 +2692,23 @@ $c{bblue}::$c{reset} $c{bold}Oldest installed packages:$c{byellow} @{[map { $_->
 $c{bblue}::$c{reset} $c{bold}Newest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{installed}{new}}]}$c{reset}\n
 STATS
 
-    print "$c{bblue}::$c{reset} $c{bold}Unneeded packages:$c{byellow}";
+    my @unneeded_pkgs;
 
     while (my ($key, $value) = each %reason_deps) {
         next if exists $dependencies{$key};
         if (ref($value) eq 'ARRAY') {
             next if first { exists($dependencies{$_}) } @$value;
         }
-        print qq{ $key};
+        push @unneeded_pkgs, $key;
     }
 
-    say $c{reset};
+    if (@unneeded_pkgs) {
+        say "$c{bblue}::$c{reset} $c{bold}Unneeded packages:$c{byellow} ", join(' ', @unneeded_pkgs), $c{reset};
+    }
+    else {
+        say "$c{bblue}::$c{reset} $c{bold}No unneeded packages found...$c{reset}";
+    }
+
     main_quit();
 }
 
