@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 14 April 2019
+# Latest edit: 30 May 2019
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -893,7 +893,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
                               );
 
     if ($lconfig{debug} or $needs_root) {
-        msg(":: Pacman command: " . ($user_pacman_command =~ s/\\(.)/$1/gr));
+        msg(":: $c{bold}Pacman command: " . ($user_pacman_command =~ s/\\(.)/$1/gr));
     }
 
     {
@@ -1054,7 +1054,7 @@ sub download_package ($pkgname, $path) {
 
         if (!$lconfig{nopull}) {
 
-            msg(":: Pulling AUR changes: $pkg_base");
+            msg(":: $c{bold}Pulling AUR changes: $pkg_base");
 
 #<<<
             system('/usr/bin/git', '-C', $dir_name, 'reset', '--hard', 'HEAD', '--quiet') && return;
@@ -1070,7 +1070,7 @@ sub download_package ($pkgname, $path) {
     }
     else {
 
-        msg(":: Cloning AUR package: $pkg_base");
+        msg(":: $c{bold}Cloning AUR package: $pkg_base");
 
         my @flags;
 
@@ -1308,7 +1308,7 @@ sub output_file_content ($file) {
     }
 
     say '-' x 80;
-    msg(":: Content of <<$file>>");
+    msg(":: $c{bold}Content of$c{reset} <<$file>>");
     say '-' x 80, "\n";
 
     # Syntax highlighting of the build files, using the `highlight` tool
@@ -1835,7 +1835,7 @@ sub clean_cache () {
         say "\nTrizen's cache directory: $lconfig{clone_dir}";
 #<<<
         $term->ask_yn(
-            prompt  => "$c{bblue}::$c{reset}$c{bold} Do you want to clean trizen's cache directory?$c{reset}",
+            prompt  => "$c{bblue}::$c{reset}$c{bold} Do you want to clean trizen's cache?$c{reset}",
             default => 'n'
         ) || return;
 #>>>
@@ -2578,7 +2578,7 @@ sub update_local_packages (@repo_packages) {
     }
 
     if (not keys %for_update) {
-        msg(":: No AUR updates found...");
+        msg(":: $c{bold}No AUR updates found...$c{reset}");
         return 1;
     }
 
