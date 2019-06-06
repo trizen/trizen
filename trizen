@@ -811,7 +811,7 @@ sub get_comments ($id) {
     while (
         $content =~ m{
             <h4\b.*?>\s*
-                (\S(?-s:.*?))\ commented\ on\ (\d\d\d\d-\d\d-\d\d\ \d\d:\d\d)
+                (\S(?-s:.*?))\ commented\ on\ (?:<.*?>)?(\d\d\d\d-\d\d-\d\d\ \d\d:\d\d)(?:<.*?>)?
              \s*</h4>\s*
             <div\b.*?class="article-content">\s*
                 <div> \s* (.*?) </div>\s*
@@ -1835,7 +1835,7 @@ sub clean_cache () {
         say "\nTrizen's cache directory: $lconfig{clone_dir}";
 #<<<
         $term->ask_yn(
-            prompt  => "$c{bblue}::$c{reset}$c{bold} Do you want to clean trizen's cache?$c{reset}",
+            prompt  => "$c{bblue}::$c{reset}$c{bold} Do you want to remove trizen's cache?$c{reset}",
             default => 'n'
         ) || return;
 #>>>
