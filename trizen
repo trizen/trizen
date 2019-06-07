@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 03 June 2019
+# Latest edit: 07 June 2019
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -57,7 +57,7 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.59';
+my $version  = '1.60';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
