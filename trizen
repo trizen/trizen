@@ -2821,6 +2821,18 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         }
     }
 
+    # If `perl` gets updated along with a Perl module that has some parts written in C, then the
+    # module will fail to load later on, since `trizen` was executed with the older verison of `perl`.
+    # Therefore, we load all the critical modules here, to prevent a potential crash in the future. (fixes #206)
+    require JSON;
+    require Time::Piece;
+    require HTTP::Message;
+    require LWP::UserAgent;         # also loads Scalar::Util
+    require LWP::Protocol::https;
+    require HTML::Entities;
+    require File::Copy;
+    require File::Basename;
+
     my @aur_packages;
     my @repo_packages;
 
