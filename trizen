@@ -31,6 +31,7 @@
 #   JJK96         - https://github.com/JJK96
 #   nicman23      - https://github.com/nicman23
 #   DragoonAethis - https://github.com/DragoonAethis
+#   Beatussum     - https://github.com/beatussum
 
 # Full list of contributors:
 #   https://github.com/trizen/trizen/graphs/contributors
@@ -47,6 +48,7 @@ use warnings;
 
 use experimental qw(signatures);
 
+use List::MoreUtils qw(each_array);
 use List::Util qw(first any all max);
 use Encode qw(decode_utf8);
 use Getopt::Std qw(getopts);
@@ -56,6 +58,9 @@ use Term::ANSIColor qw(:constants);
 
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
+
+use Locale::TextDomain qw(trizen);
+use POSIX;     # Needed for setlocale()
 
 my $version  = '1.60';
 my $execname = 'trizen';
@@ -89,6 +94,55 @@ binmode(STDERR, ':utf8');
 
 # Prefer HTTPS v3
 local $ENV{HTTPS_VERSION} = 3;
+
+sub ask_yn ($term, %hash) {
+    my $yes = __('yes');
+    my $no = __('no');
+
+    my $pyes = substr($yes, 0, 1);
+    my $pno = substr($no, 0, 1);
+    my $syes = substr($yes, 1, length($yes) - 1);
+    my $sno = substr($no, 1, length($no) - 1);
+
+    my $tmpl = {
+        default     => { default => undef, allow => [qw|0 1|],
+                                                        strict_type => 1 },
+        prompt      => { default => '', required => 1,  strict_type => 1 },
+        print_me    => { default => '',                 strict_type => 1 },
+        multi       => { default => 0,                  no_override => 1 },
+        choices     => { default => [ $pyes, $pno ],    no_override => 1 },
+        allow       => { default => [qr/^$pyes(?:$syes)?$/i, qr/^$pno(?:$sno)?$/i],
+                         no_override => 1
+                       },
+    };
+
+    my $args = Term::UI::check( $tmpl, \%hash, 1 ) or return;
+
+    ### uppercase the default choice, if there is one, to be added
+    ### to the prompt in a 'foo? [Y/n]' type style.
+    my $prompt_add;
+    {   my @list = @{$args->{choices}};
+        if( defined $args->{default} ) {
+
+            ### if you supplied the default as a boolean, rather than y/n
+            ### transform it to a y/n now
+            $args->{default} = $args->{default} =~ /\d/
+                                ? { 0 => $pno, 1 => $pyes }->{ $args->{default} }
+                                : $args->{default};
+
+            @list = map { lc $args->{default} eq lc $_
+                                ? uc $args->{default}
+                                : $_
+                    } @list;
+        }
+
+        $prompt_add .= join("/", @list);
+    }
+
+    my $rv = $term->_tt_readline( %$args, prompt_add => $prompt_add );
+
+    return $rv =~ /^$pyes/i ? 1 : 0;
+}
 
 #----------------------- COLORS -----------------------#
 my %c;
@@ -133,7 +187,8 @@ if (not $stdout_on_tty or any { $_ eq '--nocolors' } @ARGV) {
 
 if (not -d $config_dir) {
     make_path($config_dir)
-      or note(":: Unable to create directory <<$config_dir>>: {!$!!}");
+      or note(':: ' . __x('Unable to create directory <<{config_dir}>>: {!{error}!}',
+                          config_file => $config_dir, error => $!));
 }
 
 #----------------------- GLOBAL VARIABLES -----------------------#
@@ -243,67 +298,118 @@ our $CONFIG;
 
 sub dump_configuration ($config, $configuration_file) {
 
-    my $config_header = <<"EOH";
-#!/usr/bin/perl
+    my $config_header =
+"#!/usr/bin/perl\n\n" .
+'#' . __x('{execname} configuration file', execname => $execname) . "\n" .
+'#' . __px('About the configuration file', 'Updated on {time}', time => ${\(scalar localtime)}) . "\n\n";
 
-# $execname configuration file
-# Updated on ${\(scalar localtime)}
+    sub config_section ($config_name, $config_type, $config_desc) {
+        sprintf("%s => %s %s\n", $config_name, $config_type, $config_desc);
+    }
 
-EOH
-
-    my $config_options_help = <<"EOT";
-aur_results_last_modified    => bool    Show the date when the packages were last updated in AUR results.
-aur_results_popularity       => bool    Show the popularity score in AUR results.
-aur_results_show_installed   => bool    Show when a package is installed in AUR results.
-aur_results_sort_by          => str     Sort the AUR results by "name", "votes", "popularity" or "date".
-aur_results_sort_order       => str     Sort the AUR results in "ascending" or "descending" order.
-aur_results_votes            => bool    Show the number of votes in AUR results.
-ask_for_retry                => bool    When `makepkg` fails to build a package, offer the option for trying again.
-clone_dir                    => str     Absolute path to the directory where to clone and build packages.
-color_code_dependencies      => bool    Display the dependencies of a package in specific colors (green = installed; cyan = in repo; purple = in AUR).
-debug                        => bool    Verbose mode.
-flip_indices                 => bool    In search+install mode, show the indices of packages in reverse order.
-flip_results                 => bool    Show the search results in reverse order.
-force                        => bool    Pass the `--force` flag to `pacman`.
-git_clone_depth              => int     Pass the `--depth int` flag to `git clone`. (0 means no limit)
-lwp_env_proxy                => bool    Use proxy settings defined in `env` (if any).
-lwp_show_progress            => bool    Show the HTTPS requests made by LWP::UserAgent to the AUR servers.
-lwp_timeout                  => int     Seconds after which an HTTPS connection is aborted.
-makepkg_command              => str     The `makepkg` command that is used internally in building a package.
-movepkg                      => bool    Move built packages in the directory `movepkg_dir`.
-movepkg_dir                  => str     Absolute path to the directory where to move built packages (with `movepkg`).
-nocolors                     => bool    Disable output colors for `$execname`.
-forcecolors                  => bool    Force output colors even when not writing to STDOUT.
-noedit                       => bool    Do not prompt to edit files when installing an AUR package.
-noinfo                       => bool    Do not display package information when installing an AUR package.
-noinstall                    => bool    Do not install built packages -- builds only.
-nopull                       => bool    Do not `git pull` new changes from the AUR git server.
-packages_in_stats            => int     The number of packages to display in `--stats`
-pacman_command               => str     The `pacman` command that is used internally for pacman operations.
-pacman_local_dir             => str     Absolute path to the pacman's local directory.
-pager_mode                   => bool    Show the build files in pager mode using pager.
-recompute_deps               => bool    Recompute the dependencies of a package (after its build files are inspected / edited).
-show_build_files_content     => bool    Show the content of the build files of a package before building it.
-show_diff_only               => bool    When the build files of a package already exist locally, show the diff only.
-show_comments                => int     Show the `n` most recent AUR comments for a package before building it. (max: 10)
-show_inexistent              => bool    Warn about packages that do not exist in AUR, during -Su.
-show_ood                     => bool    Warn about out-of-date marked packages, during -Su.
-show_unmaintained            => bool    Warn about unmaintained packages, during -Su.
-skipinteg                    => bool    Pass the `--skipinteg` argument to `makepkg`.
-split_packages               => bool    Ask about installing the other parts of a split package.
-ssl_verify_hostname          => bool    Ensure LWP::UserAgent connects to servers that have a valid certificate.
-su_command                   => str     Command used when special permissions are required and `use_sudo` is set to 0.
-sudo_autorepeat              => bool    Automatically repeat `sudo -v` in the background after a `sudo` command was first executed.
-sudo_autorepeat_at_runtime   => bool    Execute `sudo -v` when `$execname` is first executed and apply the behavior of `sudo_autorepeat`.
-sudo_autorepeat_interval     => int     Interval, in seconds, after which `sudo -v` is executed in background (with `sudo_autorepeat`).
-sudo_command                 => str     Command used when special permissions are required and `use_sudo` is set to 1.
-sudo_remove_timestamp        => bool    Remove the cached sudo credentials before `makepkg` is executed (`sudo --remove-timestamp`).
-syntax_highlighting          => bool    Syntax hightling of the build files, using the `highlight` tool from [community].
-syntax_highlighting_cmd      => str     The `highlight` command used in highlighting the syntax of the build files (with `syntax_highlighting`).
-use_github_api               => bool    Check GitHub sources for updates using GitHub's API. (during `--devel --needed`)
-use_gitlab_api               => bool    Check GitLab sources for updates using GitLab's API. (during `--devel --needed`)
-use_sudo                     => bool    Use the `sudo` command when special permissions are required.
-EOT
+    my $config_options_help =
+config_section('aur_results_last_modified', 'bool',
+    __('Show the date when the packages were last updated in AUR results.')) .
+config_section('aur_results_popularity', 'bool',
+    __('Show the popularity score in AUR results')) .
+config_section('aur_results_show_installed', 'bool',
+    __('Show when a package is installed in AUR results.')) .
+config_section('aur_results_sort_by', 'str',
+    __('Sort the AUR results by "name", "votes", "popularity" or "date"')) .
+config_section('aur_results_sort_order', 'str',
+    __('Sort the AUR results in "ascending" or "descending" order.')) .
+config_section('aur_results_votes', 'bool',
+    __('Show the number of votes in AUR results.')) .
+config_section('ask_for_retry', 'bool',
+    __('When `makepkg` fails to build a package, offer the option for trying again.')) .
+config_section('clone_dir', 'str',
+    __('Absolute path to the directory where to clone and build packages.')) .
+config_section('color_code_dependencies', 'bool',
+    __('Display the dependencies of a package in specific colors (green = installed; cyan = in repo; purple = in AUR).')) .
+config_section('debug', 'bool',
+    __('Verbose mode.')) .
+config_section('flip_indices', 'bool',
+    __('In search+install mode, show the indices of packages in reverse order.')) .
+config_section('flip_results', 'bool',
+    __('Show the search results in reverse order.')) .
+config_section('force', 'bool',
+    __('Pass the `--force` flag to `pacman`.')) .
+config_section('git_clone_depth', 'int',
+    __('Pass the `--depth int` flag to `git clone`. (0 means no limit)')) .
+config_section('lwp_env_proxy', 'bool',
+    __('Use proxy settings defined in `env` (if any).')) .
+config_section('lwp_show_progress', 'bool',
+    __('Show the HTTPS requests made by LWP::UserAgent to the AUR servers.')) .
+config_section('lwp_timeout', 'int',
+    __('Seconds after which an HTTPS connection is aborted.')) .
+config_section('makepkg_command', 'str',
+    __('The `makepkg` command that is used internally in building a package.')) .
+config_section('movepkg', 'bool',
+    __('Move built packages in the directory `movepkg_dir`.')) .
+config_section('movepkg_dir', 'str',
+    __('Absolute path to the directory where to move built packages (with `movepkg`).')) .
+config_section('nocolors', 'bool',
+    __x('Disable output colors for `{execname}`.', execname => $execname)) .
+config_section('forcecolors', 'bool',
+    __('Force output colors even when not writing to STDOUT.')) .
+config_section('noedit', 'bool',
+    __('Do not prompt to edit files when installing an AUR package.')) .
+config_section('noinfo', 'bool',
+    __('Do not display package information when installing an AUR package.')) .
+config_section('noinstall', 'bool',
+    __('Do not install built packages -- builds only.')) .
+config_section('nopull', 'bool',
+    __('Do not `git pull` new changes from the AUR git server.')) .
+config_section('packages_in_stats', 'int',
+    __('The number of packages to display in `--stats`')) .
+config_section('pacman_command', 'str',
+    __('The `pacman` command that is used internally for pacman operations.')) .
+config_section('pacman_local_dir', 'str',
+    __("Absolute path to the pacman's local directory.")) .
+config_section('pager_mode', 'bool',
+    __('Show the build files in pager mode using pager.')) .
+config_section('recompute_deps', 'bool',
+    __('Recompute the dependencies of a package (after its build files are inspected / edited).')) .
+config_section('show_build_files_content', 'bool',
+    __('Show the content of the build files of a package before building it.')) .
+config_section('show_diff_only', 'bool',
+    __('When the build files of a package already exist locally, show the diff only.')) .
+config_section('show_comments', 'int',
+    __('Show the `n` most recent AUR comments for a package before building it. (max: 10)')) .
+config_section('show_inexistent', 'bool',
+    __('Warn about packages that do not exist in AUR, during -Su.')) .
+config_section('show_ood', 'bool',
+    __('Warn about out-of-date marked packages, during -Su.')) .
+config_section('show_unmaintained', 'bool',
+    __('Warn about unmaintained packages, during -Su.')) .
+config_section('skipinteg', 'bool',
+    __('Pass the `--skipinteg` argument to `makepkg`.')) .
+config_section('split_packages', 'bool',
+    __('Ask about installing the other parts of a split package.')) .
+config_section('ssl_verify_hostname', 'bool',
+    __('Ensure LWP::UserAgent connects to servers that have a valid certificate.')) .
+config_section('su_command', 'str',
+    __('Command used when special permissions are required and `use_sudo` is set to 0.')) .
+config_section('sudo_autorepeat', 'bool',
+    __('Automatically repeat `sudo -v` in the background after a `sudo` command was first executed.')) .
+config_section('sudo_autorepeat_at_runtime', 'bool',
+    __x('Execute `sudo -v` when `{execname}` is first executed and apply the behavior of `sudo_autorepeat`.', execname => $execname)) .
+config_section('sudo_autorepeat_interval', 'int',
+    __('Interval, in seconds, after which `sudo -v` is executed in background (with `sudo_autorepeat`).')) .
+config_section('sudo_command', 'str',
+    __('Command used when special permissions are required and `use_sudo` is set to 1.')) .
+config_section('sudo_remove_timestamp', 'bool',
+    __('Remove the cached sudo credentials before `makepkg` is executed (`sudo --remove-timestamp`).')) .
+config_section('syntax_highlighting', 'bool',
+    __('Syntax hightling of the build files, using the `highlight` tool from [community].')) .
+config_section('syntax_highlighting_cmd', 'str',
+    __('The `highlight` command used in highlighting the syntax of the build files (with `syntax_highlighting`).')) .
+config_section('use_github_api', 'bool',
+    __("Check GitHub sources for updates using GitHub's API. (during `--devel --needed`)")) .
+config_section('use_gitlab_api', 'bool',
+    __("Check GitLab sources for updates using GitLab's API. (during `--devel --needed`)")) .
+config_section('use_sudo', 'bool',
+    __('Use the `sudo` command when special permissions are required.'));
 
     my %table;
     foreach my $line (split(/\n/, $config_options_help)) {
@@ -357,19 +463,22 @@ if (-e $config_file and (-s _) > 1) {
         @lconfig{@valid_keys} = @{$CONFIG}{@valid_keys};
     }
     else {
-        note(":: Invalid config file: {!" . ($! || '$CONFIG must be a HASH ref!') . '!}');
+        note(':: ' . __x('Invalid config file: {!{error}!}',
+            	         error => ($! || '$CONFIG must be a HASH ref!')));
         $lconfig{update_config} = 1;
     }
 }
 else {
     msg(":: Saving configuration file...") if $lconfig{debug};
     dump_configuration(\%CONFIG, $config_file)
-      or note(":: Cannot open file <<$config_file>> for write: {!$!!}");
+      or note(':: ' . __x('Cannot open file <<{config_file}>> for write: {!{error}!}',
+                          config_file => $config_file, error => $!));
 }
 
 if (not -d $lconfig{clone_dir}) {
     make_path($lconfig{clone_dir})
-      or error(":: Unable to create clone directory <<$lconfig{clone_dir}>>: {!$!!}");
+      or error(':: ' . __x('Unable to create clone directory <<{dir}>>: {!{error}!}',
+                           dir => $lconfig{clone_dir}, error => $!));
 }
 
 my $short_arguments = 'TDFCUNQRSGabcdefghiklmnopqrstuvwxy';
@@ -401,111 +510,133 @@ sub main_quit ($code = undef) {
 }
 
 #----------------------- USAGE -----------------------#
+sub breakln {
+    say '';
+}
+
+sub help_menu ($menu) {
+    say "$c{bgreen}$menu$c{reset}";
+}
+
+sub help_option ($desc, $long_option, $option = '', $tabs = 4) {
+    if ($option ne '') {
+        printf(' ' x $tabs . '%-' . (38 - $tabs) . "s : %s\n",
+               "$c{bold}-$option$c{reset}, $c{bold}--$long_option$c{reset}", $desc);
+    } else {
+        printf(' ' x ($tabs + 4) . '%-' . (26 - $tabs) . "s : %s\n",
+               "$c{bold}--$long_option$c{reset}", $desc);
+    }
+}
+
 sub help {
-    print <<"HELP";
+say '=' x 25 . "$c{bgreen} " . __("Trizen AUR Package Manager") . " $c{reset}" . '=' x 25;
+breakln();
+say __x("{bold}usage:{reset} {execname} [options] [pkgname] [pkgname] [...]",
+        bold => $c{bold}, reset => $c{reset}, execname => $execname);
+breakln();
+help_menu(__('Main options:'));
+breakln();
+help_option(__x('install packages (see: {execname} -Sh)', execname => $execname), 'sync', 'S');
+help_option(__('display AUR comments for a package'), 'comments', 'C');
+help_option(__('clones a package in the current directory'), 'get', 'G');
+help_option(__('remove packages from the system (see: pacman -Rh)'), 'remove', 'R');
+help_option(__('query the package database (see: pacman -Qh)'), 'query', 'Q');
+help_option(__('query the files database (see: pacman -Fh)'), 'files', 'F');
+help_option(__('operate on the package database (see: pacman -Dh)'), 'database', 'D');
+help_option(__('check dependencies (see: pacman -Th)'), 'deptest', 'T');
+help_option(__x('install built packages from {clone_dir} or `pwd`',
+                clone_dir => $lconfig{clone_dir}), 'upgrade', 'U');
+breakln();
+help_menu(__('Other options:'));
+breakln();
+help_option(__('do not display any warnings'), 'quiet', 'q');
+help_option(__('use only the regular repositories'), 'regular', 'r');
+help_option(__('show stats about the installed packages'), 'stats');
+help_option(__('disable text colors'), 'nocolors');
+help_option(__('force colors when not writing to STDOUT'), 'forcecolors');
+help_option(__('activate the debug/verbose mode'), 'debug');
+help_option(__('print this message and exit'), 'help');
+help_option(__('print version and exit'), 'version');
+breakln();
+help_menu(__('See also:'));
+breakln();
+say "    $c{bold}$execname -Sh$c{reset}";
+say "    $c{bold}$execname -Gh$c{reset}";
+breakln();
+say "$c{bblue}::$c{reset} " . __x("Each configuration key is a valid option when preceded with '{bold}--{reset}'",
+                                  bold => $c{bold}, reset => $c{reset});
+say "$c{bblue}::$c{reset} " . __x("Configuration file: {config_file}",
+                                  config_file => "$c{bold}$config_file$c{reset}");
 
-========================== $c{bgreen}Trizen AUR Package Manager$c{reset} ==========================
-
-$c{bold}usage:$c{reset} $execname [options] [pkgname] [pkgname] [...]
-
-$c{bgreen}Main options:$c{reset}
-
-    $c{bold}-S$c{reset}, $c{bold}--sync$c{reset}      : install packages (see: $execname -Sh)
-    $c{bold}-C$c{reset}, $c{bold}--comments$c{reset}  : display AUR comments for a package
-    $c{bold}-G$c{reset}, $c{bold}--get$c{reset}       : clones a package in the current directory
-    $c{bold}-R$c{reset}, $c{bold}--remove$c{reset}    : remove packages from the system (see: pacman -Rh)
-    $c{bold}-Q$c{reset}, $c{bold}--query$c{reset}     : query the package database (see: pacman -Qh)
-    $c{bold}-F$c{reset}, $c{bold}--files$c{reset}     : query the files database (see: pacman -Fh)
-    $c{bold}-D$c{reset}, $c{bold}--database$c{reset}  : operate on the package database (see: pacman -Dh)
-    $c{bold}-T$c{reset}, $c{bold}--deptest$c{reset}   : check dependencies (see: pacman -Th)
-    $c{bold}-U$c{reset}, $c{bold}--upgrade$c{reset}   : install built packages from $lconfig{clone_dir} or `pwd`
-
-$c{bgreen}Other options:$c{reset}
-
-    $c{bold}-q$c{reset}, $c{bold}--quiet$c{reset}        : do not display any warnings
-    $c{bold}-r$c{reset}, $c{bold}--regular$c{reset}      : use only the regular repositories
-        $c{bold}--stats$c{reset}        : show stats about the installed packages
-        $c{bold}--nocolors$c{reset}     : disable text colors
-        $c{bold}--forcecolors$c{reset}  : force colors when not writing to STDOUT
-        $c{bold}--debug$c{reset}        : activate the debug/verbose mode
-        $c{bold}--help$c{reset}         : print this message and exit
-        $c{bold}--version$c{reset}      : print version and exit
-
-$c{bgreen}See also:$c{reset}
-
-    $c{bold}$execname -Sh$c{reset}
-    $c{bold}$execname -Gh$c{reset}
-
-$c{bblue}::$c{reset} Each configuration key is a valid option when preceded with '$c{bold}--$c{reset}'
-$c{bblue}::$c{reset} Configuration file: $c{bold}$config_file$c{reset}
-HELP
     main_quit();
 }
 
 sub sync_help {
-    print <<"SYNC_HELP";
-$c{bold}usage:$c{reset} $execname {-S --sync} [options] [package(s)]
-
-$c{bgreen}Main options:$c{reset}
-
-  $c{bold}-s$c{reset}, $c{bold}--search$c{reset}        : search for packages
-  $c{bold}-i$c{reset}, $c{bold}--info$c{reset}          : show info for packages
-  $c{bold}-m$c{reset}, $c{bold}--maintainer$c{reset}    : show packages maintained by <username>
-  $c{bold}-p$c{reset}, $c{bold}--pkgbuild$c{reset}      : show PKGBUILD only
-  $c{bold}-l$c{reset}, $c{bold}--local$c{reset}         : build and install packages from `pwd`
-  $c{bold}-u$c{reset}, $c{bold}--sysupgrade$c{reset}    : upgrade installed packages
-  $c{bold}-y$c{reset}, $c{bold}--refresh$c{reset}       : refresh package databases (with: -u)
-  $c{bold}-c$c{reset}, $c{bold}--clean$c{reset}         : clean the cache directory of `$execname` and `pacman`
-  $c{bold}-a$c{reset}, $c{bold}--aur$c{reset}           : only AUR operations (with: -c, -u, -s, -i)
-
-$c{bgreen}Other options:$c{reset}
-
-      $c{bold}--devel$c{reset}         : update VCS packages during -Su
-      $c{bold}--show-ood$c{reset}      : show out-of-date flagged packages during -Su
-      $c{bold}--noinfo$c{reset}        : do not display package info after cloning
-      $c{bold}--nopull$c{reset}        : do not `git pull` new changes
-      $c{bold}--noedit$c{reset}        : do not prompt to edit files
-      $c{bold}--nobuild$c{reset}       : do not build packages (implies --noedit)
-      $c{bold}--noinstall$c{reset}     : do not install packages after building
-      $c{bold}--needed$c{reset}        : do not reinstall up-to-date packages
-      $c{bold}--asdeps$c{reset}        : install packages as non-explicitly installed
-      $c{bold}--asexplicit$c{reset}    : install packages as explicitly installed
-      $c{bold}--force$c{reset}         : pass the `--force` argument to `pacman`
-      $c{bold}--skipinteg$c{reset}     : pass the `--skipinteg` argument to `makepkg`
-      $c{bold}--noconfirm$c{reset}     : do not ask for any confirmation
-      $c{bold}--movepkg$c{reset}       : move built packages into pacman's cache directory
-      $c{bold}--movepkg-dir=s$c{reset} : move built packages in this directory (implies --movepkg)
-      $c{bold}--clone-dir=s$c{reset}   : directory where to clone and build packages
-      $c{bold}--editor=s$c{reset}      : editor command used to edit build files
-      $c{bold}--pager-mode$c{reset}    : display the build files of a package in pager mode
-      $c{bold}--pager=s$c{reset}       : pager command used to display the build files
-      $c{bold}--ignore=s$c{reset}      : space-separated list of packages to ignore during -Su
-
-$c{bgreen}Examples:$c{reset}
-
-    $c{bold}$execname -S  <package>$c{reset}     # install <package>
-    $c{bold}$execname -Ss <keyword>$c{reset}     # search for <keyword>
-    $c{bold}$execname -Si <package>$c{reset}     # show info about <package>
-
-SYNC_HELP
+say __x('{bold}usage:{reset} {execname} {-S --sync} [options] [package(s)]',
+         bold => $c{bold}, reset => $c{reset}, execname => $execname);
+breakln();
+help_menu(__('Main options:'));
+breakln();
+help_option(__('search for packages'), 'search', 's', 2);
+help_option(__('show info for packages'), 'info', 'i', 2);
+help_option(__('show packages maintained by <username>'), 'maintainer', 'm', 2);
+help_option(__('show PKGBUILD only'), 'pkgbuild', 'p', 2);
+help_option(__('build and install packages from `pwd`'), 'local', 'l', 2);
+help_option(__('upgrade installed packages'), 'sysupgrade', 'u', 2);
+help_option(__('refresh package databases (with: -u)'), 'refresh', 'y', 2);
+help_option(__x('clean the cache directory of `{execname}` and `pacman`',
+                execname => $execname), 'clean', 'c', 2);
+help_option(__('only AUR operations (with: -c, -u, -s, -i)'), 'aur', 'a', 2);
+breakln();
+help_menu(__('Other options:'));
+breakln();
+help_option(__('update VCS packages during -Su'), 'devel', '', 2);
+help_option(__('show out-of-date flagged packages during -Su'), 'show-ood', '', 2);
+help_option(__('do not display package info after cloning'), 'noinfo', '', 2);
+help_option(__('do not `git pull` new changes'), 'nopull', '', 2);
+help_option(__('do not prompt to edit files'), 'noedit', '', 2);
+help_option(__('do not build packages (implies --noedit)'), 'nobuild', '', 2);
+help_option(__('do not install packages after building'), 'noinstall', '', 2);
+help_option(__('do not reinstall up-to-date packages'), 'needed', '', 2);
+help_option(__('install packages as non-explicitly installed'), 'asdeps', '', 2);
+help_option(__('install packages as explicitly installed'), 'asexplicit', '', 2);
+help_option(__('pass the `--force` argument to `pacman`'), 'force', '', 2);
+help_option(__('pass the `--skipinteg` argument to `makepkg`'), 'skipinteg', '', 2);
+help_option(__('do not ask for any confirmation'), 'noconfirm', '', 2);
+help_option(__("move built packages into pacman's cache directory"), 'movepkg', '', 2);
+help_option(__('move built packages in this directory (implies --movepkg)'), 'movepkg-dir=s', '', 2);
+help_option(__('directory where to clone and build packages'), 'clone-dir=s', '', 2);
+help_option(__('editor command used to edit build files'), 'editor=s', '', 2);
+help_option(__('display the build files of a package in pager mode'), 'pager-mode', '', 2);
+help_option(__('pager command used to display the build files'), 'pager=s', '', 2);
+help_option(__('space-separated list of packages to ignore during -Su'), 'ignore=s', '', 2);
+breakln();
+help_menu(__('Examples:'));
+breakln();
+say "    " . __x("{bold}{execname} -S  <package>{reset}     # install <package>",
+                 bold => $c{bold}, reset => $c{reset}, execname => $execname);
+say "    " . __x("{bold}{execname} -Ss <keyword>{reset}     # search for <keyword>",
+                 bold => $c{bold}, reset => $c{reset}, execname => $execname);
+say "    " . __x("{bold}{execname} -Si <package>{reset}     # show info about <package>",
+                 bold => $c{bold}, reset => $c{reset}, execname => $execname);
 
     main_quit();
 }
 
 sub get_help {
-    print <<"GET_HELP";
-$c{bold}usage:$c{reset} $execname {-G --get} [options] [package(s)]
-
-$c{bgreen}Main options:$c{reset}
-
-    $c{bold}-d$c{reset}, $c{bold}--with-deps$c{reset}     : clones a package with all needed AUR dependencies
-
-$c{bgreen}Examples:$c{reset}
-
-    $c{bold}$execname -G  <package>$c{reset}     # clones <package>
-    $c{bold}$execname -Gd <package>$c{reset}     # clones <package> along with its AUR dependencies
-
-GET_HELP
+say __x('{bold}usage:{reset} {execname} {-G --get} [options] [package(s)]',
+        bold => $c{bold}, reset => $c{reset}, execname => $execname);
+breakln();
+help_menu(__('Main options:'));
+breakln();
+help_option(__('clones a package with all needed AUR dependencies'), 'with-deps', 'd');
+breakln();
+help_menu(__('Examples:'));
+breakln();
+say '   ' . __x('{bold}{execname} -G  <package>{reset}     # clones <package>',
+                bold => $c{bold}, execname => $execname, reset => $c{reset});
+say '   ' . __x('{bold}{execname} -Gd <package>{reset}     # clones <package> along with its AUR dependencies',
+                bold => $c{bold}, execname => $execname, reset => $c{reset});
 
     main_quit();
 }
@@ -602,7 +733,8 @@ sub parse_arguments (@arguments) {
 parse_arguments(@ARGV);
 
 if ($lconfig{as_root}) {
-    warn "\n\t\t$c{bred}!!! You are running $c{bgreen}${execname}$c{reset}$c{bred} as root !!!$c{reset}\n\n" if $lconfig{S};
+    warn "\n\t\t$c{bred}!!! " . __x('You are running {bgreen}{execname}{bred} as root !!!',
+                                    bgreen => $c{bgreen}, execname => $execname, bred => $c{bred}) . "$c{reset}\n\n" if $lconfig{S};
 }
 
 if ($lconfig{ignore}) {
@@ -638,6 +770,7 @@ if ($lconfig{a}) {
 
 if ($lconfig{debug}) {
     $lconfig{lwp_show_progress} = 1;
+    setlocale(LC_MESSAGES, "");
 }
 
 if ($lconfig{quiet}) {
@@ -665,7 +798,8 @@ $lconfig{clone_dir} = rel2abs($lconfig{clone_dir});
 
 if (not -d $lconfig{clone_dir}) {
     make_path($lconfig{clone_dir})
-      or error(":: Unable to create directory <<$lconfig{clone_dir}>>: {!$!!}");
+      or error(':: ' . __x('Unable to create directory <<{clone_dir}>>: {!{error}!}',
+                           clone_dir => $lconfig{clone_dir}, error => $!));
 }
 
 if (    $lconfig{sudo_autorepeat_at_runtime}
@@ -784,14 +918,14 @@ sub get ($url) {
         my $content = $response->decoded_content;
 
         if (not defined $content) {
-            note(":: Unable to decode HTML content: $@");
+            note(':: ' . __('Unable to decode HTML content:') . " $@");
             return;
         }
 
         return $content;
     }
     else {
-        note(":: Unable to GET $url ==> " . $response->status_line);
+        note(':: ' . __x('Unable to GET {url}', url => $url) . ' ==> ' . $response->status_line);
     }
 
     return;
@@ -831,10 +965,10 @@ sub get_comments ($id) {
         $comment = strip_space($comment);
         $comment =~ s/[\b]+//g;
 
-        unshift @comments, <<"EOC";
-$c{bold}Comment by $c{bgreen}$author$c{reset}$c{bold} on $date$c{reset}
-$comment
-EOC
+        unshift @comments, $c{bold}
+                . __x('Comment by {bgreen}{author}{reset}{bold} on {date}',
+                      bgreen => $c{bgreen}, author => $author, reset => $c{reset}, bold => $c{bold}, date => $date)
+                . "$c{reset}\n$comment"
     }
 
     # >1 is intentional for backwards compatibility
@@ -906,7 +1040,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
             }
 
             note(":: Exit code: " . exit_code()) if $lconfig{debug};
-            $term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n') and redo;
+            ask_yn($term, prompt => "$c{bold}=>> " . __('Try again?') . $c{reset}, default => 0) and redo;
         }
     }
 
@@ -1021,13 +1155,15 @@ sub info_for_package ($pkgname) {
     $info->{resultcount} > 0 or return;
 
     if ($info->{resultcount} > 1) {
-        msg(":: Found <<$info->{resultcount}>> packages.");
+        msg(':: ' . __x('Found <<{resultcount}>> packages.', resultcount => $info->{resultcount}));
         print "\n";
         my @packages = map { $_->{Name} } @{$info->{results}};
         my %table = (map { $packages[$_] => $_ } 0 .. $#packages);
         my $reply = $term->get_reply(
-                                     print_me => "\n$c{bold}=>> Select a package$c{reset}",
-                                     prompt   => "$c{bold}Select$c{reset}",
+                                     print_me => "\n$c{bold}=>> " . __p('It is an instruction (you)',
+                                                                        'Select a package') . $c{reset},
+                                     prompt   => $c{bold} . __p('It is an instruction (you)',
+                                                                'Select') . $c{reset},
                                      choices  => \@packages,
                                      default  => $packages[0],
                                     );
@@ -1054,7 +1190,7 @@ sub download_package ($pkgname, $path) {
 
         if (!$lconfig{nopull}) {
 
-            msg(":: $c{bold}Pulling AUR changes: $pkg_base");
+            msg(":: $c{bold}" . __x('Pulling AUR changes: {pkg_base}', pkg_base => $pkg_base));
 
 #<<<
             system('/usr/bin/git', '-C', $dir_name, 'reset', '--hard', 'HEAD', '--quiet') && return;
@@ -1070,7 +1206,7 @@ sub download_package ($pkgname, $path) {
     }
     else {
 
-        msg(":: $c{bold}Cloning AUR package: $pkg_base");
+        msg(":: $c{bold}" . __x('Cloning AUR changes: {pkg_base}', pkg_base => $pkg_base));
 
         my @flags;
 
@@ -1086,7 +1222,7 @@ sub download_package ($pkgname, $path) {
     }
 
     chdir($path) or do {
-        note(":: Unable to chdir() to <<$path>>: {!$!!}");
+        note(':: ' . __x('Unable to chdir() to <<{path}>>: {!{error}!}', path => $path, error => $!));
         return;
     };
 
@@ -1099,7 +1235,9 @@ sub download_package ($pkgname, $path) {
     if (-d $dir_name) {
 
         chdir($dir_name) or do {
-            note(":: Unable to chdir() to <<$dir_name>>: {!$!!}");
+            note(':: ' . "Unable to chdir() to <<$dir_name>>: {!$!!}");
+            note(':: ' . __x('Unable to chdir() to <<{dir_name}>>: {!{error}!}',
+                             dir_name => $dir_name, error => $!));
             return;
         };
 
@@ -1113,16 +1251,16 @@ sub get_rpc_info ($pkgname) {
     json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=info&arg=" . uri_escape_utf8($pkgname)) // return);
 }
 
-sub indent_array ($elems) {
+sub indent_array ($size, $elems, $text) {
 
-    my @copy  = @$elems;
-    my $first = shift(@copy) // 'None';
+    my @copy  = @{$elems // []};
+    my $first = shift(@copy) // $text;
 
     @copy or return $first;
 
     my $rest = join("\n", @copy);
     $rest =~ s/^\s+//gm;
-    $rest =~ s/^/' ' x 18/gem;
+    $rest =~ s/^/' ' x ($size + 3)/gem;
 
     return "$first\n$rest";
 }
@@ -1153,28 +1291,62 @@ sub color_code_dependencies ($deps) {
 
 sub show_info ($info) {
 
-    say map { sprintf $c{bold} . $_->[0], $c{reset} . $_->[1] }
-      ["Repository      : %s\n", "$c{bpurple}AUR$c{reset}"],
-      ["Name            : %s\n", "$c{bold}$info->{Name}$c{reset}"],
-      ["Version         : %s\n", $info->{Version} // 'Unknown'],
-      ["Maintainer      : %s\n", $info->{Maintainer} // "$c{bred}None$c{reset}"],
-      ["URL             : %s\n", $info->{URL} // 'None'],
-      ["AUR URL         : %s\n", sprintf($aur_package_id_url, $info->{ID})],
-      ["License         : %s\n", indent_array($info->{License} // [])],
-      ["Votes           : %s\n", $info->{NumVotes}],
-      ["Popularity      : %s\n", sprintf("%.2g%%", $info->{Popularity})],
-      ["Installed       : %s\n", package_is_installed($info->{Name}) ? "$c{bgreen}Yes$c{reset}" : 'No'],
-      ["Out Of Date     : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
-      ["Depends On      : %s\n", indent_array(color_code_dependencies($info->{Depends}      // []))],
-      ["Make Deps       : %s\n", indent_array(color_code_dependencies($info->{MakeDepends}  // []))],
-      ["Check Deps      : %s\n", indent_array(color_code_dependencies($info->{CheckDepends} // []))],
-      ["Optional Deps   : %s\n", indent_array(color_code_dependencies($info->{OptDepends}   // []))],
-      ["Provides        : %s\n", indent_array($info->{Provides}  // [])],
-      ["Conflicts With  : %s\n", indent_array($info->{Conflicts} // [])],
-      ["Replaces        : %s\n", indent_array($info->{Replaces}  // [])],
-      ["Package Base    : %s\n", $info->{PackageBase}],
-      ["Last Update     : %s\n", scalar localtime($info->{LastModified} || $info->{FirstSubmitted})],
-      ["Description     : %s\n", $info->{Description}];
+    my @titles = (
+      __('Repository'),
+      __('Name'),
+      __('Version'),
+      __('Maintainer'),
+      __('URL'),
+      __('AUR URL'),
+      __n('License', 'Licenses', scalar @{$info->{License}}),
+      __n('Vote', 'Votes', $info->{NumVotes}),
+      __('Popularity'),
+      __p('About the package', 'Installed'),
+      __p('About the package', 'Out of date'),
+      __n('Dependency', 'Dependencies', scalar @{$info->{Depends}}),
+      __n('Building dependency', 'Building dependencies', scalar @{$info->{MakeDepends}}),
+      __n('Checking dependency', 'Checking dependencies', scalar @{$info->{CheckDepends}}),
+      __n('Optional dependency', 'Optional dependencies', scalar @{$info->{OptDepends}}),
+      __('Provides'),
+      __('Conflicts with'),
+      __('Replaces'),
+      __('Package base'),
+      __('Last update'),
+      __('Description'));
+
+    my $size = 0;
+    foreach (@titles) {
+        $size = length($_)  if (length($_) > $size);
+    }
+
+    my @infos = (
+      "$c{bpurple}AUR",
+      "$c{bold}$info->{Name}",
+      $info->{Version} // __p('About the version', 'Unknown'),
+      $info->{Maintainer} // $c{bred} . __p('About the maintainer', 'None'),
+      $info->{URL} // __p('About the URL', 'None'),
+      sprintf($aur_package_id_url, $info->{ID}),
+      indent_array($size, $info->{License}, __p('About the licenses', 'None')),
+      $info->{NumVotes},
+      sprintf("%.2g%%", $info->{Popularity}),
+      package_is_installed($info->{Name}) ? $c{bgreen} . __('Yes') : __('No'),
+      $info->{OutOfDate} ? $c{bred} . __('Yes') : __('No'),
+      indent_array($size, color_code_dependencies($info->{Depends}), __p('About the dependencies', 'None')),
+      indent_array($size, color_code_dependencies($info->{MakeDepends}), __p('About the dependencies', 'None')),
+      indent_array($size, color_code_dependencies($info->{CheckDepends}), __p('About the dependencies', 'None')),
+      indent_array($size, color_code_dependencies($info->{OptDepends}), __p('About the dependencies', 'None')),
+      indent_array($size, $info->{Provides}, __p('About the features provided by the package', 'None')),
+      indent_array($size, $info->{Conflicts}, __p('About the packages in conflict with this one', 'None')),
+      indent_array($size, $info->{Replaces}, __p('About the packages replaced by this one', 'None')),
+      $info->{PackageBase},
+      scalar localtime($info->{LastModified} || $info->{FirstSubmitted}),
+      $info->{Description});
+
+    my $ea = each_array(@titles, @infos);
+
+    while (my($a, $b) = $ea->()) {
+        printf("$c{bold}%-${size}s : $c{reset}%s$c{reset}\n", $a, $b)
+    }
 
     return 1;
 }
@@ -1185,7 +1357,8 @@ sub find_local_package ($pkgname, $dir) {
 
     opendir(my $dir_h, $dir)
       or do {
-        note(":: Cannot access directory <<$dir>>: {!$!!}");
+        note(':: ' . __x('Cannot access directory <<{dir}>>: {!{error}!}',
+                         dir => $dir, error => $!));
         return;
       };
 
@@ -1214,7 +1387,8 @@ sub move_built_package ($tarball) {
 
     if (not -d $lconfig{movepkg_dir}) {
         make_path($lconfig{movepkg_dir})
-          or note(":: Unable to create $lconfig{movepkg_dir}: {!$!!}");
+          or note(':: ' . __x('Unable to create {movepkg_dir}: {!{error}!}',
+                              movepkg_dir => $lconfig{movepkg_dir}, error => $!));
     }
     if (-d $lconfig{movepkg_dir}) {
         if (-w _) {
@@ -1224,10 +1398,12 @@ sub move_built_package ($tarball) {
 
             msg(":: Moving <<$tarball>> into <<$lconfig{movepkg_dir}>>") if $lconfig{debug};
             File::Copy::move($tarball, catfile($lconfig{movepkg_dir}, File::Basename::basename($tarball)))
-              or note(":: Unable to move <<$tarball>> into <<$lconfig{movepkg_dir}>>: {!$!!}");
+              or note(':: ' . __x('Unable to move <<{tarball}>> into <<{movepkg_dir}>>: {!{error}!}',
+                                  tarball => $tarball, movepkg_dir => $lconfig{movepkg_dir}, error => $!));
         }
         else {
-            msg(":: Moving <<${tarball}>> into <<$lconfig{movepkg_dir}>>");
+            msg(':: ' . __x('Moving <<{tarball}>> into <<{movepkg_dir}>>',
+                            tarball => $tarball, movepkg_dir => $lconfig{movepkg_dir}));
 
             system($lconfig{use_sudo}
                    ? "$lconfig{sudo_command} mv '${tarball}' '$lconfig{movepkg_dir}'"
@@ -1235,13 +1411,15 @@ sub move_built_package ($tarball) {
                   );
 
             if ($?) {
-                note(":: Unable to move <<$tarball>> into <<$lconfig{movepkg_dir}>> -- exit code: " . exit_code());
-                if ($term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n')) {
+                note(':: ' .  __x('Unable to move <<{tarball}>> into <<{movepkg_dir}>> -- exit code:',
+                                  tarball => $tarball, movepkg_dir => $lconfig{movepkg_dir}) . ' ' . exit_code());
+                if (ask_yn($term, prompt => "$c{bold}=>> " . __('Try again?') . $c{reset}, default => 0)) {
                     move_built_package($tarball);
                 }
             }
             else {
-                msg(":: <<$tarball>> has been successfully moved into <<$lconfig{movepkg_dir}>>.");
+                msg(':: ' . __x('<<{tarball}>> has been successfully moved into <<{movepkg_dir}>>.',
+                                tarball => $tarball, movepkg_dir => $lconfig{movepkg_dir}));
             }
         }
     }
@@ -1254,7 +1432,7 @@ sub recompute_dependencies ($info) {
     my @srcinfo = map { decode_utf8($_) } `/usr/bin/makepkg --printsrcinfo`;
 
     if ($?) {
-        note(":: `makepkg --printsrcinfo` exited with code: " . exit_code());
+        note(':: ' . __x('`makepkg --printsrcinfo` exited with code: {exit_code}', exit_code => exit_code()));
         return;
     }
 
@@ -1308,7 +1486,7 @@ sub output_file_content ($file) {
     }
 
     say '-' x 80;
-    msg(":: $c{bold}Content of$c{reset} <<$file>>");
+    msg(":: $c{bold}" . __x('Content of{reset} <<{file}>>', reset => $c{reset}, file => $file));
     say '-' x 80, "\n";
 
     # Syntax highlighting of the build files, using the `highlight` tool
@@ -1331,7 +1509,7 @@ sub output_file_content ($file) {
     }
 
     open my $fh, '<:utf8', $file or do {
-        note(":: Unable to open <<$file>> for reading: {!$!!}");
+        note(':: ' . __x('Unable to open <<{file}>> for reading: {!{error}!}', file => $file, error => $!));
         return;
     };
 
@@ -1370,9 +1548,9 @@ sub show_and_edit_text_files ($info) {
 
         if (!$lconfig{noedit}) {
 #<<<
-            my $edit = $term->ask_yn(
-                prompt  => "$c{bold}=>> Edit $file?$c{reset}",
-                default => 'n'
+            my $edit = ask_yn($term,
+                prompt  => "$c{bold}=>> " . __x('Edit {file}?', file => $file) . $c{reset},
+                default => 0
             );
 #>>>
 
@@ -1381,7 +1559,7 @@ sub show_and_edit_text_files ($info) {
                 system "$lconfig{editor} \Q$abs_file\E";
 
                 if ($?) {
-                    note(":: $lconfig{editor} exited with code: " . exit_code());
+                    note(':: ' . __x('{editor} exited with code: {exit_code}', editor => $lconfig{editor}, exit_code => exit_code()));
                     next;
                 }
             }
@@ -1398,20 +1576,21 @@ sub run_makepkg_command ($pkg, @args) {
     system join(' ', $lconfig{makepkg_command}, @args);
 
     if ($?) {
-        note(":: Unable to build <<$pkg>> - makepkg exited with code: " . exit_code());
+        note(':: ' . __x('Unable to build <<{pkg}>> - makepkg exited with code: {exit_code}',
+                         pkg => $pkg, exit_code => exit_code()));
 
         if (not $lconfig{ask_for_retry}) {
             main_quit(65) if $lconfig{asdeps};
             return;
         }
 
-        if ($term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n')) {
+        if (ask_yn($term, prompt => "$c{bold}=>> " . __('Try again?') . $c{reset}, default => 0)) {
             local $lconfig{nopull} = 1;
             delete $seen_package{lc $pkg};
             install_package($pkg);
         }
         else {
-            if ($term->ask_yn(prompt => "$c{bold}=>> Exit now?$c{reset}", default => 'y')) {
+            if (ask_yn($term, prompt => "$c{bold}=>> " . __('Exit now?') . $c{reset}, default => 1)) {
                 main_quit(65);    # Package not installed
             }
             else {
@@ -1505,7 +1684,7 @@ sub install_built_package ($pkg, @args) {
     }
 
     if (not exists($packages{lc $pkg})) {
-        note(":: Unable to find a built tarball for <<$pkg>>");
+        note(':: ' . __x('Unable to find a built tarball for <<{pkg}>>', pkg => $pkg));
         $? = 2;
         return;
     }
@@ -1521,8 +1700,9 @@ sub install_built_package ($pkg, @args) {
         my @selected = grep { lc($pkg) eq $_ or package_is_installed($_) } sort keys %packages;
 
         my @reply = $term->get_reply(
-                                     print_me => "\n$c{bold}=>> Select packages to install$c{reset}",
-                                     prompt   => "$c{bold}Install$c{reset}",
+                                     print_me => "\n$c{bold}=>> " . __p('It is an instruction (you)',
+                                                                        'Select packages to install') . $c{reset},
+                                     prompt   => $c{bold} . __p('It is an instruction (you)', 'Install') . $c{reset},
                                      choices  => [sort keys %packages],
                                      default  => [@selected],
                                      multi    => 1,
@@ -1634,7 +1814,7 @@ sub install_package ($pkg) {
         return install_packages_from_repo($pkg);
     }
     else {
-        note(":: <<$pkg>> not found.");
+        note(':: ' . __x('<<{pkg}>> not found.', pkg => $pkg));
         $? = 1;
         return;
     }
@@ -1654,7 +1834,7 @@ sub install_package ($pkg) {
 
                     # The VCS package is not out-of-date
                     if (not $is_ood) {
-                        msg(":: <<$pkg>> is installed and up-to-date -- skipping");
+                        msg(':: ' . __x('<<{pkg}>> is installed and up-to-date -- skipping', pkg => $pkg));
                         return 1;
                     }
 
@@ -1664,13 +1844,13 @@ sub install_package ($pkg) {
 
                 # Couldn't determine if the VCS package is out-of-date
                 else {
-                    msg(":: <<$pkg>> is a VCS package -- updating");
+                    msg(':: ' . __x('<<pkg>> is a VCS package -- updating', pkg => $pkg));
                 }
             }
 
             # Compare the local version against the AUR version
             elsif (versioncmp($version, $info->{Version}) >= 0) {
-                msg(":: <<$pkg>> is installed and up-to-date -- skipping");
+                msg(':: ' . __x('<<{pkg}>> is installed and up-to-date -- skipping', pkg => $pkg));
                 return 1;    # package is installed and up-to-date
             }
 
@@ -1706,12 +1886,12 @@ sub install_package ($pkg) {
         print "\n", join("\n", @comments) if @comments;
     }
 
-    say '';
+    breakln();
 
     if ($lconfig{use_sudo} and $lconfig{sudo_remove_timestamp}) {
         msg(":: Removing sudo timestamp...") if $lconfig{debug};
         system("/usr/bin/sudo", "--remove-timestamp");
-        note(":: Failed to remove sudo timestamp - exit code: {!$?!}") if $?;
+        note(':: ' . __x('Failed to remove sudo timestamp - exit code: {!{exit_code}!}', exit_code => $?)) if $?;
     }
 
     # Show and edit PKGBUILD and other -T files
@@ -1801,7 +1981,7 @@ sub install_package ($pkg) {
             local $lconfig{asdeps} = 1;
 
             install_package($name) or do {
-                note(":: Dependency not found: <<$name>>");
+                note(':: ' . __x('Dependency not found: <<{name}>>', name => $name));
                 next;
             };
         }
@@ -1826,23 +2006,23 @@ sub clean_cache () {
     }
 
     opendir(my $dir_h, $lconfig{clone_dir})
-      or error(":: Cannot access the AUR clone directory: {!$!!}");
+      or error(':: ' . __x('Cannot access the AUR clone directory: {!{error}!}', error => $!));
 
     my $tmp_clonedir = ($lconfig{clone_dir} =~ m{^/tmp/});
 
     if (not $tmp_clonedir) {
 
-        say "\nTrizen's cache directory: $lconfig{clone_dir}";
+        say "\n" . __x("Trizen's cache directory: {clone_dir}", clone_dir => $lconfig{clone_dir});
 #<<<
-        $term->ask_yn(
-            prompt  => "$c{bblue}::$c{reset}$c{bold} Do you want to remove trizen's cache?$c{reset}",
-            default => 'n'
+        ask_yn($term,
+            prompt  => "$c{bblue}::$c{reset}$c{bold} " . __("Do you want to remove trizen's cache?") . $c{reset},
+            default => 0
         ) || return;
 #>>>
 
     }
 
-    msg(":: Removing the content of <<$lconfig{clone_dir}>>...");
+    msg(':: ' . __x('Removing the content of <<{clone_dir}>>...', clone_dir => $lconfig{clone_dir}));
 
     foreach my $name (readdir($dir_h)) {
 
@@ -1855,18 +2035,19 @@ sub clean_cache () {
 
             # When the directory does not contain a PKGBUILD file, ask the user about it
             if (not $tmp_clonedir and not -f catfile($dir, 'PKGBUILD')) {
-                $term->ask_yn(prompt  => "$c{bold}=>> Remove the content of $dir?$c{reset}",
-                              default => 'n')
+                ask_yn($term, prompt  => "$c{bold}=>> " . __x('Remove the content of {dir}?', dir => $dir) . $c{reset},
+                              default => 0)
                   || next;
             }
 
             msg(":: Removing <<$dir>>...") if $lconfig{debug};
-            rmtree($dir) or note(":: Cannot remove directory <<$dir>>: {!$!!}");
+            rmtree($dir) or note(':: ' . __x('Cannot remove directory <<{dir}>>: {!{error}!}',
+                                             dir => $dir, error => $!));
         }
     }
 
     closedir($dir_h);
-    msg(":: Done!");
+    msg(':: ' . __('Done!'));
 }
 
 sub select_packages_from_input ($input, $items, $default = [], $empty_for_all = 0) {
@@ -1915,7 +2096,7 @@ sub format_package_result ($package) {
       ? do {
 
         my $up_to_date     = 1;
-        my $installed_text = $package->{Installed} // 'installed';
+        my $installed_text = $package->{Installed} // __p('About the package', 'installed');
 
         my $installed_version = (
                                    $package->{Installed}
@@ -1952,12 +2133,14 @@ sub format_package_result ($package) {
         sprintf($result_string,
           $package->{Name},
           $package->{Version},
-          ($repo ne 'aur' && $package->{Group}                ? " [$c{bcyan}$package->{Group}$c{reset}]"      : q{}),
+          ($repo ne 'aur' && $package->{Group}                ? " [$c{bcyan}$package->{Group}$c{reset}]"         : q{}),
           $is_installed_string,
-          ($repo eq 'aur' && $package->{OutOfDate}            ? " [$c{bred}out-of-date$c{reset}]"             : q{}),
-          ($repo eq 'aur' && !$package->{Maintainer}          ? " [$c{bred}unmaintained$c{reset}]"            : q{}),
-          ($repo eq 'aur' && $lconfig{aur_results_votes}      ? " [$c{bold}$package->{NumVotes}+$c{reset}]"   : q{}),
-          ($repo eq 'aur' && $lconfig{aur_results_popularity} ? " [$c{bold}$package->{Popularity}%$c{reset}]" : q{}),
+          ($repo eq 'aur' && $package->{OutOfDate}            ? " [$c{bred}" . __p('About the package',
+                                                                                   'out-of-date') . "$c{reset}]"  : q{}),
+          ($repo eq 'aur' && !$package->{Maintainer}          ? " [$c{bred}" . __p('About the package',
+                                                                                   'unmaintained') . "$c{reset}]" : q{}),
+          ($repo eq 'aur' && $lconfig{aur_results_votes}      ? " [$c{bold}$package->{NumVotes}+$c{reset}]"      : q{}),
+          ($repo eq 'aur' && $lconfig{aur_results_popularity} ? " [$c{bold}$package->{Popularity}%$c{reset}]"    : q{}),
           (
             $repo eq 'aur' && $lconfig{aur_results_last_modified}
             ? localtime($package->{LastModified}) =~ /^\w+ (\w+)\s+(\d+)\s+.+? (\d+)$/ && " [$c{bold}$2 $1 $3$c{reset}]"
@@ -1965,7 +2148,7 @@ sub format_package_result ($package) {
           )
         ),
 
-        $package->{Description} // 'No description available...'
+        $package->{Description} // __('No description available...')
     );
 #>>>
 }
@@ -2040,7 +2223,7 @@ sub search_repo_packages (@keywords) {
               };
         }
         else {
-            note(":: Unable to parse pacman result: $pkgline");
+            note(':: ' . __('Unable to parse pacman result:') . " $pkgline");
         }
     }
 
@@ -2102,7 +2285,7 @@ sub interactive_search_and_install (@keywords) {
     my @results = search_packages(@keywords);
 
     if (!@results) {
-        note(":: No packages found...");
+        note(':: ' . __('No packages found...'));
         return;
     }
 
@@ -2137,7 +2320,8 @@ sub interactive_search_and_install (@keywords) {
     @items{map { lc($_->{Name}) } @results} = @results;
     @items{map { lc($_->{Repository} . '/' . $_->{Name}) } @results} = @results;
 
-    my $input             = $term->readline("\n$c{bold}=>> Select packages to install$c{reset}\n> ") // return;
+    my $input             = $term->readline("\n$c{bold}=>> " . __('Select packages to install') .
+                                            "$c{reset}\n> ") // return;
     my @selected_packages = select_packages_from_input(lc($input), \%items, \@results);
 
     my @aur_packages;
@@ -2177,12 +2361,14 @@ sub read_local_desc_file ($pkgname, $version = undef) {
     my $desc_file = catfile($lconfig{pacman_local_dir}, "$pkgname-$version", 'desc');
 
     if (not -f $desc_file) {
-        note(":: <<$desc_file>> is not a file: {!$!!}");
+        note(':: ' . __x('<<{desc_file}>> is not a file: {!{error}!}',
+                         desc_file => $desc_file, error => $!));
         return;
     }
 
     open my $fh, '<:utf8', $desc_file or do {
-        note(":: Unable to open <<$desc_file>> for reading: {!$!!}");
+        note(':: ' . __x('Unable to open <<{desc_file}>> for reading: {!{error}!}',
+                         desc_file => $desc_file, error => $!));
         return;
     };
 
@@ -2315,7 +2501,8 @@ sub is_vcs_package_ood ($pkgname) {
         my $owner = $1;
         my $repo  = $2 =~ s/\.git\z//r;
 
-        msg(":: <<$pkgname>> checking GitHub <<$owner/$repo>> for updates...");
+        msg(':: ' . __x('<<{pkgname}>> checking GitHub <<{repo}>> for updates...',
+                        pkgname => $pkgname, repo => "$owner/$repo"));
 
 #<<<
         return (
@@ -2334,7 +2521,8 @@ sub is_vcs_package_ood ($pkgname) {
         my $owner = $1;
         my $repo  = $2 =~ s/\.git\z//r;
 
-        msg(":: <<$pkgname>> checking GitLab <<$owner/$repo>> for updates...");
+        msg(':: ' . __x('<<{pkgname}>> checking GitLab <<{repo}>> for updates...',
+                        pkgname => $pkgname, repo => "$owner/$repo"));
 
 #<<<
         return (
@@ -2354,7 +2542,8 @@ sub is_vcs_package_ood ($pkgname) {
 
         my $source_url = $1;
 
-        msg(":: <<$pkgname>> checking <<$source_url>> for updates...");
+        msg(':: ' . __x('<<{pkgname}>> checking <<{source_url}>> for updates...',
+                        pkgname => $pkgname, source_url => $source_url));
 
         return has_new_git_commit($source_url, $pkgname);
     }
@@ -2416,7 +2605,7 @@ sub update_local_packages (@repo_packages) {
 
         my $multiinfo = json2perl(
             get($url) // do {
-                note(":: Unable to get info for AUR packages...");
+                note(':: ' . __('Unable to get info for AUR packages...'));
                 $? = 1;
                 return;
             }
@@ -2440,11 +2629,11 @@ sub update_local_packages (@repo_packages) {
         $exists_in_aur{$pkgname} = 1;
 
         if ($lconfig{show_ood} and $result->{OutOfDate}) {
-            note(":: <<$pkgname>> has been flagged {!out-of-date!}!");
+            note(':: ' . __x('<<{pkgname}>> has been flagged {!out-of-date!}!', pkgname => $pkgname));
         }
 
         if ($lconfig{show_unmaintained} and not $result->{Maintainer}) {
-            note(":: <<$pkgname>> is {!unmaintained!}!");
+            note(':: ' . __x('<<{pkgname}>> is {!unmaintained!}!', pkgname => $pkgname));
         }
 
         my $is_vcs_package = is_vcs_package($pkgname);
@@ -2453,8 +2642,10 @@ sub update_local_packages (@repo_packages) {
         if ($local_vcmp < 0 or ($lconfig{devel} and $is_vcs_package)) {
 
             if (exists $ignored_pkgs{$pkgname}) {
-                note(  ":: <<$pkgname>> -- ignoring upgrade ({!$packages{$pkgname}!} => <<"
-                     . (($is_vcs_package && $local_vcmp >= 0) ? 'latest' : $version)
+                note(  ':: ' . __x('<<{pkgname}>> -- ignoring upgrade ({!{package}!}',
+                                   pkgname => $pkgname, package => $packages{$pkgname})
+                     . '=> <<'
+                     . (($is_vcs_package && $local_vcmp >= 0) ? __p('About the version', 'latest') : $version)
                      . ">>)");
                 next;
             }
@@ -2503,7 +2694,7 @@ sub update_local_packages (@repo_packages) {
                     next;
                 }
 
-                note(":: <<$pkgname>> was {!not found!} in AUR -- skipping");
+                note(':: ' . __x('<<$pkgname>> was {!not found!} in AUR -- skipping', pkgname => $pkgname));
             }
         }
 
@@ -2580,14 +2771,14 @@ sub update_local_packages (@repo_packages) {
     }
 
     if (not keys %for_update) {
-        msg(":: $c{bold}No AUR updates found...$c{reset}");
+        msg(":: $c{bold}" . __('No AUR updates found...') . $c{reset});
         return 1;
     }
 
     my $input = (
                  $lconfig{noconfirm}
                  ? ''
-                 : $term->readline("\n$c{bold}=>> Select packages for upgrade (<ENTER> for all)$c{reset}\n> ")
+                 : $term->readline("\n$c{bold}=>> " . __('Select packages for upgrade (<ENTER> for all)') . "$c{reset}\n> ")
                 ) // return;
 
     my @selected_packages = select_packages_from_input(lc($input), \%for_update, [map { $_->{name} } @packages_for_update], 1);
@@ -2600,7 +2791,7 @@ sub update_local_packages (@repo_packages) {
             msg(":: <<$pkgname>> has been upgraded!") if $lconfig{debug};
         }
         else {
-            note(":: <<$pkgname>> has {!NOT!} been upgraded!");
+            note(':: ' . __x('<<{pkgname}>> has {!NOT!} been upgraded!', pkgname => $pkgname));
         }
     }
 
@@ -2610,7 +2801,8 @@ sub update_local_packages (@repo_packages) {
 sub show_stats {
 
     opendir my $dir_h, $lconfig{pacman_local_dir}
-      or error(":: Unable to open directory <<$lconfig{pacman_local_dir}>>: {!$!!}");
+      or error(':: ' . __x('Unable to open directory <<{pacman_local_dir}>>: {!{error}!}',
+                           pacman_local_dir => $lconfig{pacman_local_dir}, error => $!));
 
     my ($total_size, $num_of_pkgs, %dependencies, %reason_deps);
 
@@ -2670,11 +2862,11 @@ sub show_stats {
             }
             elsif ($line eq "%BUILDDATE%") {
                 my $date = shift(@desc);
-                $append_package->($date, $name, 'built');
+                $append_package->($date, $name, __p('About the package', 'built'));
             }
             elsif ($line eq "%INSTALLDATE%") {
                 my $date = shift(@desc);
-                $append_package->($date, $name, 'installed');
+                $append_package->($date, $name, __p('About the package', 'installed'));
             }
         }
     }
@@ -2683,16 +2875,17 @@ sub show_stats {
 
     my $as_dep_packages = keys %reason_deps;
 
-    print <<"STATS";
-$c{bblue}::$c{reset} $c{bold}Total installed packages:$c{byellow} $num_of_pkgs$c{reset}
-$c{bblue}::$c{reset} $c{bold}Explicitly installed packages:$c{byellow} ${\($num_of_pkgs - $as_dep_packages)}$c{reset}
-$c{bblue}::$c{reset} $c{bold}Asdep installed packages:$c{byellow} $as_dep_packages$c{reset}
-$c{bblue}::$c{reset} $c{bold}Theoretical space used by packages:$c{byellow} ${\int $total_size / 1024**2} MB$c{reset}\n
-$c{bblue}::$c{reset} $c{bold}Oldest built packages:$c{byellow} @{[map { $_->[0] } @{$packages{built}{old}}]}$c{reset}
-$c{bblue}::$c{reset} $c{bold}Newest built packages:$c{byellow} @{[map { $_->[0] } @{$packages{built}{new}}]}$c{reset}\n
-$c{bblue}::$c{reset} $c{bold}Oldest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{installed}{old}}]}$c{reset}
-$c{bblue}::$c{reset} $c{bold}Newest installed packages:$c{byellow} @{[map { $_->[0] } @{$packages{installed}{new}}]}$c{reset}\n
-STATS
+say "$c{bblue}::$c{reset} $c{bold}" . __('Total installed packages:') . "$c{byellow} $num_of_pkgs$c{reset}";
+say "$c{bblue}::$c{reset} $c{bold}" . __('Explicitly installed packages:') . "$c{byellow} " . ${\($num_of_pkgs - $as_dep_packages)} . $c{reset};
+say "$c{bblue}::$c{reset} $c{bold}" . __('Asdep installed packages:') . "$c{byellow} $as_dep_packages$c{reset}";
+say "$c{bblue}::$c{reset} $c{bold}" . __('Theoretical space used by packages:') . "$c{byellow} " . ${\int $total_size / 1024**2} . " MB$c{reset}";
+breakln();
+say "$c{bblue}::$c{reset} $c{bold}" . __('Oldest built packages:') . "$c{byellow} " . @{[map { $_->[0] } @{$packages{built}{old}}]} . $c{reset};
+say "$c{bblue}::$c{reset} $c{bold}" . __('Newest built packages:') . "$c{byellow} " . @{[map { $_->[0] } @{$packages{built}{new}}]} . $c{reset};
+breakln();
+say "$c{bblue}::$c{reset} $c{bold}" . __('Oldest installed packages:') . "$c{byellow} " . @{[map { $_->[0] } @{$packages{installed}{old}}]} . $c{reset};
+say "$c{bblue}::$c{reset} $c{bold}" . __('Newest installed packages:') . "$c{byellow} " . @{[map { $_->[0] } @{$packages{installed}{new}}]} . $c{reset};
+breakln();
 
     my @unneeded_pkgs;
 
@@ -2705,10 +2898,10 @@ STATS
     }
 
     if (@unneeded_pkgs) {
-        say "$c{bblue}::$c{reset} $c{bold}Unneeded packages:$c{byellow} ", join(' ', @unneeded_pkgs), $c{reset};
+        say "$c{bblue}::$c{reset} $c{bold}" . __('Unneeded packages:') . "$c{byellow} ", join(' ', @unneeded_pkgs), $c{reset};
     }
     else {
-        say "$c{bblue}::$c{reset} $c{bold}No unneeded packages found...$c{reset}";
+        say "$c{bblue}::$c{reset} $c{bold}" . __('No unneeded packages found...') . $c{reset};
     }
 
     main_quit();
@@ -2762,7 +2955,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             }
             else {
                 my $info = info_for_package($pkg) // do {
-                    note(":: <<$pkg>> not found.");
+                    note(':: ' . __x('<<{pkg}>> not found.', pkg => $pkg));
                     $? = 1;
                     next;
                 };
@@ -2776,7 +2969,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             msg(":: AUR packages maintained by <<$maintainer>>") if $lconfig{debug};
             list_aur_maintainer_packages($maintainer)
               or do {
-                note(":: Maintainer not found: $maintainer");
+                note(':: ' . __('Maintainer not found:') . " $maintainer");
                 $? = 1;
                 next;
               };
@@ -2795,21 +2988,22 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
 
             download_package($pkg, $lconfig{clone_dir}) or do {
-                note(":: <<$pkg>> not found.");
+                note(':: ' . __x('<<{pkg}>> not found.', pkg => $pkg));
                 $? = 1;
                 next;
             };
 
             open my $fh, '<:utf8', 'PKGBUILD'
               or do {
-                note(":: Cannot open PKGBUILD of package <<$pkg>>: {!$!!}");
+                note(':: ' . __x('Cannot open PKGBUILD of package <<{pkg}>>: {!{error}!}',
+                                 pkg => $pkg, error => $!));
                 $? = 2;
                 next;
               };
 
-            say '';
-            msg(":: PKGBUILD of <<$pkg>>");
-            say '';
+            breakln();
+            msg(':: ' . __x('PKGBUILD of <<{pkg}>>', pkg => $pkg));
+            breakln();
             say sanitize_output(
                 do {
                     local $/;
@@ -2872,15 +3066,15 @@ elsif ($lconfig{C} or $lconfig{comments}) {       # -C
     foreach my $pkg (@keyword_arguments) {
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
         my $info = info_for_package($pkg) // do {
-            note(":: <<$pkg>> not found.");
+            note(':: ' . __x('<<{pkg}>> not found.', pkg => $pkg));
             $? = 1;
             next;
         };
 
-        say '';
-        msg(":: Package: $pkg");
-        msg(":: AUR URL: " . sprintf($aur_package_id_url, $info->{ID}));
-        say '';
+        breakln();
+        msg(':: ' . __('Package:') . " $pkg");
+        msg(':: ' . "AUR URL: " . sprintf($aur_package_id_url, $info->{ID}));
+        breakln();
 
         foreach my $comment (get_comments($info->{ID})) {
             say $comment;
@@ -2919,7 +3113,7 @@ elsif ($lconfig{G} or $lconfig{get}) {    # -G
         foreach my $pkg (@keyword_arguments) {
             local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
             if (!download_package($pkg, $curdir)) {
-                note(":: <<$pkg>> not found.");
+                note(':: ' . __x('<<{pkg}>> not found.', pkg => $pkg));
                 $? = 1;
                 next;
             }
@@ -2954,7 +3148,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
         my $in_clone_dir = 0;
         foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
             my $tarball = find_local_package($pkg, $dir) // next;
-            msg(":: Found tarball: $tarball");
+            msg(':: ' . __('Found tarball:') . " $tarball");
             push @packages, $tarball;
             $in_clone_dir = 1;
             last;
@@ -2966,7 +3160,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
             my $tarball = find_local_package($pkg, curdir());
 
             if (defined($tarball)) {
-                msg(":: Found tarball: $tarball");
+                msg(':: ' . __('Found tarball:') . " $tarball");
                 push @packages, $tarball;
             }
         }

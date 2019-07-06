@@ -1,0 +1,7 @@
+# Machine Object files
+i18n/*.mo
+
+# Portable Object backups
+i18n/*.po~
+
+build
