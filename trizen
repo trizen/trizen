@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 07 June 2019
+# Latest edit: 07 September 2019
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -524,7 +524,7 @@ sub parse_long_arguments (@args) {
         \%lconfig,
         map {
                 (defined($lconfig{$_}) and $lconfig{$_} =~ /^[01]\z/) ? $_
-              : ref($lconfig{$_}) ? $_
+              : ref($lconfig{$_})                                     ? $_
               : "$_=s"
         } keys %lconfig,
     );
@@ -1024,7 +1024,7 @@ sub info_for_package ($pkgname) {
         msg(":: Found <<$info->{resultcount}>> packages.");
         print "\n";
         my @packages = map { $_->{Name} } @{$info->{results}};
-        my %table = (map { $packages[$_] => $_ } 0 .. $#packages);
+        my %table    = (map { $packages[$_] => $_ } 0 .. $#packages);
         my $reply = $term->get_reply(
                                      print_me => "\n$c{bold}=>> Select a package$c{reset}",
                                      prompt   => "$c{bold}Select$c{reset}",
@@ -1371,7 +1371,7 @@ sub show_and_edit_text_files ($info) {
         if (!$lconfig{noedit}) {
 #<<<
             my $edit = $term->ask_yn(
-                prompt  => "$c{bold}=>> Edit $file?$c{reset}",
+                prompt  => "=>> Edit $info->{Name}/$c{bold}$file$c{reset}?",
                 default => 'n'
             );
 #>>>
@@ -1875,7 +1875,7 @@ sub select_packages_from_input ($input, $items, $default = [], $empty_for_all = 
 
     my @indices = (
         map {
-                /^\^($number)(?:\.\.|-)($number)\z/ ? (map { -$_ } ($1 > $2 ? reverse($2 .. $1) : ($1 .. $2)))
+                /^\^($number)(?:\.\.|-)($number)\z/   ? (map { -$_ } ($1 > $2 ? reverse($2 .. $1) : ($1 .. $2)))
               : /^(-?$number)(?:\.\.|-)(-?$number)\z/ ? ($1 > $2 ? reverse($2 .. $1) : ($1 .. $2))
               : $_
           }
@@ -1883,7 +1883,7 @@ sub select_packages_from_input ($input, $items, $default = [], $empty_for_all = 
     );
 
     my %unselected = (
-                      map { ($items->{$_} => 1) }
+                      map  { ($items->{$_} => 1) }
                       grep { exists $items->{$_} }
                       map { substr($_, 1) }
                       grep { /^[-^]./ } @indices
@@ -2822,12 +2822,12 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
 
     # If `perl` gets updated along with a Perl module that has some parts written in C, then the
-    # module will fail to load later on, since `trizen` was executed with the older verison of `perl`.
+    # module will fail to load later on, since `trizen` was executed with the older version of `perl`.
     # Therefore, we load all the critical modules here, to prevent a potential crash in the future. (fixes #206)
     require JSON;
     require Time::Piece;
     require HTTP::Message;
-    require LWP::UserAgent;         # also loads Scalar::Util
+    require LWP::UserAgent;    # also loads Scalar::Util
     require LWP::Protocol::https;
     require HTML::Entities;
     require File::Copy;
