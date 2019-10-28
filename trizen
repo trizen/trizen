@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 07 September 2019
+# Latest edit: 28 October 2019
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -148,7 +148,6 @@ my %CONFIG = (
               nopull                     => 0,
               noinfo                     => 0,
               skipinteg                  => 0,
-              force                      => 0,
               ask_for_retry              => 1,
               lwp_show_progress          => 0,
               lwp_env_proxy              => 1,
@@ -264,7 +263,6 @@ color_code_dependencies      => bool    Display the dependencies of a package in
 debug                        => bool    Verbose mode.
 flip_indices                 => bool    In search+install mode, show the indices of packages in reverse order.
 flip_results                 => bool    Show the search results in reverse order.
-force                        => bool    Pass the `--force` flag to `pacman`.
 git_clone_depth              => int     Pass the `--depth int` flag to `git clone`. (0 means no limit)
 lwp_env_proxy                => bool    Use proxy settings defined in `env` (if any).
 lwp_show_progress            => bool    Show the HTTPS requests made by LWP::UserAgent to the AUR servers.
@@ -470,7 +468,6 @@ $c{bgreen}Other options:$c{reset}
       $c{bold}--needed$c{reset}        : do not reinstall up-to-date packages
       $c{bold}--asdeps$c{reset}        : install packages as non-explicitly installed
       $c{bold}--asexplicit$c{reset}    : install packages as explicitly installed
-      $c{bold}--force$c{reset}         : pass the `--force` argument to `pacman`
       $c{bold}--skipinteg$c{reset}     : pass the `--skipinteg` argument to `makepkg`
       $c{bold}--noconfirm$c{reset}     : do not ask for any confirmation
       $c{bold}--movepkg$c{reset}       : move built packages into pacman's cache directory
@@ -1024,7 +1021,7 @@ sub info_for_package ($pkgname) {
         msg(":: Found <<$info->{resultcount}>> packages.");
         print "\n";
         my @packages = map { $_->{Name} } @{$info->{results}};
-        my %table    = (map { $packages[$_] => $_ } 0 .. $#packages);
+        my %table = (map { $packages[$_] => $_ } 0 .. $#packages);
         my $reply = $term->get_reply(
                                      print_me => "\n$c{bold}=>> Select a package$c{reset}",
                                      prompt   => "$c{bold}Select$c{reset}",
@@ -1601,7 +1598,7 @@ sub is_vcs_package ($pkg) {
 }
 
 sub install_packages_from_repo (@pkgs) {
-    my @args = ('-S', get_pacman_arguments('long', qw(noconfirm force needed quiet)));
+    my @args = ('-S', get_pacman_arguments('long', qw(noconfirm needed quiet)));
 
     if ($lconfig{asdeps}) {
         push @args, '--asdeps';
@@ -1681,7 +1678,7 @@ sub install_package ($pkg) {
         }
     }
 
-    my @args = get_pacman_arguments('long', qw(noconfirm force needed));
+    my @args = get_pacman_arguments('long', qw(noconfirm needed));
 
     # Package will be installed as dependency
     if ($lconfig{asdeps}) {
@@ -1818,7 +1815,7 @@ sub install_package ($pkg) {
 sub clean_cache () {
 
     if (!$lconfig{aur}) {
-        execute_pacman_command(1, get_pacman_arguments('all', qw(sync clean noconfirm force quiet)));
+        execute_pacman_command(1, get_pacman_arguments('all', qw(sync clean noconfirm quiet)));
     }
 
     if ($lconfig{regular} or $lconfig{r}) {
@@ -1885,7 +1882,7 @@ sub select_packages_from_input ($input, $items, $default = [], $empty_for_all = 
     my %unselected = (
                       map  { ($items->{$_} => 1) }
                       grep { exists $items->{$_} }
-                      map { substr($_, 1) }
+                      map  { substr($_, 1) }
                       grep { /^[-^]./ } @indices
                      );
 
@@ -2388,7 +2385,7 @@ sub update_local_packages (@repo_packages) {
 #<<<
     if (not $lconfig{aur}) {
         execute_pacman_command(1, @repo_packages,
-            get_pacman_arguments('all', qw(sync needed asdeps asexplicit sysupgrade noconfirm force quiet refresh)),
+            get_pacman_arguments('all', qw(sync needed asdeps asexplicit sysupgrade noconfirm quiet refresh)),
             map { "--ignore=$_" } keys(%ignored_pkgs)
         );
     }
@@ -2453,7 +2450,7 @@ sub update_local_packages (@repo_packages) {
         if ($local_vcmp < 0 or ($lconfig{devel} and $is_vcs_package)) {
 
             if (exists $ignored_pkgs{$pkgname}) {
-                note(  ":: <<$pkgname>> -- ignoring upgrade ({!$packages{$pkgname}!} => <<"
+                note(  ":: <<$pkgname>> -- ignoring package upgrade ({!$packages{$pkgname}!} => <<"
                      . (($is_vcs_package && $local_vcmp >= 0) ? 'latest' : $version)
                      . ">>)");
                 next;
@@ -2853,7 +2850,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
 
     elsif ($lconfig{y} or $lconfig{refresh}) {    # -Sy
         execute_pacman_command(1, splice(@repo_packages),
-                               get_pacman_arguments('all', qw(sync needed asdeps asexplicit refresh force quiet noconfirm)));
+                               get_pacman_arguments('all', qw(sync needed asdeps asexplicit refresh quiet noconfirm)));
     }
 
     install_packages_from_repo(@repo_packages) if @repo_packages;
@@ -2934,7 +2931,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
     }
 
     my @packages;
-    my @args = get_pacman_arguments('all', qw(upgrade asdeps asexplicit noconfirm force needed));
+    my @args = get_pacman_arguments('all', qw(upgrade asdeps asexplicit noconfirm needed));
 
     foreach my $pkg (@keyword_arguments) {
 
