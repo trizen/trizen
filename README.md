@@ -112,7 +112,6 @@ Other options:
       --needed        : do not reinstall up-to-date packages
       --asdeps        : install packages as non-explicitly installed
       --asexplicit    : install packages as explicitly installed
-      --force         : pass the `--force` argument to `pacman`
       --skipinteg     : pass the `--skipinteg` argument to `makepkg`
       --noconfirm     : do not ask for any confirmation
       --movepkg       : move built packages into pacman's cache directory

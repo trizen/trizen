@@ -70,7 +70,6 @@ _trizen_opts_pkgfile=(
     '*-d[Skip dependency checks]'
     '*--nodeps[Skip dependency checks]'
     '--dbonly[Only remove database entry, do not remove files]'
-    '--force[Overwrite conflicting files]'
     '--needed[Do not reinstall up-to-date packages]'
     '*:package file:_files -g "*.pkg.tar*~*.sig(.,@)"'
 )
@@ -143,7 +142,6 @@ _trizen_opts_sync_modifiers=(
     '--nobuild[Do not build packages (implies --noedit)]'
     '--noinstall[Do not install packages after building]'
     '--skipinteg[Pass the `--skipinteg` argument to `makepkg`]'
-    '--force[Overwrite conflicting files]'
 )
 
 # handles --help subcommand
