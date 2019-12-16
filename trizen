@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 22 November 2019
+# Latest edit: 16 December 2019
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -1021,7 +1021,7 @@ sub info_for_package ($pkgname) {
         msg(":: Found <<$info->{resultcount}>> packages.");
         print "\n";
         my @packages = map { $_->{Name} } @{$info->{results}};
-        my %table = (map { $packages[$_] => $_ } 0 .. $#packages);
+        my %table    = (map { $packages[$_] => $_ } 0 .. $#packages);
         my $reply = $term->get_reply(
                                      print_me => "\n$c{bold}=>> Select a package$c{reset}",
                                      prompt   => "$c{bold}Select$c{reset}",
@@ -1579,7 +1579,7 @@ sub build_and_install_package ($pkg, @args) {
 
     # Build the package and install/move it
     if (run_makepkg_command($pkg)) {
-        $already_built{lc $pkg} = 1;    # mark the package as built
+        $already_built{lc $pkg} = 1;                 # mark the package as built
         return install_built_package($pkg, @args);
     }
 
@@ -1807,7 +1807,7 @@ sub install_package ($pkg) {
     chdir($info->{_localpath});
 
     msg(":: Current directory is: " . rel2abs(curdir())) if $lconfig{debug};
-    msg(":: Building and installing <<$pkg>>...") if $lconfig{debug};
+    msg(":: Building and installing <<$pkg>>...")        if $lconfig{debug};
 
     return build_and_install_package($pkg, @args);
 }
@@ -1843,7 +1843,7 @@ sub clean_cache () {
 
     foreach my $name (readdir($dir_h)) {
 
-        next if substr($name, 0, 1) eq '.';    # skip dot files
+        next if substr($name, 0, 1) eq '.';          # skip dot files
         next if $name !~ /^[a-zA-Z0-9\-_+@.]+\z/;    # validate directory name
 
         my $dir = catdir($lconfig{clone_dir}, $name);
@@ -2195,7 +2195,7 @@ sub read_local_desc_file ($pkgname, $version = undef) {
 
 sub parse_date ($date, $format) {
     require Time::Piece;
-    Time::Piece->strptime($date, $format);
+    eval { Time::Piece->strptime($date, $format) };
 }
 
 sub parse_iso_date ($date) {
@@ -2230,7 +2230,7 @@ sub get_github_commit_date ($commit_info) {
 }
 
 sub get_gitlab_commit_date ($commit_info) {
-    parse_iso_date(($commit_info->{committed_date} // $commit_info->{authored_date} // return) =~ s/\.[0-9]{3}Z\z/Z/r);
+    parse_iso_date(($commit_info->{committed_date} // $commit_info->{authored_date} // return) =~ s/\.[0-9]{3}.*/Z/r);
 }
 
 sub is_commit_new ($commit_date, $pkgname) {
@@ -2279,7 +2279,7 @@ sub has_new_git_commit ($source_url, $pkgname) {
 
     chomp(my $seconds = `/usr/bin/git -C \Q$dir\E log -1 --format=%ct` // return);
 
-    my $commit_date = parse_date($seconds, '%s');
+    my $commit_date = parse_date($seconds, '%s') // return;
     return is_commit_new($commit_date, $pkgname);
 }
 
