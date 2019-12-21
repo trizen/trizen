@@ -246,7 +246,6 @@ sub dump_configuration ($config, $configuration_file) {
 #!/usr/bin/perl
 
 # $execname configuration file
-# Updated on ${\(scalar localtime)}
 
 EOH
 
