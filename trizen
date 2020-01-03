@@ -2539,7 +2539,7 @@ sub update_local_packages (@repo_packages) {
             next;
         }
 
-        print "\n" if ($i == 0);
+        print "\n" if ($i == 0 and $stdout_on_tty);
 
         if ($package->{is_vcs} and $package->{local_vcmp} >= 0) {
 
