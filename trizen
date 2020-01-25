@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2010-2019 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
+# Copyright (C) 2010-2020 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 24 December 2019
+# Latest edit: 25 January 2020
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -2932,7 +2932,7 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
     my @packages;
     my @args = get_pacman_arguments('all', qw(upgrade asdeps asexplicit noconfirm needed));
 
-    foreach my $pkg (@keyword_arguments) {
+  OUTER_LOOP: foreach my $pkg (@keyword_arguments) {
 
         # Install from current directory, given full package name
         if ($pkg =~ /$pkg_suffix_re/io and -f $pkg) {
@@ -2946,30 +2946,32 @@ elsif ($lconfig{U} or $lconfig{upgrade}) {    # -U
             next;
         }
 
-        # Install from clone directory, given only base package name
-        my $in_clone_dir = 0;
+        # Install from clone directory, given only the package name
         foreach my $dir (grep { -d } glob("$lconfig{clone_dir}/*")) {
             my $tarball = find_local_package($pkg, $dir) // next;
             msg(":: Found tarball: $tarball");
             push @packages, $tarball;
-            $in_clone_dir = 1;
-            last;
+            next OUTER_LOOP;
         }
 
         # When not found in the clone directory, install from
         # the current directory, given only base package name
-        if (not $in_clone_dir) {
-            my $tarball = find_local_package($pkg, curdir());
+        my $tarball = find_local_package($pkg, curdir());
 
-            if (defined($tarball)) {
-                msg(":: Found tarball: $tarball");
-                push @packages, $tarball;
-            }
+        if (defined($tarball)) {
+            msg(":: Found tarball: $tarball");
+            push @packages, $tarball;
+            next;
         }
+
+        note(":: File <<$pkg>> does not exist.");
     }
 
     if (@packages) {
         execute_pacman_command(1, @args, @packages);
+    }
+    else {
+        exit 2;
     }
 }
 elsif ($lconfig{R} or $lconfig{remove}) {    # -R
