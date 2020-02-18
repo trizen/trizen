@@ -2311,7 +2311,7 @@ sub is_vcs_package_ood ($pkgname) {
         my $owner = $1;
         my $repo  = $2 =~ s/\.git\z//r;
 
-        msg(":: <<$pkgname>> checking GitHub <<$owner/$repo>> for updates...");
+        $lconfig{quiet} || msg(":: <<$pkgname>> checking GitHub <<$owner/$repo>> for updates...");
 
 #<<<
         return (
@@ -2330,7 +2330,7 @@ sub is_vcs_package_ood ($pkgname) {
         my $owner = $1;
         my $repo  = $2 =~ s/\.git\z//r;
 
-        msg(":: <<$pkgname>> checking GitLab <<$owner/$repo>> for updates...");
+        $lconfig{quiet} || msg(":: <<$pkgname>> checking GitLab <<$owner/$repo>> for updates...");
 
 #<<<
         return (
@@ -2350,7 +2350,7 @@ sub is_vcs_package_ood ($pkgname) {
 
         my $source_url = $1;
 
-        msg(":: <<$pkgname>> checking <<$source_url>> for updates...");
+        $lconfig{quiet} || msg(":: <<$pkgname>> checking <<$source_url>> for updates...");
 
         return has_new_git_commit($source_url, $pkgname);
     }
