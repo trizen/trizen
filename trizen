@@ -1376,8 +1376,10 @@ sub show_and_edit_text_files ($info) {
         }
 
         my %aliases;
-        @aliases{1 .. scalar(@build_files)} = @build_files;
+
+        @aliases{1 .. scalar(@build_files)}   = @build_files;
         @aliases{map { lc($_) } @build_files} = @build_files;
+        $aliases{all}                         = \@build_files;
 
         my $input = (
                      $lconfig{noconfirm}
@@ -1387,7 +1389,8 @@ sub show_and_edit_text_files ($info) {
 
         my @selected = select_packages_from_input(lc($input), \%aliases, \@build_files, 0);
 
-        @build_files = @selected;
+        @build_files = map { ref($_) eq 'ARRAY' ? @$_ : $_ } @selected;
+
         say '' if (@build_files and !$lconfig{noedit});
     }
 
