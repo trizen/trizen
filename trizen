@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 25 January 2020
+# Latest edit: 13 March 2020
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -170,6 +170,7 @@ my %CONFIG = (
               pacman_local_dir           => '/var/lib/pacman/local',
               pacman_command             => '/usr/bin/pacman',
               show_diff_only             => 0,
+              one_line_edit              => 0,
               show_build_files_content   => 1,
               aur_results_sort_by        => 'name',
               aur_results_sort_order     => 'ascending',
@@ -275,6 +276,7 @@ noedit                       => bool    Do not prompt to edit files when install
 noinfo                       => bool    Do not display package information when installing an AUR package.
 noinstall                    => bool    Do not install built packages -- builds only.
 nopull                       => bool    Do not `git pull` new changes from the AUR git server.
+one_line_edit                => bool    Select one or more build files to view/edit with one-line prompt.
 packages_in_stats            => int     The number of packages to display in `--stats`
 pacman_command               => str     The `pacman` command that is used internally for pacman operations.
 pacman_local_dir             => str     Absolute path to the pacman's local directory.
@@ -356,6 +358,11 @@ if (-e $config_file and (-s _) > 1) {
     else {
         note(":: Invalid config file: {!" . ($! || '$CONFIG must be a HASH ref!') . '!}');
         $lconfig{update_config} = 1;
+    }
+
+    if ($lconfig{update_config}) {
+        dump_configuration(\%CONFIG, $config_file);
+        $lconfig{update_config} = 0;
     }
 }
 else {
@@ -1061,7 +1068,9 @@ sub download_package ($pkgname, $path) {
         $info->{_exists_in_cache} = 1;
 
 #<<<
-        print sanitize_output(decode_utf8(scalar `/usr/bin/git -C \Q$dir_name\E diff --no-ext-diff $old_commit_hash --color=always ':!.SRCINFO'`));
+        my $str = sanitize_output(decode_utf8(scalar `/usr/bin/git -C \Q$dir_name\E diff --no-ext-diff $old_commit_hash --color=always ':!.SRCINFO'`));
+        $str .= "\n" if length($str);
+        say $str;
 #>>>
     }
     else {
@@ -1072,6 +1081,8 @@ sub download_package ($pkgname, $path) {
 
         push @flags, '--quiet';
         push @flags, "--depth=$lconfig{git_clone_depth}" if ($lconfig{git_clone_depth} > 0);
+
+        say '';
 
         # Clone the build files
         system('/usr/bin/git', '-C', $path, 'clone', @flags, $git_url) && return;
@@ -1347,11 +1358,40 @@ sub show_and_edit_text_files ($info) {
     require File::Basename;
     chomp(my @files = map { File::Basename::basename(decode_utf8($_)) } `/usr/bin/git ls-files`);
 
+    my @build_files;
+
     foreach my $file ('PKGBUILD', grep { $_ ne 'PKGBUILD' and -f and not -z _ } @files) {
 
         next if substr($file, -1) eq q{~};       # ignore backup (~) files
         next if substr($file, -4) eq q{.bak};    # ignore backup (.bak) files
         next if substr($file, 0, 1) eq q{.};     # ignore hidden files
+
+        push @build_files, $file;
+    }
+
+    if ($lconfig{one_line_edit} and scalar(@build_files) > 1) {
+
+        foreach my $i (0 .. $#build_files) {
+            printf("$c{bgreen}%2d$c{reset}. $c{bblue}%s$c{reset}\n", $i + 1, $build_files[$i]);
+        }
+
+        my %aliases;
+        @aliases{1 .. scalar(@build_files)} = @build_files;
+        @aliases{map { lc($_) } @build_files} = @build_files;
+
+        my $input = (
+                     $lconfig{noconfirm}
+                     ? ''
+                     : $term->readline("\n$c{bold}=>> Select files to view/edit (<ENTER> for none)$c{reset}\n> ")
+                    ) // return;
+
+        my @selected = select_packages_from_input(lc($input), \%aliases, \@build_files, 0);
+
+        @build_files = @selected;
+        say '' if (@build_files and !$lconfig{noedit});
+    }
+
+    foreach my $file (@build_files) {
 
         my $abs_file = rel2abs($file);
 
@@ -1359,7 +1399,7 @@ sub show_and_edit_text_files ($info) {
             if ($lconfig{show_diff_only} and $info->{_exists_in_cache}) {
                 ## ok
             }
-            elsif (-T $abs_file) {               # output when it's a text-file
+            elsif (-T $abs_file) {    # output when it's a text-file
                 output_file_content($abs_file);
             }
         }
@@ -1384,8 +1424,7 @@ sub show_and_edit_text_files ($info) {
         }
     }
 
-    say '' if !$lconfig{noedit};
-
+    $lconfig{noedit} || say '';
     return 1;
 }
 
@@ -1701,8 +1740,6 @@ sub install_package ($pkg) {
         my @comments = get_comments($info->{ID});
         print "\n", join("\n", @comments) if @comments;
     }
-
-    say '';
 
     if ($lconfig{use_sudo} and $lconfig{sudo_remove_timestamp}) {
         msg(":: Removing sudo timestamp...") if $lconfig{debug};
