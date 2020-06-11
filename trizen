@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 13 March 2020
+# Latest edit: 11 June 2020
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -1651,6 +1651,19 @@ sub install_packages_from_repo (@pkgs) {
     return execute_pacman_command(1, @args, @pkgs);
 }
 
+sub install_dependency($name) {
+
+    # Activate `dependency` mode
+    local $lconfig{asdeps} = 1;
+
+    install_package($name) or do {
+        note(":: Dependency not found: <<$name>>");
+        return 0;
+    };
+
+    return 1;
+}
+
 sub install_package ($pkg) {
 
     # Avoid circular dependencies
@@ -1815,7 +1828,13 @@ sub install_package ($pkg) {
         }
 
         if ($already_installed{lc $name} or (defined($local_version) ? defined($version) ? $is_up_to_date : 1 : 0)) {
-            msg(":: Dependency <<$pkgname>> is already installed -- skipping") if $lconfig{debug};
+            if ($lconfig{devel} and is_vcs_package($name) and is_vcs_package_ood($name)) {
+                msg(":: Dependency <<$pkgname>> seems to be {!out-of-date!} -- updating") if $lconfig{debug};
+                install_dependency($name) || next;
+            }
+            else {
+                msg(":: Dependency <<$pkgname>> is already installed -- skipping") if $lconfig{debug};
+            }
         }
         elsif (is_available_in_pacman_repo($pkgname)) {
             msg(":: Dependency <<$pkgname>> is available in pacman's repository -- skipping") if $lconfig{debug};
@@ -1832,14 +1851,7 @@ sub install_package ($pkg) {
             }
 
             msg(":: Trying to install dependency: <<$name>>") if $lconfig{debug};
-
-            # Activate `dependency` mode
-            local $lconfig{asdeps} = 1;
-
-            install_package($name) or do {
-                note(":: Dependency not found: <<$name>>");
-                next;
-            };
+            install_dependency($name) || next;
         }
     }
 
