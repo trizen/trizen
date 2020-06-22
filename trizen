@@ -1407,22 +1407,22 @@ sub show_and_edit_text_files ($info) {
             }
         }
 
-        if (!$lconfig{noedit}) {
+        $lconfig{noedit} && next;   # skip in `noedit` mode
+
 #<<<
-            my $edit = $term->ask_yn(
-                prompt  => "=>> Edit $info->{Name}/$c{bold}$file$c{reset}?",
-                default => 'n'
-            );
+        my $edit = $term->ask_yn(
+            prompt  => "=>> Edit $info->{Name}/$c{bold}$file$c{reset}?",
+            default => 'n',
+        );
 #>>>
 
-            if ($edit) {
+        if ($edit) {
 
-                system "$lconfig{editor} \Q$abs_file\E";
+            system "$lconfig{editor} \Q$abs_file\E";
 
-                if ($?) {
-                    note(":: $lconfig{editor} exited with code: " . exit_code());
-                    next;
-                }
+            if ($?) {
+                note(":: $lconfig{editor} exited with code: " . exit_code());
+                next;
             }
         }
     }
