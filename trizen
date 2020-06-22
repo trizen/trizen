@@ -1829,15 +1829,15 @@ sub install_package ($pkg) {
 
         if ($already_installed{lc $name} or (defined($local_version) ? defined($version) ? $is_up_to_date : 1 : 0)) {
             if ($lconfig{devel} and is_vcs_package($name) and is_vcs_package_ood($name)) {
-                msg(":: Dependency <<$pkgname>> seems to be {!out-of-date!} -- updating") if $lconfig{debug};
+                msg(":: Dependency <<$name>> seems to be {!out-of-date!} -- updating") if $lconfig{debug};
                 install_dependency($name) || next;
             }
             else {
-                msg(":: Dependency <<$pkgname>> is already installed -- skipping") if $lconfig{debug};
+                msg(":: Dependency <<$name>> is already installed -- skipping") if $lconfig{debug};
             }
         }
         elsif (is_available_in_pacman_repo($pkgname)) {
-            msg(":: Dependency <<$pkgname>> is available in pacman's repository -- skipping") if $lconfig{debug};
+            msg(":: Dependency <<$name>> is available in pacman's repository -- skipping") if $lconfig{debug};
         }
         else {
 
@@ -2220,7 +2220,7 @@ sub list_aur_maintainer_packages ($maintainer) {
 
 sub read_local_desc_file ($pkgname, $version = undef) {
 
-    $version //= package_is_installed($pkgname, 0) // return;
+    $version //= package_is_installed($pkgname) // return;
 
     my $desc_file = catfile($lconfig{pacman_local_dir}, "$pkgname-$version", 'desc');
 
