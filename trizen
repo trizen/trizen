@@ -909,7 +909,7 @@ sub execute_pacman_command ($needs_root, @cmd) {
             }
 
             note(":: Exit code: " . exit_code()) if $lconfig{debug};
-            $term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'n') and redo;
+            $term->ask_yn(prompt => "$c{bold}=>> Try again?$c{reset}", default => 'y') and redo;
         }
     }
 
