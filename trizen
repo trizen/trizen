@@ -2485,6 +2485,10 @@ sub update_local_packages (@repo_packages) {
         my $pkgname = $result->{Name};
         my $version = $result->{Version};
 
+        # Ignore packages that exist in AUR but not in pacman -Qm
+        # https://github.com/trizen/trizen/issues/231
+        exists($packages{$pkgname}) or next;
+
         $exists_in_aur{$pkgname} = 1;
 
         if ($lconfig{show_ood} and $result->{OutOfDate}) {
