@@ -1407,7 +1407,7 @@ sub show_and_edit_text_files ($info) {
             }
         }
 
-        $lconfig{noedit} && next;   # skip in `noedit` mode
+        $lconfig{noedit} && next;     # skip in `noedit` mode
 
 #<<<
         my $edit = $term->ask_yn(
@@ -2446,7 +2446,7 @@ sub update_local_packages (@repo_packages) {
         return 1;
     }
 
-    my %packages = map { split(' ', $_) } `$lconfig{pacman_command} -Qm`;
+    my %packages = map { @$_ } grep { scalar(@$_) == 2 } map { [split(' ', $_)] } `$lconfig{pacman_command} -Qm`;
     my @pkgnames = sort keys %packages;
 
     my %exists_in_aur;
