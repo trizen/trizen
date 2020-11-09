@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 26 August 2020
+# Latest edit: 09 November 2020
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -190,50 +190,50 @@ my %CONFIG = (
               syntax_highlighting_cmd    => '/usr/bin/highlight -O ansi',
              );
 
-$CONFIG{clone_dir} = catdir(tmpdir(), "$execname-$user");
+$CONFIG{clone_dir} = catdir($config_dir, 'sources');
 
 my %lconfig = (
-    %CONFIG,
-    quiet         => 0,
-    devel         => 0,
-    needed        => 0,
-    noconfirm     => 0,
-    aur           => 0,
-    search        => 0,                           # -s
-    info          => 0,                           # -i
-    clean         => 0,                           # -c
-    local         => 0,                           # -l
-    pkgbuild      => 0,
-    foreign       => 0,                           # -m
-    print         => 0,
-    list          => 0,
-    sysupgrade    => 0,                           # -u
-    comments      => 0,
-    database      => 0,                           # -D
-    files         => 0,                           # -F
-    query         => 0,                           # -Q
-    remove        => 0,                           # -R
-    sync          => 0,                           # -S
-    deptest       => 0,                           # -T
-    upgrade       => 0,                           # -U
-    get           => 0,
-    regex         => 0,                           # -x
-    refresh       => 0,                           # -y
-    upgrades      => 0,                           # -u
-    check         => 0,                           # -k
-    with_deps     => 0,                           # -d
-    maintainer    => 0,                           # -m
-    nobuild       => 0,
-    regular       => 0,                           # use only the regular repositories
-    asdep         => 0,                           # alias for `--asdeps`
-    asdeps        => 0,
-    asexplicit    => 0,
-    help          => 0,
-    update_config => 0,
-    ignore        => '',                          # packages to ignore during -Su
-    as_root       => ($user eq 'root' ? 1 : 0),
-    stats         => \&show_stats,
-    version       => \&version,
+               %CONFIG,
+               quiet         => 0,
+               devel         => 0,
+               needed        => 0,
+               noconfirm     => 0,
+               aur           => 0,
+               search        => 0,                           # -s
+               info          => 0,                           # -i
+               clean         => 0,                           # -c
+               local         => 0,                           # -l
+               pkgbuild      => 0,
+               foreign       => 0,                           # -m
+               print         => 0,
+               list          => 0,
+               sysupgrade    => 0,                           # -u
+               comments      => 0,
+               database      => 0,                           # -D
+               files         => 0,                           # -F
+               query         => 0,                           # -Q
+               remove        => 0,                           # -R
+               sync          => 0,                           # -S
+               deptest       => 0,                           # -T
+               upgrade       => 0,                           # -U
+               get           => 0,
+               regex         => 0,                           # -x
+               refresh       => 0,                           # -y
+               upgrades      => 0,                           # -u
+               check         => 0,                           # -k
+               with_deps     => 0,                           # -d
+               maintainer    => 0,                           # -m
+               nobuild       => 0,
+               regular       => 0,                           # use only the regular repositories
+               asdep         => 0,                           # alias for `--asdeps`
+               asdeps        => 0,
+               asexplicit    => 0,
+               help          => 0,
+               update_config => 0,
+               ignore        => '',                          # packages to ignore during -Su
+               as_root       => ($user eq 'root' ? 1 : 0),
+               stats         => \&show_stats,
+               version       => \&version,
               );
 
 $lconfig{editor} = $ENV{VISUAL} || $ENV{EDITOR} || '/usr/bin/nano';
@@ -1163,15 +1163,15 @@ sub show_info ($info) {
     say map { sprintf $c{bold} . $_->[0], $c{reset} . $_->[1] }
       ["Repository      : %s\n", "$c{bpurple}AUR$c{reset}"],
       ["Name            : %s\n", "$c{bold}$info->{Name}$c{reset}"],
-      ["Version         : %s\n", $info->{Version} // 'Unknown'],
+      ["Version         : %s\n", $info->{Version}    // 'Unknown'],
       ["Maintainer      : %s\n", $info->{Maintainer} // "$c{bred}None$c{reset}"],
-      ["URL             : %s\n", $info->{URL} // 'None'],
+      ["URL             : %s\n", $info->{URL}        // 'None'],
       ["AUR URL         : %s\n", sprintf($aur_package_id_url, $info->{ID})],
       ["License         : %s\n", indent_array($info->{License} // [])],
       ["Votes           : %s\n", $info->{NumVotes}],
       ["Popularity      : %s\n", sprintf("%.2g%%", $info->{Popularity})],
       ["Installed       : %s\n", package_is_installed($info->{Name}) ? "$c{bgreen}Yes$c{reset}" : 'No'],
-      ["Out Of Date     : %s\n", $info->{OutOfDate} ? "$c{bred}Yes$c{reset}" : 'No'],
+      ["Out Of Date     : %s\n", $info->{OutOfDate}                  ? "$c{bred}Yes$c{reset}"   : 'No'],
       ["Depends On      : %s\n", indent_array(color_code_dependencies($info->{Depends}      // []))],
       ["Make Deps       : %s\n", indent_array(color_code_dependencies($info->{MakeDepends}  // []))],
       ["Check Deps      : %s\n", indent_array(color_code_dependencies($info->{CheckDepends} // []))],
@@ -1620,7 +1620,7 @@ sub build_and_install_package ($pkg, @args) {
 
     # Build the package and install/move it
     if (run_makepkg_command($pkg)) {
-        $already_built{lc $pkg} = 1;                 # mark the package as built
+        $already_built{lc $pkg} = 1;    # mark the package as built
         return install_built_package($pkg, @args);
     }
 
@@ -2919,7 +2919,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
         }
     }
 }
-elsif ($lconfig{C} or $lconfig{comments}) {       # -C
+elsif ($lconfig{C} or $lconfig{comments}) {    # -C
 
     foreach my $pkg (@keyword_arguments) {
         local $lconfig{aur} = 1 if _parse_pkgname(\$pkg);
