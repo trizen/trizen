@@ -1372,7 +1372,8 @@ sub show_and_edit_text_files ($info) {
     if ($lconfig{one_line_edit} and scalar(@build_files) > 1) {
 
         foreach my $i (0 .. $#build_files) {
-            printf("$c{bgreen}%2d$c{reset}. $c{bblue}%s$c{reset}\n", $i + 1, $build_files[$i]);
+            printf("$c{bgreen}%2d$c{reset}. $c{bblue}%s$c{reset}%s\n",
+                   $i + 1, $build_files[$i], ((-B $build_files[$i]) ? " ($c{bred}binary$c{reset})" : ""));
         }
 
         my %aliases;
