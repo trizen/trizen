@@ -52,6 +52,7 @@ use Encode qw(decode_utf8);
 use Getopt::Std qw(getopts);
 use URI::Escape qw(uri_escape_utf8);
 
+use Memoize qw(memoize);
 use Term::ANSIColor qw(:constants);
 
 use File::Path qw(make_path rmtree);
@@ -111,6 +112,10 @@ sub disable_colors {
 }
 
 enable_colors();    # enable colors by default
+
+# Memoized functions
+memoize('get');
+memoize('is_vcs_package_ood');
 
 #----------------------- ARGV -----------------------#
 
