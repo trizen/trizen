@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright (C) 2010-2020 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
+# Copyright (C) 2010-2022 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 09 November 2020
+# Latest edit: 05 February 2022
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -58,14 +58,14 @@ use Term::ANSIColor qw(:constants);
 use File::Path qw(make_path rmtree);
 use File::Spec::Functions qw(catdir catfile tmpdir curdir rel2abs);
 
-my $version  = '1.64';
+my $version  = '1.65';
 my $execname = 'trizen';
 
 my $AUR_V = '5';    # current version of AurJson
 
-my $aur_base_url       = 'https://aur.archlinux.org';
-my $aur_rpc_base_url   = "$aur_base_url/rpc.php";
-my $aur_package_id_url = "$aur_base_url/packages.php?ID=%s";
+my $aur_base_url     = 'https://aur.archlinux.org';
+my $aur_rpc_base_url = "$aur_base_url/rpc/";
+my $aur_package_url  = "$aur_base_url/packages/%s";
 
 # Home directory
 my $home_dir = $ENV{HOME} || $ENV{LOGDIR} || (getpwuid $<)[7] || `echo -n ~`;
@@ -805,12 +805,12 @@ sub get ($url) {
     return;
 }
 
-sub get_comments ($id) {
+sub get_comments ($name) {
 
-    $id // return;
-    $id =~ /^\d+\z/ or return;
+    $name // return;
+    $name eq '' and return;
 
-    my $url     = sprintf($aur_package_id_url, $id);
+    my $url     = make_package_url($name);
     my $content = get($url) // return;
 
     require HTML::Entities;
@@ -1008,6 +1008,10 @@ sub strip_version ($version) {
     return strip_space($version);
 }
 
+sub make_package_url ($name) {
+    sprintf($aur_package_url, uri_escape_utf8($name));
+}
+
 sub parse_package_name_and_version ($pkgname) {
 
     if ($pkgname =~ /^(.*?)([<=>]=?)(.*)/) {
@@ -1171,7 +1175,7 @@ sub show_info ($info) {
       ["Version         : %s\n", $info->{Version}    // 'Unknown'],
       ["Maintainer      : %s\n", $info->{Maintainer} // "$c{bred}None$c{reset}"],
       ["URL             : %s\n", $info->{URL}        // 'None'],
-      ["AUR URL         : %s\n", sprintf($aur_package_id_url, $info->{ID})],
+      ["AUR URL         : %s\n", make_package_url($info->{PackageBase})],
       ["License         : %s\n", indent_array($info->{License} // [])],
       ["Votes           : %s\n", $info->{NumVotes}],
       ["Popularity      : %s\n", sprintf("%.2g%%", $info->{Popularity})],
@@ -1657,7 +1661,7 @@ sub install_packages_from_repo (@pkgs) {
     return execute_pacman_command(1, @args, @pkgs);
 }
 
-sub install_dependency($name) {
+sub install_dependency ($name) {
 
     # Activate `dependency` mode
     local $lconfig{asdeps} = 1;
@@ -1759,7 +1763,7 @@ sub install_package ($pkg) {
     }
 
     if ($lconfig{show_comments}) {
-        my @comments = get_comments($info->{ID});
+        my @comments = get_comments($info->{PackageBase});
         print "\n", join("\n", @comments) if @comments;
     }
 
@@ -2936,11 +2940,11 @@ elsif ($lconfig{C} or $lconfig{comments}) {    # -C
         };
 
         say '';
-        msg(":: Package: $pkg");
-        msg(":: AUR URL: " . sprintf($aur_package_id_url, $info->{ID}));
+        msg(":: Package: $info->{Name}");
+        msg(":: AUR URL: " . make_package_url($info->{PackageBase}));
         say '';
 
-        foreach my $comment (get_comments($info->{ID})) {
+        foreach my $comment (get_comments($info->{PackageBase})) {
             say $comment;
         }
     }
