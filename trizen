@@ -64,7 +64,7 @@ my $execname = 'trizen';
 my $AUR_V = '5';    # current version of AurJson
 
 my $aur_base_url     = 'https://aur.archlinux.org';
-my $aur_rpc_base_url = "$aur_base_url/rpc/";
+my $aur_rpc_base_url = "$aur_base_url/rpc";
 my $aur_package_url  = "$aur_base_url/packages/%s";
 
 # Home directory
