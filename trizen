@@ -755,7 +755,7 @@ sub error ($line) {
 
 sub json2perl ($json) {
     require JSON;
-    JSON::from_json($json);
+    JSON::from_json($json, {utf8 => 1});
 }
 
 sub start_sudo_autorepeat () {
@@ -2118,9 +2118,15 @@ sub search_packages (@keywords) {
     }
 
     my @aur_results;
-    foreach my $key (map { uri_escape_utf8($_) } grep { length() > 1 } @keywords) {
+    foreach my $key (map { uri_escape_utf8($_) } grep { length($_) > 1 } @keywords) {
         push @aur_results, json2perl(get("$aur_rpc_base_url?v=$AUR_V&type=search&arg=$key") // next);
     }
+
+#<<<
+    #~ # Multiple keyword search with version 6.
+    #~ my $kw = uri_escape_utf8(join(' ', grep { length($_) > 1 } @keywords));
+    #~ my @aur_results = json2perl(get("$aur_rpc_base_url?v=6&type=search&arg=$kw") // '{}');
+#>>>
 
     my %seen;
     my @keys_re = map { qr/\Q$_\E/i } @keywords;
