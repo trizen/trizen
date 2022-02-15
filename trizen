@@ -819,7 +819,7 @@ sub get_comments ($name) {
     while (
         $content =~ m{
             <h4\b.*?>\s*
-                (\S(?-s:.*?))\ commented\ on\ (?:<.*?>)?(\d\d\d\d-\d\d-\d\d\ \d\d:\d\d)(?:<.*?>)?
+                (\S+)\ commented\ on\ <a\s+href=".*?"\s+class="date">(\d{4}-\d\d-\d\d\ \d\d:\d\d).*?</a>
              \s*</h4>\s*
             <div\b.*?class="article-content">\s*
                 <div> \s* (.*?) </div>\s*
