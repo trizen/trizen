@@ -2773,7 +2773,7 @@ STATS
     }
 
     if (@unneeded_pkgs) {
-        say "$c{bblue}::$c{reset} $c{bold}Unneeded packages:$c{byellow} ", join(' ', @unneeded_pkgs), $c{reset};
+        say "$c{bblue}::$c{reset} $c{bold}Unneeded packages:$c{byellow} ", join(' ', sort @unneeded_pkgs), $c{reset};
     }
     else {
         say "$c{bblue}::$c{reset} $c{bold}No unneeded packages found...$c{reset}";
