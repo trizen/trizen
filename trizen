@@ -73,6 +73,9 @@ my $home_dir = $ENV{HOME} || $ENV{LOGDIR} || (getpwuid $<)[7] || `echo -n ~`;
 # Configuration directory
 my $config_dir = catdir($ENV{XDG_CONFIG_HOME} || catdir($home_dir, '.config'), $execname);
 
+# Cache directory
+my $cache_dir = catdir($ENV{XDG_CACHE_HOME} || catdir($home_dir, '.cache'), $execname);
+
 # Configuration file
 my $config_file = catfile($config_dir, "$execname.conf");
 
@@ -195,7 +198,12 @@ my %CONFIG = (
               syntax_highlighting_cmd    => '/usr/bin/highlight -O ansi',
              );
 
-$CONFIG{clone_dir} = catdir($config_dir, 'sources');
+$CONFIG{clone_dir} = catdir($cache_dir, 'sources');
+
+if (not -d $CONFIG{clone_dir}) {
+    make_path($CONFIG{clone_dir})
+      or note(":: Unable to create directory <<$CONFIG{clone_dir}>>: {!$!!}");
+}
 
 my %lconfig = (
                %CONFIG,
