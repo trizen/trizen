@@ -200,11 +200,6 @@ my %CONFIG = (
 
 $CONFIG{clone_dir} = catdir($cache_dir, 'sources');
 
-if (not -d $CONFIG{clone_dir}) {
-    make_path($CONFIG{clone_dir})
-      or note(":: Unable to create directory <<$CONFIG{clone_dir}>>: {!$!!}");
-}
-
 my %lconfig = (
                %CONFIG,
                quiet         => 0,
