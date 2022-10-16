@@ -390,7 +390,7 @@ my %already_built;        # will keep track of built packages
 my %already_installed;    # will keep track of installed packages
 my %seen_package;         # will keep track of seen packages
 
-my $pkg_suffix_re = qr/-[^-]+-\d+-\w+\.pkg\.[a-z0-9A-Z.]+\z/;
+my $pkg_suffix_re = qr/-[^-]+-\d+(?:\.\d+)?-\w+\.pkg\.[a-z0-9A-Z.]+\z/;
 
 my $sudo_autorepeat_pid;
 
@@ -955,7 +955,7 @@ sub package_is_installed ($pkgname, $strict = 1) {
                 my $dirs_string = '/' . join('/', readdir($dir_h)) . '/';
                 closedir($dir_h);
 
-                if ($dirs_string =~ m{/\Q$pkgname\E-([^-]+-\d+)/}i) {
+                if ($dirs_string =~ m{/\Q$pkgname\E-([^-]+-\d+(?:\.\d+)?)/}i) {
                     return $1;
                 }
 
