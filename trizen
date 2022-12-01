@@ -2392,7 +2392,7 @@ sub is_vcs_package_ood ($pkgname) {
                has_new_github_commit($owner, $repo, $pkgname)
             // do {
                     $lconfig{use_github_api} = 0;                                           # GitHub rate limit has been reached
-                    has_new_git_commit("git://github.com/$owner/$repo.git", $pkgname)       # fallback
+                    has_new_git_commit("https://github.com/$owner/$repo.git", $pkgname)     # fallback
                }
         );
 #>>>
@@ -2411,7 +2411,7 @@ sub is_vcs_package_ood ($pkgname) {
                has_new_gitlab_commit($owner, $repo, $pkgname)
             // do {
                     $lconfig{use_gitlab_api} = 0;                                           # GitLab rate limit has been reached
-                    has_new_git_commit("git://gitlab.com/$owner/$repo.git", $pkgname)       # fallback
+                    has_new_git_commit("https://gitlab.com/$owner/$repo.git", $pkgname)     # fallback
                }
         );
 #>>>
