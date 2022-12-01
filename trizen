@@ -2309,7 +2309,7 @@ sub get_gitlab_commit_date ($commit_info) {
 sub is_commit_new ($commit_date, $pkgname) {
 
     # Get the build-date of the package
-    my $build_date = get_local_build_date($pkgname) // return;
+    my $build_date = get_local_build_date($pkgname) || return 0;    # maybe?
 
     if ($lconfig{debug}) {
         msg(":: <<$pkgname>> comparing <<$build_date>> <=> <<$commit_date>>");
@@ -2425,6 +2425,7 @@ sub is_vcs_package_ood ($pkgname) {
         my $source_url = $1;
 
         $lconfig{quiet} || msg(":: <<$pkgname>> checking <<$source_url>> for updates...");
+        $source_url =~ s{^git://github\.com/}{https://github.com/};
 
         return has_new_git_commit($source_url, $pkgname);
     }
