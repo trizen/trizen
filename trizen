@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 16 October 2022
+# Latest edit: 01 December 2022
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -824,7 +824,8 @@ sub get_comments ($name) {
     while (
         $content =~ m{
             <h4\b.*?>\s*
-                (\S+)\ commented\ on\ <a\s+href=".*?"\s+class="date">(\d{4}-\d\d-\d\d\ \d\d:\d\d).*?</a>
+                (\S+)\ commented\ on\ <a\s+href=".*?"\s+class="date">(\d{4}-\d\d-\d\d\ \d\d:\d\d).*?</a>\s*
+                (?:<span\s+class="edited">.*?</span>)?
              \s*</h4>\s*
             <div\b.*?class="article-content">\s*
                 <div> \s* (.*?) </div>\s*
