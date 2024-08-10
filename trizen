@@ -21,7 +21,7 @@
 # Created: 07 July 2010
 # First rewrite: 16 February 2011
 # Second rewrite: 24 March 2012
-# Latest edit: 02 December 2022
+# Latest edit: 10 August 2024
 # https://github.com/trizen/trizen
 
 # Contributors:
@@ -1387,8 +1387,7 @@ sub show_and_edit_text_files ($info) {
     if ($lconfig{one_line_edit} and scalar(@build_files) > 1) {
 
         foreach my $i (0 .. $#build_files) {
-            printf("$c{bgreen}%2d$c{reset}. $c{bblue}%s$c{reset}%s\n",
-                   $i + 1, $build_files[$i], ((-B $build_files[$i]) ? " ($c{bred}binary$c{reset})" : ""));
+            printf("$c{bgreen}%2d$c{reset}. $c{bblue}%s$c{reset}%s\n", $i + 1, $build_files[$i], ((-B $build_files[$i]) ? " ($c{bred}binary$c{reset})" : ""));
         }
 
         my %aliases;
@@ -2425,7 +2424,9 @@ sub is_vcs_package_ood ($pkgname) {
         my $source_url = $1;
 
         $lconfig{quiet} || msg(":: <<$pkgname>> checking <<$source_url>> for updates...");
+
         $source_url =~ s{^git://github\.com/}{https://github.com/};
+        $source_url =~ s{#.*}{};                                      # remove `#...` from the URL
 
         return has_new_git_commit($source_url, $pkgname);
     }
@@ -2612,8 +2613,7 @@ sub update_local_packages (@repo_packages) {
         if ($lconfig{show_upgrades_only}) {
             $lconfig{quiet}
               ? printf("%s\n", $pkgname)
-              : printf("$c{bold}%s$c{reset} $c{bgreen}%s$c{reset} -> $c{bgreen}%s$c{reset}\n",
-                       $pkgname, $packages{$pkgname}, $version);
+              : printf("$c{bold}%s$c{reset} $c{bgreen}%s$c{reset} -> $c{bgreen}%s$c{reset}\n", $pkgname, $packages{$pkgname}, $version);
 
             next;
         }
@@ -2927,8 +2927,7 @@ if ($lconfig{S} or $lconfig{sync}) {    # -S
     }
 
     elsif ($lconfig{y} or $lconfig{refresh}) {    # -Sy
-        execute_pacman_command(1, splice(@repo_packages),
-                               get_pacman_arguments('all', qw(sync needed asdeps asexplicit refresh quiet noconfirm)));
+        execute_pacman_command(1, splice(@repo_packages), get_pacman_arguments('all', qw(sync needed asdeps asexplicit refresh quiet noconfirm)));
     }
 
     install_packages_from_repo(@repo_packages) if @repo_packages;
