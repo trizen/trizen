@@ -109,6 +109,7 @@ Other options:
       --noedit        : do not prompt to edit files
       --nobuild       : do not build packages (implies --noedit)
       --noinstall     : do not install packages after building
+      --nocheck       : do not check() packages or install check dependencies
       --needed        : do not reinstall up-to-date packages
       --asdeps        : install packages as non-explicitly installed
       --asexplicit    : install packages as explicitly installed
