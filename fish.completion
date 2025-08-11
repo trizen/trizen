@@ -124,6 +124,7 @@ complete -c $progname -n $hasopt      -l noinfo      -d 'Do not display package 
 complete -c $progname -n $hasopt      -l nopull      -d 'Do not pull new changes'
 complete -c $progname -n $hasopt      -l nobuild     -d 'Do not build packages (implies --noedit)'
 complete -c $progname -n $hasopt      -l noinstall   -d 'Do not install packages after building'
+complete -c $progname -n $hasopt      -l nocheck     -d 'Do not check() packages or install check dependencies'
 complete -c $progname -n $hasopt      -l skipinteg   -d 'Pass --skipinteg to makepkg'
 complete -c $progname -n $hasopt      -l movepkg     -d 'Move built packages into pacman\'s cache directory'
 complete -c $progname -n $hasopt      -l movepkg-dir -d 'Move built packages into this directory (implies --movepkg)'

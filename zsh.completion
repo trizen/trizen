@@ -141,6 +141,7 @@ _trizen_opts_sync_modifiers=(
     '--ignore[Space-separated list of packages to ignore]'
     '--nobuild[Do not build packages (implies --noedit)]'
     '--noinstall[Do not install packages after building]'
+    '--nocheck[Do not check() packages or install check dependencies]'
     '--skipinteg[Pass the `--skipinteg` argument to `makepkg`]'
 )
 

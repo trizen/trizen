@@ -151,6 +151,7 @@ my %CONFIG = (
               nocolors                   => 0,
               forcecolors                => 0,
               movepkg                    => 0,
+              nocheck                    => 0,
               noedit                     => 0,
               noinstall                  => 0,
               nopull                     => 0,
@@ -280,6 +281,7 @@ movepkg                      => bool    Move built packages in the directory `mo
 movepkg_dir                  => str     Absolute path to the directory where to move built packages (with `movepkg`).
 nocolors                     => bool    Disable output colors for `$execname`.
 forcecolors                  => bool    Force output colors even when not writing to STDOUT.
+nocheck                      => bool    Do not run the check() function in the PKGBUILD or install any checkdepends.
 noedit                       => bool    Do not prompt to edit files when installing an AUR package.
 noinfo                       => bool    Do not display package information when installing an AUR package.
 noinstall                    => bool    Do not install built packages -- builds only.
@@ -479,6 +481,7 @@ $c{bgreen}Other options:$c{reset}
       $c{bold}--noedit$c{reset}        : do not prompt to edit files
       $c{bold}--nobuild$c{reset}       : do not build packages (implies --noedit)
       $c{bold}--noinstall$c{reset}     : do not install packages after building
+      $c{bold}--nocheck$c{reset}       : do not check() packages or install checkdepends
       $c{bold}--needed$c{reset}        : do not reinstall up-to-date packages
       $c{bold}--asdeps$c{reset}        : install packages as non-explicitly installed
       $c{bold}--asexplicit$c{reset}    : install packages as explicitly installed
@@ -632,6 +635,10 @@ if ($lconfig{noconfirm}) {
 }
 else {
     $Term::UI::AUTOREPLY = 0;
+}
+
+if ($lconfig{nocheck}) {
+    $lconfig{makepkg_command} .= ' --nocheck';
 }
 
 # `--asdep` as alias for `--asdeps`
@@ -1798,7 +1805,7 @@ sub install_package ($pkg) {
         (exists($info->{MakeDepends}) ? @{$info->{MakeDepends}} : ()),
 
         # CheckDepends
-        (exists($info->{CheckDepends}) ? @{$info->{CheckDepends}} : ()),
+        (!$lconfig{nocheck} and exists($info->{CheckDepends}) ? @{$info->{CheckDepends}} : ()),
 
         # Depends
         (exists($info->{Depends}) ? @{$info->{Depends}} : ()),
