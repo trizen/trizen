@@ -1259,7 +1259,7 @@ sub move_built_package ($tarball) {
             msg(":: Moving <<${tarball}>> into <<$lconfig{movepkg_dir}>>");
 
             system($lconfig{use_sudo}
-                   ? "$lconfig{sudo_command} mv '${tarball}' '$lconfig{movepkg_dir}'"
+                   ? "$lconfig{sudo_command} mv \Q$tarball\E \Q$lconfig{movepkg_dir}\E"
                    : qq{$lconfig{su_command} 'mv \Q$tarball\E \Q$lconfig{movepkg_dir}\E'}
                   );
 
