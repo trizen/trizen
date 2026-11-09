@@ -1326,6 +1326,7 @@ sub recompute_dependencies ($info) {
 sub sanitize_output ($str) {
     $str = strip_space($str);
     $str =~ s/[\b]+//g;    # remove backspace escapes
+    $str =~ s/[\x{00}-\x{08}\x{0b}-\x{1f}\x{7f}-\x{9f}]//g;
     $str;
 }
 
